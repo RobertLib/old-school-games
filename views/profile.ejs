@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <%- include('head') %>
+  <title>My profile - OldSchoolGames</title>
+  <meta name="description" content="Manage your personal gaming profile on OldSchoolGames. View and organize your favorite retro games, track recently played titles and build your collection." />
+</head>
+
+<body class="layout" onload="loadFavoriteGames(); loadRecentlyPlayedGames();">
+  <%- include('navbar') %>
+  <%- include('left-sidebar') %>
+  <main>
+    <div class="container">
+      <%- include('flash') %>
+      <section>
+        <h1 class="text-lg">My profile</h1>
+        <p>This is where your favorite games and recently played games are stored. All data is stored only in your browser.</p>
+
+        <h2 class="text-md" style="margin-top: 30px">Favorite games</h2>
+        <div id="favorite-games-container">
+          <p>Loading your favorite games...</p>
+        </div>
+
+        <h2 class="text-md" style="margin-top: 30px">Recently played games</h2>
+        <div id="recently-played-games-container">
+          <p>Loading your recently played games...</p>
+        </div>
+      </section>
+    </div>
+  </main>
+  <%- include('right-sidebar') %>
+  <%- include('footer') %>
+</body>
+
+</html>

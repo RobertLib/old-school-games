@@ -1,0 +1,31 @@
+<aside class="right-sidebar">
+  <header>Recently added</header>
+  <ul class="nav nav-column">
+    <% recentlyAddedGames.map(game => { %>
+    <li>
+      <a class="nav-link text-truncate" href="/<%= game.slug %>">
+        <%= game.title %>
+      </a>
+    </li>
+    <% }); %>
+    <li>
+      <a class="nav-link" href="/?orderBy=createdAt&orderDir=DESC">All...</a>
+    </li>
+  </ul>
+
+  <br />
+
+  <header>Popular games</header>
+  <ul class="nav nav-column">
+    <% topRatedGames.map(game => { %>
+    <li>
+      <a class="nav-link text-truncate" href="/<%= game.slug %>">
+        <%= game.title %>
+      </a>
+    </li>
+    <% }); %>
+    <li>
+      <a class="nav-link" href="/?orderBy=rating&orderDir=DESC">All...</a>
+    </li>
+  </ul>
+</aside>

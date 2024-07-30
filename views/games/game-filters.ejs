@@ -1,0 +1,40 @@
+<div class="game-filters">
+  <h2 class="text-lg" style="margin: 0">
+    <% if (locals.letter) { %>
+    Games starting with '<%= letter.toUpperCase() %>'
+    <% } else if (locals.genre) { %>
+    Games in the "<%= genre %>" genre
+    <% } else if (locals.developer) { %>
+    Games by developer "<%= developer %>"
+    <% } else if (locals.publisher) { %>
+    Games by publisher "<%= publisher %>"
+    <% } else if (locals.year) { %>
+    Games from <%= year %>
+    <% } else { %>
+    Games of all genres
+    <% } %>
+    <small>
+      <% if (req.query.orderBy === "title") { %>
+      (alphabetical)
+      <% } else if (req.query.orderBy === "createdAt") { %>
+      (recently added)
+      <% } else if (req.query.orderBy === "release") { %>
+      (by release years)
+      <% } else if (req.query.orderBy === "rating") { %>
+      (by rating)
+      <% } %>
+    </small>
+  </h2>
+  <ul>
+    <li>
+      <a aria-label="Order by ASC" class="inline-block hover-scale <%= req.query.orderDir === 'ASC' || (!req.query.orderDir && (locals.letter || locals.year || locals.developer || locals.publisher)) ? 'active' : '' %>" href="?<%= new URLSearchParams({ ...req.query, orderDir: 'ASC' }).toString() %>" title="Order by ASC">
+        ▲
+      </a>
+    </li>
+    <li>
+      <a aria-label="Order by DESC" class="inline-block hover-scale <%= req.query.orderDir === 'DESC' || (!req.query.orderDir && !(locals.letter || locals.year || locals.developer || locals.publisher)) ? 'active' : '' %>" href="?<%= new URLSearchParams({ ...req.query, orderDir: 'DESC' }).toString() %>" title="Order by DESC">
+        ▼
+      </a>
+    </li>
+  </ul>
+</div>
