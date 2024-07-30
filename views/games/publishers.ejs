@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <%- include('../head') %>
+  <% const title = 'Game Publishers - Browse by Publishing Companies - OldSchoolGames' %>
+  <% const description = 'Explore classic MS-DOS games by publisher. Find games from your favorite publishing companies from the retro era.' %>
+  <title><%= title %></title>
+  <meta name="description" content="<%= description %>" />
+  <meta property="og:title" content="<%= title %>" />
+  <meta property="og:description" content="<%= description %>" />
+  <meta property="og:url" content="https://oldschoolgames.eu/publishers" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="OldSchoolGames" />
+  <meta property="og:image" content="https://oldschoolgames.eu/images/navbar.webp" />
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "CollectionPage",
+      "name": "Game Publishers",
+      "description": "Browse classic MS-DOS games by publisher",
+      "url": "https://oldschoolgames.eu/publishers",
+      "mainEntity": {
+        "@type": "ItemList",
+        "itemListElement": [
+          <% publishers.forEach((publisher, index) => { %>
+          {
+            "@type": "ListItem",
+            "position": <%= index + 1 %>,
+            "item": {
+              "@type": "Organization",
+              "name": "<%= publisher %>",
+              "url": "https://oldschoolgames.eu/publisher/<%= encodeURIComponent(publisher) %>"
+            }
+          }<%= index < publishers.length - 1 ? ',' : '' %>
+          <% }); %>
+        ]
+      }
+    }
+  </script>
+</head>
+
+<body class="layout">
+  <%- include('../navbar') %>
+  <%- include('../left-sidebar') %>
+  <main>
+    <div class="container">
+      <%- include('../flash') %>
+      <section>
+        <h1 class="text-lg">Game Publishers</h1>
+        <p>Browse games by publisher:</p>
+
+        <!-- Quick Navigation -->
+        <div style="margin: 20px 0; padding: 15px; background: rgba(var(--border-rgb), 0.2); border: 1px solid rgb(var(--border-rgb)); border-radius: var(--border-radius);">
+          <h3 style="margin: 0 0 10px; color: rgb(var(--primary-rgb)); text-shadow: var(--text-shadow);">Quick Navigation:</h3>
+          <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+            <a href="/developers" class="btn btn-sm btn-outline">Browse Developers</a>
+            <a href="/years" class="btn btn-sm btn-outline">Browse by Year</a>
+            <a href="/" class="btn btn-sm btn-outline">All Games</a>
+          </div>
+        </div>
+
+        <hr />
+
+        <div class="company-list">
+          <% if (publishers.length) { %>
+          <ul>
+            <% publishers.forEach(publisher => { %>
+            <li>
+              <a href="/publisher/<%= encodeURIComponent(publisher) %>"><%= publisher %></a>
+            </li>
+            <% }); %>
+          </ul>
+          <% } else { %>
+          <p>No publishers found</p>
+          <% } %>
+        </div>
+
+        <!-- Popular Publishers Section -->
+        <% if (publishers.length > 5) { %>
+        <div style="margin: 30px 0; padding: 20px; background: rgba(var(--border-rgb), 0.1); border: 1px solid rgb(var(--border-rgb)); border-radius: var(--border-radius);">
+          <h3 style="margin: 0 0 15px; color: rgb(var(--primary-rgb)); text-shadow: var(--text-shadow);">Popular Publishers:</h3>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
+            <% publishers.slice(0, 8).forEach(publisher => { %>
+            <a href="/publisher/<%= encodeURIComponent(publisher) %>" class="color-primary underline">
+              <%= publisher %>
+            </a>
+            <% }); %>
+          </div>
+        </div>
+        <% } %>
+      </section>
+    </div>
+  </main>
+  <%- include('../right-sidebar') %>
+  <%- include('../footer') %>
+</body>
+
+</html>

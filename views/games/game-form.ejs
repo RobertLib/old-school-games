@@ -1,0 +1,76 @@
+<form action="/games/<%= game?.id %>" method="POST">
+  <p>
+    <label class="form-label" for="title">Title *</label><br />
+    <input class="form-control" id="title" maxlength="255" name="title" required style="max-width: 480px; width: 100%" type="text" value="<%= game?.title %>" />
+  </p>
+  <p>
+    <label class="form-label" for="description">Description</label><br />
+    <textarea class="form-control" id="description" name="description" rows="12" style="width: 100%"><%= game?.description %></textarea>
+  </p>
+  <p>
+    <label class="form-label" for="genre">Genre *</label><br />
+    <select class="form-control" id="genre" name="genre" required>
+      <option value="">&nbsp;</option>
+      <% gameGenres.map(genre => { %>
+      <% const selected = game?.genre === genre ? "selected" : ""; %>
+      <option <%= selected %> value="<%= genre %>"><%= genre %></option>
+      <% }); %>
+    </select>
+  </p>
+  <p>
+    <label class="form-label" for="release">Release</label><br />
+    <input class="form-control" id="release" name="release" type="number" value="<%= game?.release %>" />
+  </p>
+  <p>
+    <label class="form-label" for="developer">Developer</label><br />
+    <input class="form-control" id="developer" maxlength="255" name="developer" style="max-width: 480px; width: 100%" type="text" value="<%= game?.developer %>" />
+  </p>
+  <p>
+    <label class="form-label" for="publisher">Publisher</label><br />
+    <input class="form-control" id="publisher" maxlength="255" name="publisher" style="max-width: 480px; width: 100%" type="text" value="<%= game?.publisher %>" />
+  </p>
+  <div>
+    <label class="form-label" for="image-cover">Images</label><br />
+    <ul style="margin-top: 5px">
+      <li>
+        <p>
+          <label class="form-label" for="image-cover">Cover</label><br />
+          <input class="form-control" id="image-cover" name="images" style="max-width: 768px; width: 100%" type="url" value="<%= game?.images[0] %>" />
+        </p>
+      </li>
+      <li>
+        <p>
+          <label class="form-label" for="image-1">Image 1</label><br />
+          <input class="form-control" id="image-1" name="images" style="max-width: 768px; width: 100%" type="url" value="<%= game?.images[1] %>" />
+        </p>
+      </li>
+      <li>
+        <p>
+          <label class="form-label" for="image-2">Image 2</label><br />
+          <input class="form-control" id="image-2" name="images" style="max-width: 768px; width: 100%" type="url" value="<%= game?.images[2] %>" />
+        </p>
+      </li>
+      <li>
+        <p>
+          <label class="form-label" for="image-3">Image 3</label><br />
+          <input class="form-control" id="image-3" name="images" style="max-width: 768px; width: 100%" type="url" value="<%= game?.images[3] %>" />
+        </p>
+      </li>
+    </ul>
+  </div>
+  <p>
+    <label class="form-label" for="stream">Stream</label><br />
+    <input class="form-control" id="stream" name="stream" style="max-width: 768px; width: 100%" type="text" value="<%= game?.stream %>" />
+  </p>
+  <p>
+    <label class="form-label" for="manual">Manual</label><br />
+    <input class="form-control" id="manual" name="manual" style="max-width: 768px; width: 100%" type="url" value="<%= game?.manual %>" />
+  </p>
+  <p style="margin-top: 20px">
+    <button class="btn" type="submit">
+      <%= game ? "Update" : "Create" %> Game
+    </button>
+    |
+    <a href="/">Back</a>
+  </p>
+</form>

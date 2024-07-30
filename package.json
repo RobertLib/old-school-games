@@ -1,0 +1,53 @@
+{
+  "name": "old-school-games",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.ts",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest watch",
+    "test:coverage": "vitest run --coverage",
+    "dev": "nodemon index.ts",
+    "start": "node index.ts",
+    "migrate": "node migrate.ts",
+    "format:ejs": "find views -name '*.ejs' -exec npx js-beautify --type html --indent-size 2 --end-with-newline --content_unformatted 'script' -r {} \\;"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "bcrypt": "^6.0.0",
+    "compression": "^1.8.1",
+    "connect-flash": "^0.1.1",
+    "connect-pg-simple": "^10.0.0",
+    "cookie-parser": "^1.4.7",
+    "dompurify": "^3.3.1",
+    "dotenv": "^17.2.3",
+    "ejs": "^4.0.1",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.2.1",
+    "express-session": "^1.19.0",
+    "helmet": "^8.1.0",
+    "jsdom": "^27.4.0",
+    "pg": "^8.18.0",
+    "sitemap": "^9.0.0",
+    "winston": "^3.19.0"
+  },
+  "devDependencies": {
+    "@flydotio/dockerfile": "^0.7.10",
+    "@types/bcrypt": "^6.0.0",
+    "@types/compression": "^1.8.1",
+    "@types/connect-flash": "^0.0.40",
+    "@types/connect-pg-simple": "^7.0.3",
+    "@types/cookie-parser": "^1.4.10",
+    "@types/express": "^5.0.6",
+    "@types/jsdom": "^27.0.0",
+    "@types/supertest": "^6.0.3",
+    "@vitest/coverage-v8": "^4.0.18",
+    "nodemon": "^3.1.11",
+    "supertest": "^7.2.2",
+    "ts-node": "^10.9.2",
+    "vitest": "^4.0.18"
+  },
+  "type": "module"
+}

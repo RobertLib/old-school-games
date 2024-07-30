@@ -1,0 +1,67 @@
+<form id="comment-form">
+  <input class="form-control" name="gameId" type="hidden" value="<%= game.id %>" />
+  <p>
+    <label class="form-label" for="nick">Nick</label><br />
+    <input class="form-control" id="nick" maxlength="255" name="nick" type="text" />
+  </p>
+  <p>
+    <label class="form-label" for="content">Content *</label><br />
+    <textarea class="form-control" id="content" maxlength="1000" name="content" required rows="10"></textarea>
+  </p>
+  <button class="btn" type="submit">Create Comment</button>
+  <br /><br />
+</form>
+
+<script>
+  document
+    .getElementById("comment-form")
+    .addEventListener("submit", function(event) {
+      event.preventDefault();
+
+      const submitBtn = this.querySelector('button[type="submit"]');
+      const originalText = submitBtn.textContent;
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = "Posting...";
+
+      const nick = event.target.nick.value;
+      const content = event.target.content.value;
+      const gameId = event.target.gameId.value;
+
+      fetch("/comments", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            nick,
+            content,
+            gameId
+          }),
+        })
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error('Network response was not ok');
+          }
+          return response.text();
+        })
+        .then((data) => {
+          document
+            .getElementById("comment-list")
+            .insertAdjacentHTML("beforeend", data);
+
+          document.getElementById("no-comments")?.remove();
+
+          event.target.reset();
+        })
+        .catch((error) => {
+          console.error("Error:", error);
+          alert("Error posting comment. Please try again.");
+        })
+        .finally(() => {
+          submitBtn.disabled = false;
+          submitBtn.textContent = originalText;
+        });
+    });
+
+</script>

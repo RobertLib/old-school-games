@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <%- include('../head') %>
+  <% const title = 'Game Developers - Browse by Development Studios - OldSchoolGames' %>
+  <% const description = 'Explore classic MS-DOS games by developer. Find your favorite game studios and check out their games.' %>
+  <title><%= title %></title>
+  <meta name="description" content="<%= description %>" />
+  <meta property="og:title" content="<%= title %>" />
+  <meta property="og:description" content="<%= description %>" />
+  <meta property="og:url" content="https://oldschoolgames.eu/developers" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="OldSchoolGames" />
+  <meta property="og:image" content="https://oldschoolgames.eu/images/navbar.webp" />
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "CollectionPage",
+      "name": "Game Developers",
+      "description": "Browse classic MS-DOS games by developer",
+      "url": "https://oldschoolgames.eu/developers",
+      "mainEntity": {
+        "@type": "ItemList",
+        "itemListElement": [
+          <% developers.forEach((developer, index) => { %>
+          {
+            "@type": "ListItem",
+            "position": <%= index + 1 %>,
+            "item": {
+              "@type": "Organization",
+              "name": "<%= developer %>",
+              "url": "https://oldschoolgames.eu/developer/<%= encodeURIComponent(developer) %>",
+              "description": "Game development studio"
+            }
+          }<%= index < developers.length - 1 ? ',' : '' %>
+          <% }); %>
+        ]
+      }
+    }
+  </script>
+</head>
+
+<body class="layout">
+  <%- include('../navbar') %>
+  <%- include('../left-sidebar') %>
+  <main>
+    <div class="container">
+      <%- include('../flash') %>
+      <section>
+        <h1 class="text-lg">Game Developers</h1>
+        <p>Browse games by developer:</p>
+
+        <!-- Quick Navigation -->
+        <div style="margin: 20px 0; padding: 15px; background: rgba(var(--border-rgb), 0.2); border: 1px solid rgb(var(--border-rgb)); border-radius: var(--border-radius);">
+          <h3 style="margin: 0 0 10px; color: rgb(var(--primary-rgb)); text-shadow: var(--text-shadow);">Quick Navigation:</h3>
+          <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+            <a href="/publishers" class="btn btn-sm btn-outline">Browse Publishers</a>
+            <a href="/years" class="btn btn-sm btn-outline">Browse by Year</a>
+            <a href="/" class="btn btn-sm btn-outline">All Games</a>
+          </div>
+        </div>
+
+        <hr />
+
+        <div class="company-list">
+          <% if (developers.length) { %>
+          <ul>
+            <% developers.forEach(developer => { %>
+            <li>
+              <a href="/developer/<%= encodeURIComponent(developer) %>"><%= developer %></a>
+            </li>
+            <% }); %>
+          </ul>
+          <% } else { %>
+          <p>No developers found</p>
+          <% } %>
+        </div>
+
+        <!-- Popular Developers Section -->
+        <% if (developers.length > 5) { %>
+        <div style="margin: 30px 0; padding: 20px; background: rgba(var(--border-rgb), 0.1); border: 1px solid rgb(var(--border-rgb)); border-radius: var(--border-radius);">
+          <h3 style="margin: 0 0 15px; color: rgb(var(--primary-rgb)); text-shadow: var(--text-shadow);">Popular Developers:</h3>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
+            <% developers.slice(0, 8).forEach(developer => { %>
+            <a href="/developer/<%= encodeURIComponent(developer) %>" class="color-primary underline">
+              <%= developer %>
+            </a>
+            <% }); %>
+          </div>
+        </div>
+        <% } %>
+      </section>
+    </div>
+  </main>
+  <%- include('../right-sidebar') %>
+  <%- include('../footer') %>
+</body>
+
+</html>

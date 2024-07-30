@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <%- include('head') %>
+  <meta name="description" content="<% if (locals.letter) { %>Browse classic MS-DOS games starting with '<%= letter.toUpperCase() %>' from the golden age of PC gaming. Play retro games from the 80s and 90s in your browser with DOSBox emulation!<% } else { %><%= locals.description || 'Discover and play hundreds of classic MS-DOS games from the 80s and 90s directly in your browser. Experience retro gaming at its finest with DOSBox emulation!' %><% } %>" />
+  <title>
+    <% if (locals.letter) { %>
+    Games starting with '<%= letter.toUpperCase() %>' - OldSchoolGames
+    <% } else { %>
+    <%= locals.title || 'OldSchoolGames - Play classic MS-DOS Games Online' %>
+    <% } %>
+  </title>
+  <!-- Open Graph -->
+  <meta property="og:title" content="<% if (locals.letter) { %>Games starting with '<%= letter.toUpperCase() %>' - OldSchoolGames<% } else { %><%= locals.title || 'OldSchoolGames - Play classic MS-DOS Games Online' %><% } %>" />
+  <meta property="og:description" content="<% if (locals.letter) { %>Browse classic MS-DOS games starting with '<%= letter.toUpperCase() %>' from the golden age of PC gaming. Play retro games from the 80s and 90s in your browser with DOSBox emulation!<% } else { %><%= locals.description || 'Discover and play hundreds of classic MS-DOS games from the 80s and 90s directly in your browser. Experience retro gaming at its finest with DOSBox emulation!' %><% } %>" />
+  <meta property="og:image" content="<%= locals.image %>" />
+  <meta property="og:url" content="<%= locals.url || req.protocol + '://' + req.get('host') + req.originalUrl %>" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="OldSchoolGames" />
+  <script src="/js/rating-stars.js"></script>
+  <script src="/js/carousel.js"></script>
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebPage",
+      "name": "<% if (locals.letter) { %>Games starting with '<%= letter.toUpperCase() %>' - OldSchoolGames<% } else { %>OldSchoolGames - Play classic MS-DOS Games Online<% } %>",
+      "description": "<% if (locals.letter) { %>Browse classic MS-DOS games starting with '<%= letter.toUpperCase() %>' from the golden age of PC gaming. Play retro games from the 80s and 90s in your browser with DOSBox emulation!<% } else { %><%= locals.description || 'Discover and play hundreds of classic MS-DOS games from the 80s and 90s directly in your browser. Experience retro gaming at its finest with DOSBox emulation!' %><% } %>",
+      "url": "<%= locals.url || req.protocol + '://' + req.get('host') + req.originalUrl %>",
+      "mainEntity": {
+        "@type": "ItemList",
+        "itemListElement": [
+          <% games.slice(0, 10).forEach((game, index) => { %>
+          {
+            "@type": "ListItem",
+            "position": <%= index + 1 %>,
+            "item": {
+              "@type": "VideoGame",
+              "name": "<%= game.title %>",
+              "genre": "<%= game.genre %>",
+              "gamePlatform": "MS-DOS",
+              "url": "https://oldschoolgames.eu/<%= game.slug %>"
+            }
+          }<%= index < Math.min(games.length - 1, 9) ? ',' : '' %>
+          <% }); %>
+        ]
+      }
+    }
+  </script>
+</head>
+
+<body class="layout">
+  <%- include('navbar') %>
+  <%- include('left-sidebar') %>
+  <main>
+    <div class="container">
+      <%- include('flash') %>
+      <section>
+        <% if (req.originalUrl === '/' || req.originalUrl === '') { %>
+        <h1 class="text-lg" style="margin: 0 0 7px">Welcome to Old School Games!</h1>
+        <marquee>
+          👋 Welcome to our portal dedicated to the golden age of gaming! Relive the
+          nostalgia and immerse yourself in the magic of classic games from the
+          MS-DOS era that shaped the world of gaming. Here, you can easily play
+          these timeless classics directly in your browser, without any
+          complicated setup. Just click and let yourself be transported back to
+          a time when games were crafted with heart and soul. Get ready for an
+          adventure filled with pixelated graphics, unforgettable music, and a
+          unique atmosphere. Welcome back to the past! 💾🕹️👾
+        </marquee>
+
+        <!-- Game of the Week and Latest News side by side -->
+        <div class="homepage-features">
+          <%- include('game-of-the-week') %>
+          <%- include('news/news-preview') %>
+        </div>
+
+        <!-- Featured Games Carousel -->
+        <%- include('featured-games-carousel') %>
+
+        <hr />
+        <% } %>
+        <% if (req.session?.user?.role === "ADMIN") { %>
+        <div class="text-right" style="margin-bottom: 25px; display: flex; gap: 10px; justify-content: flex-end; align-items: center;">
+          <a class="btn btn-outline" href="/games/new">+ Add a new game</a>
+          <a class="btn btn-outline" href="/news/new">+ Add news</a>
+
+          <div style="display: flex; gap: 5px;">
+            <form action="/indexnow/test" method="POST" style="display: inline;">
+              <button class="btn btn-outline btn-sm" type="submit" title="Test IndexNow configuration">
+                🔍 Test IndexNow
+              </button>
+            </form>
+
+            <form action="/indexnow/submit-all" method="POST" style="display: inline;" onsubmit="return confirm('This will submit all URLs to search engines. Continue?')">
+              <button class="btn btn-outline btn-sm" type="submit" title="Submit all URLs to search engines">
+                📡 Submit All to IndexNow
+              </button>
+            </form>
+          </div>
+        </div>
+        <% } %>
+        <% if (req.originalUrl === '/' || req.originalUrl === '') { %>
+        <% } else if (locals.letter) { %>
+        <h1 class="text-xl" style="margin: 0 0 17px">'<%= letter %>' games</h1>
+        <% } else if (locals.genre) { %>
+        <h1 class="text-xl" style="margin: 0 0 17px"><%= genre %> games</h1>
+        <% } else { %>
+        <h1 class="text-xl" style="margin: 0 0 17px">All games</h1>
+        <% } %>
+        <%- include('games/alphabet-filter') %>
+        <%- include('games/game-filters') %>
+
+        <!-- Contextual Links for filtered pages -->
+        <% if (locals.publisher || locals.developer || locals.year) { %>
+        <div style="margin: 20px 0; padding: 15px; background: rgba(var(--border-rgb), 0.2); border: 1px solid rgb(var(--border-rgb)); border-radius: var(--border-radius); color: rgb(var(--color-rgb));">
+          <h3 style="margin: 0 0 10px; color: rgb(var(--primary-rgb)); text-shadow: var(--text-shadow);">Related:</h3>
+          <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+            <% if (locals.publisher) { %>
+            <a href="/publishers" class="btn btn-sm btn-outline">All Publishers</a>
+            <% if (locals.year) { %><a href="/year/<%= locals.year %>" class="color-primary underline">Games from <%= locals.year %></a><% } %>
+            <% } %>
+            <% if (locals.developer) { %>
+            <a href="/developers" class="btn btn-sm btn-outline">All Developers</a>
+            <% if (locals.year) { %><a href="/year/<%= locals.year %>" class="color-primary underline">Games from <%= locals.year %></a><% } %>
+            <% } %>
+            <% if (locals.year) { %>
+            <a href="/years" class="btn btn-sm btn-outline">All Years</a>
+            <%
+                const prevYear = locals.year - 1;
+                const nextYear = locals.year + 1;
+              %>
+            <a href="/year/<%= prevYear %>" class="color-primary underline"><%= prevYear %></a>
+            <a href="/year/<%= nextYear %>" class="color-primary underline"><%= nextYear %></a>
+            <% } %>
+            <a href="/" class="btn btn-sm btn-outline">All Games</a>
+          </div>
+        </div>
+        <% } %>
+
+        <%- include('games/game-list') %>
+      </section>
+    </div>
+  </main>
+  <%- include('right-sidebar') %>
+  <%- include('footer') %>
+</body>
+
+</html>

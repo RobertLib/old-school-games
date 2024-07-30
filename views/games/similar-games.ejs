@@ -1,0 +1,38 @@
+<% if (similarGames && similarGames.length > 0) { %>
+<section class="similar-games">
+  <h2>Similar <%= game.genre %> Games</h2>
+  <div class="similar-games-grid">
+    <% similarGames.forEach(function(similarGame) { %>
+    <div class="similar-game-item">
+      <a href="/<%= similarGame.slug || similarGame.id %>" class="similar-game-link">
+        <% if (similarGame.images && similarGame.images.length > 0) { %>
+        <img src="<%= similarGame.images[0] %>" alt="<%= similarGame.title %>" class="similar-game-image" />
+        <% } else { %>
+        <div class="similar-game-placeholder">No Image</div>
+        <% } %>
+        <div class="similar-game-info">
+          <h3 class="similar-game-title"><%= similarGame.title %></h3>
+          <% if (similarGame.release) { %>
+          <p class="similar-game-year">(<%= similarGame.release %>)</p>
+          <% } %> <% if (similarGame.averageRating > 0) { %>
+          <div class="similar-game-rating">
+            <span class="rating-stars">
+              <% for (let i = 1; i <= 5; i++) { %> <% if (i <=
+              Math.round(similarGame.averageRating)) { %> ★ <% } else { %> ☆ <%
+              } %> <% } %>
+            </span>
+            <span class="rating-value">(<%= similarGame.averageRating.toFixed(1) %>)</span>
+          </div>
+          <% } %>
+        </div>
+      </a>
+    </div>
+    <% }); %>
+  </div>
+  <div style="margin: 15px 0; text-align: center">
+    <a href="/<%= game.genre.toLowerCase() %>" class="btn btn-outline">
+      Browse all <%= game.genre.toLowerCase() %> games
+    </a>
+  </div>
+</section>
+<% } %>

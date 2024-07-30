@@ -1,0 +1,47 @@
+<% if (locals.featuredGames && featuredGames.length > 0) { %>
+<div class="featured-games-carousel">
+  <h2 class="carousel-title">Featured Games</h2>
+
+  <div class="carousel-container">
+    <button class="carousel-btn carousel-btn-prev" aria-label="Previous game">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M15 18L9 12L15 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+      </svg>
+    </button>
+
+    <div class="carousel-track-container">
+      <div class="carousel-track">
+        <% featuredGames.forEach((game, index) => { %>
+        <div class="carousel-slide" data-index="<%= index %>">
+          <a href="/<%= game.slug %>" class="carousel-game-card">
+            <div class="carousel-game-image">
+              <img src="<%= game.images[0] %>" alt="<%= game.title %>" loading="<%= index < 3 ? 'eager' : 'lazy' %>" />
+            </div>
+            <div class="carousel-game-info">
+              <h3 class="carousel-game-title"><%= game.title %></h3>
+              <p class="carousel-game-genre"><%= game.genre %></p>
+              <% if (game.release) { %>
+              <p class="carousel-game-year"><%= game.release %></p>
+              <% } %>
+              <rating-stars gameId="<%= game.id %>" rating="<%= game.averageRating %>" readonly="true"></rating-stars>
+            </div>
+          </a>
+        </div>
+        <% }); %>
+      </div>
+    </div>
+
+    <button class="carousel-btn carousel-btn-next" aria-label="Next game">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M9 18L15 12L9 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+      </svg>
+    </button>
+  </div>
+
+  <div class="carousel-indicators">
+    <% featuredGames.forEach((game, index) => { %>
+    <button class="carousel-indicator <%= index === 0 ? 'active' : '' %>" data-index="<%= index %>" aria-label="Go to game <%= index + 1 %>"></button>
+    <% }); %>
+  </div>
+</div>
+<% } %>

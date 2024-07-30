@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <%- include('../head') %>
+  <meta name="description" content="Add a new news item to OldSchoolGames" />
+  <title>Add New News - OldSchoolGames</title>
+</head>
+
+<body class="layout">
+  <%- include('../navbar') %>
+  <%- include('../left-sidebar') %>
+  <main>
+    <div class="container">
+      <%- include('../flash') %>
+      <section>
+        <h1 class="text-xl" style="margin: 0 0 20px;">Add New News</h1>
+
+        <form action="/news" method="POST">
+          <div class="form-group">
+            <label for="title" class="form-label">Title *</label><br />
+            <input type="text" class="form-control <%= locals.errors?.find(error => error.field === 'title') ? 'is-invalid' : '' %>" id="title" name="title" value="<%= locals.formData?.title || '' %>" maxlength="255" required style="max-width: 768px; width: 100%" />
+            <% if (locals.errors?.find(error => error.field === 'title')) { %>
+            <div class="invalid-feedback">
+              <%= locals.errors.find(error => error.field === 'title').message %>
+            </div>
+            <% } %>
+          </div>
+
+          <div class="form-group">
+            <label for="content" class="form-label">Content *</label><br />
+            <textarea class="form-control <%= locals.errors?.find(error => error.field === 'content') ? 'is-invalid' : '' %>" id="content" name="content" rows="8" maxlength="10000" required style="max-width: 768px; width: 100%"><%= locals.formData?.content || '' %></textarea>
+            <% if (locals.errors?.find(error => error.field === 'content')) { %>
+            <div class="invalid-feedback">
+              <%= locals.errors.find(error => error.field === 'content').message %>
+            </div>
+            <% } %>
+            <div class="form-help">
+              You can use basic HTML tags for formatting.
+            </div>
+          </div>
+
+          <div class="form-group">
+            <button type="submit" class="btn btn-primary">Add News</button>
+            <a href="/news" class="btn btn-outline">Cancel</a>
+          </div>
+        </form>
+      </section>
+    </div>
+  </main>
+  <%- include('../right-sidebar') %>
+  <%- include('../footer') %>
+</body>
+
+</html>

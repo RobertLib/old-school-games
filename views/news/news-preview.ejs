@@ -1,0 +1,20 @@
+<% if (recentNews && recentNews.length > 0) { %>
+<div class="news-preview-card">
+  <h2 class="news-preview-title"><a href="/news" class="news-title-link">Latest News</a></h2>
+  <div class="card-body">
+    <% recentNews.forEach((newsItem, index) => { %>
+    <article class="news-item-preview <% if (index > 0) { %>news-item-preview-bordered<% } %>">
+      <h3 class="news-item-preview-title"><%= newsItem.title %></h3>
+      <div class="news-item-preview-meta">
+        <time datetime="<%= new Date(newsItem.createdAt).toISOString() %>">
+          <%= new Date(newsItem.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) %>
+        </time>
+      </div>
+      <div class="news-content-preview">
+        <%- newsItem.content %>
+      </div>
+    </article>
+    <% }); %>
+  </div>
+</div>
+<% } %>

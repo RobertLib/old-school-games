@@ -1,0 +1,30 @@
+<% if (locals.gameOfTheWeek && gameOfTheWeek.game) { %>
+<div class="game-of-the-week">
+  <h2 class="game-of-the-week-title">Game of the Week</h2>
+  <div class="game-of-the-week-content">
+    <div class="game-of-the-week-image">
+      <a href="/<%= gameOfTheWeek.game.slug %>">
+        <img src="<%= gameOfTheWeek.game.images[0] %>" alt="<%= gameOfTheWeek.game.title %>" width="150" loading="eager" />
+      </a>
+    </div>
+    <div class="game-of-the-week-info">
+      <h3><a href="/<%= gameOfTheWeek.game.slug %>" class="color-primary"><%= gameOfTheWeek.game.title %></a></h3>
+      <p class="game-of-the-week-description text-sm">
+        <%= gameOfTheWeek.game.description?.replaceAll("<br />", "") %>
+      </p>
+      <div class="text-sm">
+        <strong>Genre</strong>: <%= gameOfTheWeek.game.genre %><br />
+        <% if (gameOfTheWeek.game.developer) { %>
+        <strong>Developer</strong>: <%= gameOfTheWeek.game.developer %><br />
+        <% } %>
+        <div style="margin-top: 5px;">
+          <rating-stars gameId="<%= gameOfTheWeek.game.id %>" rating="<%= gameOfTheWeek.game.averageRating %>"></rating-stars>
+        </div>
+      </div>
+      <div class="text-right" style="margin-top: 10px;">
+        <a href="/<%= gameOfTheWeek.game.slug %>" class="btn btn-primary btn-sm">Play Now</a>
+      </div>
+    </div>
+  </div>
+</div>
+<% } %>

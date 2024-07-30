@@ -1,0 +1,133 @@
+<header class="navbar">
+  <nav>
+    <a href="/">
+      <span class="h1">
+        <span style="margin-right: 10px">🕹️</span>
+        <span class="hidden-tablet">OldSchoolGames.eu</span>
+        <span class="visible-tablet">OSGames</span>
+      </span>
+    </a>
+    <blockquote class="navbar-blockquote hidden-mobile line-clamp">
+      Play classic <strong>MS-DOS games ONLINE</strong>!
+    </blockquote>
+    <ul class="navbar-actions">
+      <li class="hidden-mobile">
+        <form action="/" class="navbar-search">
+          <input class="form-control" maxlength="100" name="search" placeholder="Search for games..." type="search" value="<%= req.query.search %>" />
+          <button class="btn btn-primary" style="gap: 6px" type="submit">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="currentColor" width="50" height="15">
+              <path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352a144 144 0 1 0 0-288 144 144 0 1 0 0 288z" />
+            </svg>
+            Search
+          </button>
+        </form>
+      </li>
+      <li>
+        <div class="btn-group">
+          <a class="btn btn-outline btn-sm" href="/profile" style="display: flex; align-items: center; gap: 5px" title="Profile">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
+              <path fill-rule="evenodd" d="M7.5 6a4.5 4.5 0 119 0 4.5 4.5 0 01-9 0zM3.751 20.105a8.25 8.25 0 0116.498 0 .75.75 0 01-.437.695A18.683 18.683 0 0112 22.5c-2.786 0-5.433-.608-7.812-1.7a.75.75 0 01-.437-.695z" clip-rule="evenodd" />
+            </svg>
+            <span id="favorites-count" style="display: none">0</span>
+          </a>
+        </div>
+      </li>
+      <% if (req.session?.user) { %>
+      <li>
+        <a class="btn btn-outline btn-sm" href="/logout">Logout</a>
+      </li>
+      <% } %>
+    </ul>
+  </nav>
+  <nav>
+    <ul class="nav">
+      <li>
+        <a class="nav-link <%= req.originalUrl.split('?')[0] === '/' ? 'active' : '' %>" href="/">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512" fill="currentColor" width="15" height="13">
+            <path d="M575.8 255.5c0 18-15 32.1-32 32.1l-32 0 .7 160.2c0 2.7-.2 5.4-.5 8.1l0 16.2c0 22.1-17.9 40-40 40l-16 0c-1.1 0-2.2 0-3.3-.1c-1.4 .1-2.8 .1-4.2 .1L416 512l-24 0c-22.1 0-40-17.9-40-40l0-24 0-64c0-17.7-14.3-32-32-32l-64 0c-17.7 0-32 14.3-32 32l0 64 0 24c0 22.1-17.9 40-40 40l-24 0-31.9 0c-1.5 0-3-.1-4.5-.2c-1.2 .1-2.4 .2-3.6 .2l-16 0c-22.1 0-40-17.9-40-40l0-112c0-.9 0-1.9 .1-2.8l0-69.7-32 0c-18 0-32-14-32-32.1c0-9 3-17 10-24L266.4 8c7-7 15-8 22-8s15 2 21 7L564.8 231.5c8 7 12 15 11 24z" />
+          </svg>
+          Home
+        </a>
+      </li>
+      <li>
+        <a class="nav-link <%= req.originalUrl.split('?')[0].startsWith('/news') ? 'active' : '' %>" href="/news">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="currentColor" width="15" height="13" style="position: relative; top: 1px">
+            <path d="M96 96c0-35.3 28.7-64 64-64l288 0c35.3 0 64 28.7 64 64l0 320c0 35.3-28.7 64-64 64L80 480c-44.2 0-80-35.8-80-80L0 128c0-17.7 14.3-32 32-32s32 14.3 32 32l0 272c0 8.8 7.2 16 16 16s16-7.2 16-16L96 96zm64 24l0 80c0 13.3 10.7 24 24 24l112 0c13.3 0 24-10.7 24-24l0-80c0-13.3-10.7-24-24-24L184 96c-13.3 0-24 10.7-24 24zm208-8c0 8.8 7.2 16 16 16l48 0c8.8 0 16-7.2 16-16s-7.2-16-16-16l-48 0c-8.8 0-16 7.2-16 16zm0 96c0 8.8 7.2 16 16 16l48 0c8.8 0 16-7.2 16-16s-7.2-16-16-16l-48 0c-8.8 0-16 7.2-16 16zM160 304c0 8.8 7.2 16 16 16l256 0c8.8 0 16-7.2 16-16s-7.2-16-16-16l-256 0c-8.8 0-16 7.2-16 16zm0 96c0 8.8 7.2 16 16 16l256 0c8.8 0 16-7.2 16-16s-7.2-16-16-16l-256 0c-8.8 0-16 7.2-16 16z" />
+          </svg>
+          News
+        </a>
+      </li>
+      <% 
+        // Check if current page supports filtering (has list of games)
+        const currentUrlPath = req.originalUrl.split('?')[0];
+        const pathSegment = currentUrlPath.substring(1); // remove leading slash
+        const isGenrePage = gameGenres.some(genre => genre.toLowerCase() === pathSegment);
+        const supportsFiltering = 
+          currentUrlPath === '/' || // homepage
+          isGenrePage || // genre pages (action, adventure, etc.)
+          currentUrlPath.match(/^\/letter\/[a-z]$/) || // letters
+          currentUrlPath.match(/^\/developer\/.+/) || // specific developer (not /developers list)
+          currentUrlPath.match(/^\/publisher\/.+/) || // specific publisher (not /publishers list)
+          currentUrlPath.match(/^\/year\/\d+$/); // specific year (not /years list)
+      %>
+      <% if (supportsFiltering) { %>
+      <li>
+        <div class="dropdown">
+          <span class="dropdown-toggle">Browse by</span>
+          <ul class="dropdown-menu">
+            <li>
+              <a class="dropdown-item" href="<%= currentUrlPath %>?orderBy=title&orderDir=ASC">
+                Alphabetical
+              </a>
+            </li>
+            <li>
+              <a class="dropdown-item" href="<%= currentUrlPath %>?orderBy=createdAt&orderDir=DESC">
+                Recently added
+              </a>
+            </li>
+            <li>
+              <a class="dropdown-item" href="<%= currentUrlPath %>?orderBy=release&orderDir=ASC">
+                By release years
+              </a>
+            </li>
+            <li>
+              <a class="dropdown-item" href="<%= currentUrlPath %>?orderBy=rating&orderDir=DESC">
+                By rating
+              </a>
+            </li>
+          </ul>
+        </div>
+      </li>
+      <% } %>
+    </ul>
+    <ul class="nav hidden-mobile">
+      <li>
+        <div class="dropdown">
+          <span class="dropdown-toggle">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="currentColor" width="15" height="13" style="margin-bottom: -2px">
+              <path d="M512 256c0 .9 0 1.8 0 2.7c-.4 36.5-33.6 61.3-70.1 61.3H344c-26.5 0-48 21.5-48 48c0 3.4 .4 6.7 1 9.9c2.1 10.2 6.5 20 10.8 29.9c6.1 13.8 12.1 27.5 12.1 42c0 31.8-21.6 60.7-53.4 62c-3.5 .1-7 .2-10.6 .2C114.6 512 0 397.4 0 256S114.6 0 256 0S512 114.6 512 256zM128 288a32 32 0 1 0 -64 0 32 32 0 1 0 64 0zm0-96a32 32 0 1 0 0-64 32 32 0 1 0 0 64zM288 96a32 32 0 1 0 -64 0 32 32 0 1 0 64 0zm96 96a32 32 0 1 0 0-64 32 32 0 1 0 0 64z" />
+            </svg>
+            Theme
+          </span>
+          <ul class="dropdown-menu" style="right: 0">
+            <li>
+              <a class="dropdown-item theme-option" href="#" data-theme="classic">
+                🔵 Classic Blue
+              </a>
+            </li>
+            <li>
+              <a class="dropdown-item theme-option" href="#" data-theme="green">
+                🟢 Retro Green
+              </a>
+            </li>
+            <li>
+              <a class="dropdown-item theme-option" href="#" data-theme="sunset">
+                🟠 Sunset
+              </a>
+            </li>
+          </ul>
+        </div>
+      </li>
+    </ul>
+  </nav>
+</header>
