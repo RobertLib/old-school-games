@@ -1,0 +1,163 @@
+/* ─── Gallery overlay ─────────────────────────────────────────
+   The full-screen screenshot viewer, which is only ever rendered by
+   views/games/game-gallery.ejs.
+
+   It was a <style> block inside that template. Moving it out is what lets
+   style-src drop 'unsafe-inline' (see the note on @font-face in style.css):
+   every remaining stylesheet on the site is now a file, so an injected
+   <style> element is refused rather than merely unlikely.
+
+   Loaded only by that page, so no other view pays for rules it cannot use. */
+
+.gallery-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  /* 100vh is the viewport with the mobile browser's toolbars hidden, so on a
+     phone the bottom of the overlay — the Previous/Next row — sat behind the
+     URL bar. 100dvh is the box actually on screen; the vh line above it is
+     the fallback for browsers that do not know the dynamic unit. */
+  height: 100vh;
+  height: 100dvh;
+  background: rgba(0, 0, 0, 0.95);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.gallery-header {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  padding: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.8), transparent);
+  z-index: 1001;
+}
+
+.gallery-title {
+  color: rgb(var(--primary-rgb));
+  font-size: 1.2em;
+  text-shadow: var(--text-shadow);
+  margin: 0;
+}
+
+.gallery-close {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  padding: 6px 12px;
+  cursor: pointer;
+  border-radius: var(--border-radius);
+  text-decoration: none;
+  transition: all 0.3s;
+  font-size: 0.9em;
+}
+
+.gallery-close:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: scale(1.05);
+}
+
+.gallery-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  padding: 80px 20px 100px;
+}
+
+.gallery-image-wrapper {
+  max-width: 90%;
+  max-height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.gallery-image {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  border-radius: var(--border-radius);
+  box-shadow: 0 0 50px rgba(0, 0, 0, 0.5);
+}
+
+.gallery-nav {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 30px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 20px;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.8), transparent);
+}
+
+.gallery-nav-btn {
+  background: rgb(var(--primary-rgb) / 0.8);
+  border: 1px solid rgb(var(--primary-rgb));
+  color: white;
+  padding: 8px 16px;
+  cursor: pointer;
+  border-radius: var(--border-radius);
+  font-size: 0.9em;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+}
+
+.gallery-nav-btn:hover:not(:disabled) {
+  background: rgb(var(--primary-rgb));
+  transform: scale(1.05);
+}
+
+.gallery-nav-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.gallery-counter {
+  color: white;
+  font-size: 1.1em;
+  min-width: 100px;
+  text-align: center;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.gallery-arrow {
+  width: 16px;
+  height: 16px;
+}
+
+@media (max-width: 768px) {
+  .gallery-nav-btn {
+    padding: 6px 12px;
+    font-size: 0.85em;
+  }
+
+  .gallery-counter {
+    font-size: 0.9em;
+    min-width: 70px;
+  }
+
+  .gallery-title {
+    font-size: 0.95em;
+  }
+
+  .gallery-close {
+    padding: 5px 10px;
+    font-size: 0.85em;
+  }
+}

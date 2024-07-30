@@ -1,0 +1,24 @@
+<%
+  const remaining = locals.remainingComments || 0;
+  const oldestId = comments.length ? comments[0].id : "";
+%>
+<!-- Sits above the list because the batches walk backwards in time; the
+     newest comments are the ones already on screen. -->
+<div class="comment-load-more" id="comment-load-more-wrap" <%= remaining ? "" : "hidden" %>>
+  <button class="btn btn-sm btn-outline" data-before="<%= oldestId %>" data-game-id="<%= game.id %>" id="comment-load-more" type="button">
+    <span id="comment-load-more-idle">
+      Load earlier comments (<span id="comment-remaining"><%= remaining %></span> more)
+    </span>
+    <span hidden id="comment-load-more-busy">Loading&hellip;</span>
+  </button>
+</div>
+
+<div id="comment-list">
+  <% comments.forEach((comment) => { %>
+  <%- include('comment-item', { comment, isReply: false }) %>
+  <% }); %>
+</div>
+
+<% if (comments.length === 0) { %>
+<p id="no-comments">No comments yet &mdash; be the first to say something.</p>
+<% } %>

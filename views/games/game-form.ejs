@@ -1,0 +1,117 @@
+<%
+  // On a rejected save the form is refilled from what was posted, not from
+  // what the database still holds — otherwise a validation error handed the
+  // admin back the old values and threw their edit away.
+  const data = locals.formData || game || {};
+  const errorFor = (field) => locals.errors?.find((error) => error.field === field);
+  const invalid = (field) => (errorFor(field) ? " is-invalid" : "");
+  // formData gives four strings, a stored game gives its TEXT[]; both index
+  // the same way. A single filled input arrives as a bare string.
+  const images = Array.isArray(data.images) ? data.images : data.images ? [data.images] : [];
+%>
+<% if (locals.errors?.length) { %>
+<div class="alert alert-danger" role="alert" style="margin-bottom: 15px">
+  <strong>The game was not saved.</strong> Please correct the fields marked below.
+</div>
+<% } %>
+<form action="/games/<%= game?.id %>" method="POST">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+  <p>
+    <label class="form-label" for="title">Title *</label><br />
+    <input class="form-control<%= invalid('title') %>" id="title" maxlength="255" name="title" required style="max-width: 480px; width: 100%" type="text" value="<%= data.title || '' %>" />
+    <% if (errorFor('title')) { %>
+    <span class="invalid-feedback"><%= errorFor('title').message %></span>
+    <% } %>
+  </p>
+  <p>
+    <label class="form-label" for="description">Description</label><br />
+    <textarea class="form-control" id="description" name="description" rows="12" style="max-width: 810px; width: 100%"><%= data.description || '' %></textarea>
+  </p>
+  <p>
+    <label class="form-label" for="genre">Genre *</label><br />
+    <select class="form-control<%= invalid('genre') %>" id="genre" name="genre" required>
+      <option value="">&nbsp;</option>
+      <% gameGenres.map(genre => { %>
+      <% const selected = data.genre === genre ? "selected" : ""; %>
+      <option <%= selected %> value="<%= genre %>"><%= genre %></option>
+      <% }); %>
+    </select>
+    <% if (errorFor('genre')) { %>
+    <span class="invalid-feedback"><%= errorFor('genre').message %></span>
+    <% } %>
+  </p>
+  <p>
+    <label class="form-label" for="release">Release</label><br />
+    <input class="form-control<%= invalid('release') %>" id="release" name="release" type="number" value="<%= data.release ?? '' %>" />
+    <% if (errorFor('release')) { %>
+    <span class="invalid-feedback"><%= errorFor('release').message %></span>
+    <% } %>
+  </p>
+  <p>
+    <label class="form-label" for="developer">Developer</label><br />
+    <input class="form-control<%= invalid('developer') %>" id="developer" maxlength="255" name="developer" style="max-width: 480px; width: 100%" type="text" value="<%= data.developer || '' %>" />
+    <% if (errorFor('developer')) { %>
+    <span class="invalid-feedback"><%= errorFor('developer').message %></span>
+    <% } %>
+  </p>
+  <p>
+    <label class="form-label" for="publisher">Publisher</label><br />
+    <input class="form-control<%= invalid('publisher') %>" id="publisher" maxlength="255" name="publisher" style="max-width: 480px; width: 100%" type="text" value="<%= data.publisher || '' %>" />
+    <% if (errorFor('publisher')) { %>
+    <span class="invalid-feedback"><%= errorFor('publisher').message %></span>
+    <% } %>
+  </p>
+  <%# A fieldset, not a second <label for="image-cover">: two labels on one
+      input made a screen reader announce the cover field as "Images Cover"
+      and lose the group heading altogether. %>
+  <fieldset class="form-fieldset">
+    <legend class="form-label">Images</legend>
+    <% if (errorFor('images')) { %>
+    <span class="invalid-feedback" style="display: block"><%= errorFor('images').message %></span>
+    <% } %>
+    <ul style="margin-top: 5px">
+      <li>
+        <p>
+          <label class="form-label" for="image-cover">Cover</label><br />
+          <input class="form-control<%= invalid('images') %>" id="image-cover" name="images" style="max-width: 768px; width: 100%" type="url" value="<%= images[0] || '' %>" />
+        </p>
+      </li>
+      <li>
+        <p>
+          <label class="form-label" for="image-1">Image 1</label><br />
+          <input class="form-control<%= invalid('images') %>" id="image-1" name="images" style="max-width: 768px; width: 100%" type="url" value="<%= images[1] || '' %>" />
+        </p>
+      </li>
+      <li>
+        <p>
+          <label class="form-label" for="image-2">Image 2</label><br />
+          <input class="form-control<%= invalid('images') %>" id="image-2" name="images" style="max-width: 768px; width: 100%" type="url" value="<%= images[2] || '' %>" />
+        </p>
+      </li>
+      <li>
+        <p>
+          <label class="form-label" for="image-3">Image 3</label><br />
+          <input class="form-control<%= invalid('images') %>" id="image-3" name="images" style="max-width: 768px; width: 100%" type="url" value="<%= images[3] || '' %>" />
+        </p>
+      </li>
+    </ul>
+  </fieldset>
+  <p>
+    <label class="form-label" for="stream">Stream</label><br />
+    <input class="form-control" id="stream" name="stream" style="max-width: 768px; width: 100%" type="text" value="<%= data.stream || '' %>" />
+  </p>
+  <p>
+    <label class="form-label" for="manual">Manual</label><br />
+    <input class="form-control<%= invalid('manual') %>" id="manual" name="manual" style="max-width: 768px; width: 100%" type="url" value="<%= data.manual || '' %>" />
+    <% if (errorFor('manual')) { %>
+    <span class="invalid-feedback"><%= errorFor('manual').message %></span>
+    <% } %>
+  </p>
+  <p style="margin-top: 20px">
+    <button class="btn" type="submit">
+      <%= game ? "Update" : "Create" %> Game
+    </button>
+    |
+    <a href="/">Back</a>
+  </p>
+</form>

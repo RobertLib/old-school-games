@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <%# Declared above the include, not below it: head.ejs writes the Twitter
+     card from these two and a const declared after it is not in scope there.
+     See the twitter:title comment in views/head.ejs. %>
+  <% const title = '403 - Not Authorized - OldSchoolGames' %>
+  <% const description = 'You do not have access to that page. Explore hundreds of classic MS-DOS games from the 80s and 90s instead!' %>
+  <%- include('head', { title, description }) %>
+  <title><%= title %></title>
+  <meta name="description" content="<%= description %>" />
+  <!-- Still no robots meta of its own here, matching 400.ejs, 404.ejs and
+       500.ejs, and for the reason this comment has always given: head.ejs
+       emits one already, so a second tag would send two values for exactly
+       the reason the comment on that tag describes.
+
+       What changed is that the renderers now pass `noindex: true` (see
+       middlewares/is-admin.ts, middlewares/csrf.ts and the two handlers at
+       the foot of app.ts), so head.ejs's single tag says what these pages
+       mean. That was never about the robots tag — nothing indexes a non-200 —
+       but about the canonical link beside it: head.ejs emits one only on a
+       page that asks to be indexed, and without the local these views named
+       the very address that had just been refused as their own canonical. -->
+  <meta property="og:title" content="<%= title %>" />
+  <meta property="og:description" content="<%= description %>" />
+  <meta property="og:url" content="<%= siteUrl %>/403" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="<%= siteName %>" />
+  <%- include('og-image') %>
+</head>
+
+<body class="layout">
+  <%- include('navbar') %>
+  <%- include('left-sidebar') %>
+  <main id="main" tabindex="-1">
+    <div class="container">
+      <%
+        // Defaulted, like every sidebar local these error views read: the two
+        // refusals that render this page — an admin guard and a failed CSRF
+        // check — say different things, and anything else reaching for it
+        // should still get a sentence rather than a ReferenceError.
+        const reason = locals.message || 'You do not have access to that page.';
+      %>
+      <h1 class="text-xl" style="margin: 0 0 10px">403 &mdash; Not authorized</h1>
+      <p style="margin: 0 0 5px"><%= reason %></p>
+      <%- include('error-nav') %>
+    </div>
+  </main>
+  <%- include('right-sidebar') %>
+  <%- include('footer') %>
+</body>
+
+</html>

@@ -1,0 +1,28 @@
+{
+  // Nothing is compiled: Node runs the .ts sources directly and strips the
+  // annotations. This config exists so `npm run typecheck` can catch in CI
+  // what the runtime silently ignores.
+  //
+  // Test files are excluded — vitest resolves imports bundler-style
+  // (extensionless relative paths), which nodenext rejects by design.
+  "compilerOptions": {
+    "target": "es2022",
+    "lib": ["es2023"],
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "allowImportingTsExtensions": true,
+    // Node runs these sources directly and only strips the annotations, so
+    // syntax that has to be *compiled* — an enum, a namespace, a parameter
+    // property — is a crash at boot rather than a type error. Without this
+    // the typecheck happily passed it and only production found out.
+    "erasableSyntaxOnly": true,
+    "noEmit": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "types": ["node"]
+  },
+  "include": ["**/*.ts"],
+  "exclude": ["node_modules", "tests"]
+}

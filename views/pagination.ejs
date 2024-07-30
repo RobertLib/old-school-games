@@ -1,0 +1,100 @@
+<%
+  // `total` is optional: pages that don't count their rows fall back to the
+  // old "is this page full?" heuristic for the Next link.
+  const totalItems = typeof locals.total === "number" ? locals.total : null;
+  const totalPages =
+    totalItems !== null ? Math.max(1, Math.ceil(totalItems / limit)) : null;
+  const hasNext =
+    totalPages !== null ? page < totalPages : games.length === limit;
+  const hasPrev = page > 1;
+  const firstItem = games.length ? (page - 1) * limit + 1 : 0;
+  const lastItem = (page - 1) * limit + games.length;
+
+  // The path this listing is at, with whatever query it was asked with —
+  // taken off originalUrl rather than req.path, which express rewrites to be
+  // relative to whichever router is dispatching by the time a view renders.
+  const basePath = req.originalUrl.split("?")[0];
+
+  /**
+   * The address of page `target`, keeping every other parameter the request
+   * arrived with.
+   *
+   * Built by appending entry by entry rather than by handing req.query to
+   * URLSearchParams whole. A repeated key ("?genre=rpg&genre=action") is an
+   * array there, and the object form stringifies an array by joining it with
+   * commas — so the link out of page 1 quietly turned two parameters into one
+   * parameter reading "rpg,action", which no route parses back.
+   *
+   * Page 1 is the bare address, never "?page=1", for the reason
+   * paginationUrls and parsePageParam in utils/pagination.ts both spell out:
+   * the two would otherwise be two crawlable addresses for one page, and the
+   * canonical link in the <head> only ever names the bare one. The "<<"
+   * button was the one link on the site still pointing at the other.
+   */
+  const pageHref = (target) => {
+    const params = new URLSearchParams();
+
+    for (const [key, value] of Object.entries(req.query)) {
+      if (key === "page") continue;
+
+      if (Array.isArray(value)) {
+        for (const item of value) params.append(key, String(item));
+      } else if (value !== undefined) {
+        params.append(key, String(value));
+      }
+    }
+
+    if (target > 1) params.append("page", String(target));
+
+    const query = params.toString();
+
+    return query ? `${basePath}?${query}` : basePath;
+  };
+
+  const WINDOW = 2;
+  const windowStart = totalPages ? Math.max(1, page - WINDOW) : page;
+  const windowEnd = totalPages ? Math.min(totalPages, page + WINDOW) : page;
+%>
+<nav class="pagination" aria-label="Pagination">
+  <div class="pagination-summary">
+    <% if (totalItems !== null && games.length) { %>
+    Showing <strong><%= firstItem %>&ndash;<%= lastItem %></strong>
+    of <strong><%= totalItems.toLocaleString("en-US") %></strong>
+    game<%= totalItems === 1 ? "" : "s" %>
+    <% } else if (totalItems !== null) { %>
+    <strong>0</strong> games
+    <% } else { %>
+    Page <%= page %>
+    <% } %>
+  </div>
+
+  <div class="pagination-controls">
+    <% if (hasPrev) { %>
+    <a class="btn btn-sm" href="<%= pageHref(1) %>" rel="first" aria-label="First page">&lt;&lt;</a>
+    <a class="btn btn-sm" href="<%= pageHref(page - 1) %>" rel="prev">&lt; Prev</a>
+    <% } %>
+
+    <% if (totalPages !== null) { %>
+    <% if (windowStart > 1) { %>
+    <span class="pagination-gap">…</span>
+    <% } %>
+    <% for (let p = windowStart; p <= windowEnd; p++) { %>
+    <% if (p === page) { %>
+    <span class="btn btn-sm pagination-current" aria-current="page"><%= p %></span>
+    <% } else { %>
+    <a class="btn btn-sm" href="<%= pageHref(p) %>"><%= p %></a>
+    <% } %>
+    <% } %>
+    <% if (windowEnd < totalPages) { %>
+    <span class="pagination-gap">…</span>
+    <% } %>
+    <% } %>
+
+    <% if (hasNext) { %>
+    <a class="btn btn-sm" href="<%= pageHref(page + 1) %>" rel="next">Next &gt;</a>
+    <% if (totalPages !== null) { %>
+    <a class="btn btn-sm" href="<%= pageHref(totalPages) %>" rel="last" aria-label="Last page">&gt;&gt;</a>
+    <% } %>
+    <% } %>
+  </div>
+</nav>

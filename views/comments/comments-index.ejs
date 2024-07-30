@@ -1,0 +1,177 @@
+<%
+  // Snippets, not full comments. The whole text already lives on the game's
+  // page, and this overview exists to send readers there rather than to be a
+  // second copy of it.
+  const SNIPPET_MAX = 240;
+
+  const snippet = (text) => {
+    const value = String(text || "").trim();
+
+    if (value.length <= SNIPPET_MAX) return value;
+
+    const cut = value.slice(0, SNIPPET_MAX);
+    const lastSpace = cut.lastIndexOf(" ");
+
+    return (lastSpace > SNIPPET_MAX / 2 ? cut.slice(0, lastSpace) : cut) + "…";
+  };
+
+  const isAdminUser = req.session?.user?.role === "ADMIN";
+  const pageHref = (target) => (target > 1 ? `/comments?page=${target}` : "/comments");
+  const firstItem = comments.length ? (page - 1) * limit + 1 : 0;
+  const lastItem = (page - 1) * limit + comments.length;
+  const WINDOW = 2;
+  const windowStart = Math.max(1, page - WINDOW);
+  const windowEnd = Math.min(totalPages, page + WINDOW);
+%>
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <%- include('../head') %>
+  <meta name="description" content="<%= description %>" />
+  <title><%= title %></title>
+  <!-- Open Graph -->
+  <meta property="og:title" content="<%= title %>" />
+  <meta property="og:description" content="<%= description %>" />
+  <meta property="og:url" content="<%= canonicalUrl %>" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="<%= siteName %>" />
+  <%- include('../og-image') %>
+  <%
+    // Only on a page that asks to be indexed. views/head.ejs already gates the
+    // robots tag, the canonical and the breadcrumb schema on this one answer;
+    // a node describing the page in detail belongs on the same side of it.
+    // Nothing here was ever wrong — it was sent to consumers that had just
+    // been told the page is not for them. See utils/indexability.ts.
+  %>
+  <% if (!isNoindex(req, locals)) { %>
+  <script type="application/ld+json"><%- JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    name: title,
+    description,
+    url: canonicalUrl,
+  }).replace(/</g, "\\u003c") %></script>
+  <% } %>
+</head>
+
+<body class="layout">
+  <%- include('../navbar') %>
+  <%- include('../left-sidebar') %>
+  <main id="main" tabindex="-1">
+    <div class="container">
+      <%- include('../flash') %>
+
+      <%- include('../breadcrumb') %>
+
+      <section>
+        <h1 class="text-xl" style="margin: 0 0 10px">Latest Comments</h1>
+        <p style="margin: 0 0 1.8em; color: rgb(var(--color-rgb)); line-height: 1.6;">
+          Everything the community is saying about classic MS-DOS games, newest
+          first. Every comment links straight to the game it was posted on, so
+          you can read the whole thread &mdash; or add your own.
+          <% if (total) { %>
+          <strong><%= total.toLocaleString("en-US") %></strong>
+          comment<%= total === 1 ? "" : "s" %> so far.
+          <% } %>
+        </p>
+
+        <% if (mostDiscussed.length) { %>
+        <h2 style="margin: 0 0 0.8em; font-size: 1.1rem; color: rgb(var(--primary-rgb)); text-shadow: var(--text-shadow);">Most discussed games</h2>
+        <ul class="discussed-games">
+          <% mostDiscussed.forEach(item => { %>
+          <li>
+            <a class="color-primary underline text-truncate" href="/<%= item.gameSlug %>#comments"><%= item.gameTitle %></a>
+            <span class="comment-count"><%= item.commentCount %> comment<%= item.commentCount === 1 ? "" : "s" %></span>
+          </li>
+          <% }); %>
+        </ul>
+        <% } %>
+
+        <h2 style="margin: 2em 0 0.8em; font-size: 1.1rem; color: rgb(var(--primary-rgb)); text-shadow: var(--text-shadow);">
+          <% if (page > 1) { %>Comments &mdash; page <%= page %><% } else { %>Newest first<% } %>
+        </h2>
+
+        <% if (comments.length === 0 && total === 0) { %>
+        <p>No comments yet &mdash; pick a game and be the first to say something.</p>
+        <% } else if (comments.length === 0) { %>
+        <!-- A page number past the end. Saying "no comments yet" here would be
+             a flat lie with thousands of them one click away. -->
+        <p>
+          Nothing on this page.
+          <a class="color-primary underline" href="/comments">Back to the newest comments</a>.
+        </p>
+        <% } else { %>
+        <div class="comment-feed">
+          <% comments.forEach(comment => { %>
+          <article class="comment-feed-item">
+            <header class="comment-header">
+              <h3 class="comment-nick text-md"><%= comment.nick || "anonymous" %></h3>
+              <small>
+                <time datetime="<%= new Date(comment.createdAt).toISOString() %>" data-date="<%= new Date(comment.createdAt).toISOString() %>"><%= new Date(comment.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) %></time>
+              </small>
+              <% if (comment.parentId) { %>
+              <small class="comment-feed-badge">reply</small>
+              <% } %>
+            </header>
+            <div class="comment-feed-game">
+              on
+              <a class="color-primary underline" href="/<%= comment.gameSlug %>"><%= comment.gameTitle %></a>
+            </div>
+            <div class="comment-content"><%= snippet(comment.content) %></div>
+            <div class="comment-feed-actions">
+              <a class="comment-feed-link" href="/<%= comment.gameSlug %>#comment-<%= comment.id %>">Read the thread &rarr;</a>
+              <% if (isAdminUser) { %>
+              <form action="/comments/<%= comment.id %>/delete" method="POST" data-confirm="Delete this comment?">
+                <input type="hidden" name="_csrf" value="<%= locals.csrfToken %>" />
+                <input type="hidden" name="from" value="list" />
+                <button class="comment-delete-btn" type="submit">Delete</button>
+              </form>
+              <% } %>
+            </div>
+          </article>
+          <% }); %>
+        </div>
+
+        <nav class="pagination" aria-label="Comment pagination">
+          <div class="pagination-summary">
+            Showing <strong><%= firstItem %>&ndash;<%= lastItem %></strong>
+            of <strong><%= total.toLocaleString("en-US") %></strong>
+            comment<%= total === 1 ? "" : "s" %>
+          </div>
+
+          <div class="pagination-controls">
+            <% if (page > 1) { %>
+            <a class="btn btn-sm" href="<%= pageHref(1) %>" rel="first" aria-label="First page">&lt;&lt;</a>
+            <a class="btn btn-sm" href="<%= pageHref(page - 1) %>" rel="prev">&lt; Prev</a>
+            <% } %>
+
+            <% if (windowStart > 1) { %>
+            <span class="pagination-gap">…</span>
+            <% } %>
+            <% for (let p = windowStart; p <= windowEnd; p++) { %>
+            <% if (p === page) { %>
+            <span class="btn btn-sm pagination-current" aria-current="page"><%= p %></span>
+            <% } else { %>
+            <a class="btn btn-sm" href="<%= pageHref(p) %>"><%= p %></a>
+            <% } %>
+            <% } %>
+            <% if (windowEnd < totalPages) { %>
+            <span class="pagination-gap">…</span>
+            <% } %>
+
+            <% if (page < totalPages) { %>
+            <a class="btn btn-sm" href="<%= pageHref(page + 1) %>" rel="next">Next &gt;</a>
+            <a class="btn btn-sm" href="<%= pageHref(totalPages) %>" rel="last" aria-label="Last page">&gt;&gt;</a>
+            <% } %>
+          </div>
+        </nav>
+        <% } %>
+      </section>
+    </div>
+  </main>
+  <%- include('../right-sidebar') %>
+  <%- include('../footer') %>
+</body>
+
+</html>

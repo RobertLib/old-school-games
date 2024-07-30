@@ -1,0 +1,29 @@
+<%
+  // The trail comes from utils/breadcrumbs.ts, which is also what head.ejs
+  // builds the BreadcrumbList schema from — so the two cannot disagree about
+  // what this page's path is. The branch-per-listing-type markup this replaced
+  // was the other author of that sentence; see the comment on buildBreadcrumbs.
+  const crumbs = locals.breadcrumbs || buildBreadcrumbs(locals);
+%>
+<% if (crumbs.length > 1) { %>
+<nav aria-label="Breadcrumb" class="breadcrumb" style="
+    margin: 10px 0;
+    padding: 10px;
+    background: var(--panel-tint);
+    border: 1px solid rgb(var(--border-rgb));
+    border-radius: var(--border-radius);
+    font-size: 14px;
+    color: rgb(var(--muted-rgb));
+  ">
+  <% crumbs.forEach((crumb, index) => { %>
+  <% if (index > 0) { %>
+  <span style="margin: 0 5px" aria-hidden="true">&rsaquo;</span>
+  <% } %>
+  <% if (crumb.path) { %>
+  <a href="<%= crumb.path %>" class="color-primary"><%= crumb.name %></a>
+  <% } else { %>
+  <span aria-current="page"><%= crumb.name %></span>
+  <% } %>
+  <% }) %>
+</nav>
+<% } %>

@@ -1,0 +1,54 @@
+# Dependency updates, opened as pull requests.
+#
+# Every one of these goes through the same workflow as any other change —
+# lint, typecheck, the suite under coverage thresholds, and a Docker build —
+# so an update that breaks something turns the pull request red rather than
+# reaching main. Nothing here merges on its own.
+#
+# Weekly rather than daily: this is a small project, and a daily cadence turns
+# into a queue of pull requests nobody reads, which is the same as no updates
+# at all but noisier.
+version: 2
+updates:
+  # npm. Grouped so that a week's worth of patch and minor bumps arrives as
+  # one pull request with one CI run, and only majors — the ones that need a
+  # changelog read — come separately.
+  #
+  # `typescript` is held back deliberately: see "A note on the TypeScript
+  # version" in README.md. typescript-eslint cannot load against the TS 7 API,
+  # so a TS 7 bump breaks `npm run lint` and therefore every build. Remove the
+  # ignore once typescript-eslint supports >= 7.1.
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      minor-and-patch:
+        update-types:
+          - minor
+          - patch
+    ignore:
+      - dependency-name: typescript
+        update-types:
+          - version-update:semver-major
+
+  # GitHub Actions. superfly/flyctl-actions/setup-flyctl is pinned to a commit
+  # SHA on purpose (the reasoning is in fly-deploy.yml, next to the pin);
+  # Dependabot understands SHA pins and will raise the move as a pull request
+  # with the diff attached, which is exactly the "read what changed, then move
+  # the SHA" this wants.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+
+  # The Docker base image. node:24-slim is a moving tag, so this mostly
+  # matters for the day Node 26 becomes LTS — and for keeping a future digest
+  # pin (see the comment at the top of the Dockerfile) from going stale.
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5

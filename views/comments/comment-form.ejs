@@ -1,0 +1,42 @@
+<%#
+  action and method, so the form works without JavaScript.
+
+  It had neither: comments.js intercepts the submit and posts over fetch, and
+  with the script blocked, failed or still loading, pressing "Post comment"
+  re-requested the game page as a GET and silently threw the comment away.
+  The attributes cost the async path nothing — it calls preventDefault before
+  the browser ever reads them — and routes/comments.ts answers a form-encoded
+  POST with a redirect back to this thread instead of a rendered fragment.
+
+  _csrf is the hidden-field half of the check; the fetch path sends the same
+  token in the X-CSRF-Token header instead. See middlewares/csrf.ts.
+%>
+<form id="comment-form" action="/comments" method="POST" data-async>
+  <input name="_csrf" type="hidden" value="<%= locals.csrfToken %>" />
+  <input name="gameId" type="hidden" value="<%= game.id %>" />
+  <input id="comment-parent-id" name="parentId" type="hidden" value="" />
+
+  <p class="comment-reply-context" hidden id="comment-reply-context">
+    Replying to <strong id="comment-reply-target"></strong>
+    <button class="comment-cancel-reply" id="comment-cancel-reply" type="button">Cancel</button>
+  </p>
+
+  <p>
+    <label class="form-label" for="nick">Nick</label><br />
+    <input class="form-control" id="nick" maxlength="255" name="nick" type="text" />
+  </p>
+  <p>
+    <label class="form-label" for="content">Content *</label><br />
+    <textarea class="form-control" id="content" maxlength="1000" name="content" required rows="10"></textarea>
+  </p>
+  <button class="btn" id="comment-submit" type="submit">Post comment</button>
+  <p class="alert error" hidden id="comment-error" role="alert"></p>
+  <p aria-live="polite" class="visually-hidden" id="comment-status"></p>
+  <br /><br />
+</form>
+<!-- Deferred like every other script the site loads. Safe here because
+     game-detail.ejs includes comment-list.ejs above this partial, so
+     "#comment-list" — the one element this script reaches for outside the
+     form — is already parsed either way; all `defer` changes is that the
+     rest of the page (the sidebars, the footer) no longer waits for it. -->
+<script defer src="<%= asset('/js/comments.js') %>"></script>

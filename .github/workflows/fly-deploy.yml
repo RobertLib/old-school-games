@@ -1,0 +1,124 @@
+# See https://fly.io/docs/app-guides/continuous-deployment-with-github-actions/
+
+name: Fly Deploy
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+# Neither job writes anything back to the repository: the tests read the
+# checkout and the deploy talks to Fly with a token of its own. The default
+# for GITHUB_TOKEN is write access to most of the repository, which a workflow
+# that runs on pull_request — and so on code from outside it — has no business
+# holding.
+permissions:
+  contents: read
+
+jobs:
+  # The suite existed but never ran here: it needs a Postgres, and its
+  # connection string was hard-coded to one developer's laptop. A release
+  # could ship with every test red.
+  test:
+    name: Lint, typecheck and test
+    runs-on: ubuntu-latest
+    # A pull request that is pushed to three times in a minute used to start
+    # three of these, each holding a Postgres service container, and the first
+    # two were answering a question nobody would read by the time they
+    # finished. Grouped by ref and cancelled on a new push. The deploy job has
+    # a group of its own (`deploy-group`) and is deliberately *not* cancelled
+    # in progress — a half-run `flyctl deploy` is not something to interrupt.
+    concurrency:
+      group: test-${{ github.ref }}
+      cancel-in-progress: true
+    # A wedged Postgres service or a hung test otherwise holds the runner for
+    # the platform's six-hour default, with the deploy queued behind it.
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: old_school_games_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/old_school_games_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          # From .nvmrc rather than repeated here, so the version this runs
+          # on cannot drift from the one a developer's `nvm use` picks. The
+          # other two copies — package.json's "engines" and NODE_VERSION in
+          # fly.toml — still have to be moved by hand.
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      # test:coverage rather than test: it runs the same suite and then holds
+      # it to the floors in vitest.config.ts. Run as plain `npm test` those
+      # thresholds are never evaluated, so coverage could fall as far as it
+      # liked without a single job turning red — which is the state this was
+      # in when the thresholds did not exist at all.
+      - run: npm run test:coverage
+      # Advisory rather than a gate on the whole dependency tree: --omit=dev
+      # asks only about what is actually shipped in the image, so a finding
+      # here is a vulnerability reachable in production rather than in a test
+      # runner. --audit-level=high lets the usual stream of low-severity
+      # advisories in dev tooling past without turning the build red.
+      - run: npm audit --omit=dev --audit-level=high
+
+  # The image is what production actually runs, and nothing built it until a
+  # deploy did — so a Dockerfile that no longer builds was found by `flyctl
+  # deploy` failing on main, after the tests had already gone green. This
+  # builds it on every pull request and every push, with no registry and no
+  # credentials: it proves the build, it does not publish anything.
+  docker:
+    name: Build Docker image
+    runs-on: ubuntu-latest
+    concurrency:
+      group: docker-${{ github.ref }}
+      cancel-in-progress: true
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      # BuildKit explicitly: the Dockerfile uses a `--mount=type=cache` on
+      # npm ci, which the legacy builder rejects outright.
+      - run: DOCKER_BUILDKIT=1 docker build .
+
+  deploy:
+    name: Deploy app
+    needs: [test, docker]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    concurrency: deploy-group    # optional: ensure only one action runs at a time
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      # Pinned to a commit, not to "@master". This is third-party code that
+      # runs in the job holding FLY_API_TOKEN — a token that can deploy this
+      # app — and a branch ref means whatever that repository pushes next runs
+      # here, with the token, and nothing in this file changes. It is the same
+      # exposure public/js-dos.html spends thirty lines refusing for the
+      # emulator, which had no token attached to it.
+      #
+      # ed8efb3 is what "master" resolved to when this was pinned (v1.4 plus
+      # later commits, which is what the branch has always served). Raising it
+      # is deliberate work: read what changed, then move the SHA.
+      #
+      # actions/checkout and actions/setup-node stay on their major tags.
+      # Those are GitHub's own actions, served from the same platform that
+      # holds the secret and runs the job, so pinning them buys nothing this
+      # is protecting against.
+      - uses: superfly/flyctl-actions/setup-flyctl@ed8efb33836e8b2096c7fd3ba1c8afe303ebbff1
+      - run: flyctl deploy --remote-only
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}

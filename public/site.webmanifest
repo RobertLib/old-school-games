@@ -1,0 +1,25 @@
+{
+  "name": "OldSchoolGames",
+  "short_name": "OldSchoolGames",
+  "description": "Play classic MS-DOS games from the 80s and 90s directly in your browser.",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "minimal-ui",
+  "theme_color": "#0000aa",
+  "background_color": "#0000aa",
+  "icons": [
+    {
+      "src": "/images/logo.png",
+      "sizes": "360x360",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/favicon.png",
+      "sizes": "32x32",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

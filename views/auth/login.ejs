@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <%# Declared above the include, not below it: head.ejs writes the Twitter
+     card from these two and a const declared after it is not in scope there.
+     See the twitter:title comment in views/head.ejs. %>
+  <% const title = 'Login - OldSchoolGames' %>
+  <% const description = 'Login to your OldSchoolGames account to access classic MS-DOS games, manage your favorites, and track your gaming progress.' %>
+  <%- include('../head', { title, description }) %>
+  <title><%= title %></title>
+  <meta name="description" content="<%= description %>" />
+  <meta property="og:title" content="<%= title %>" />
+  <meta property="og:description" content="<%= description %>" />
+  <meta property="og:url" content="<%= siteUrl %>/login" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="<%= siteName %>" />
+  <%- include('../og-image') %>
+</head>
+
+<body class="layout">
+  <%- include('../navbar') %>
+  <%- include('../left-sidebar') %>
+  <main id="main" tabindex="-1">
+    <div class="container">
+      <h1>Login</h1>
+      <%- include('login-form') %>
+    </div>
+  </main>
+  <%- include('../right-sidebar') %>
+  <%- include('../footer') %>
+</body>
+
+</html>

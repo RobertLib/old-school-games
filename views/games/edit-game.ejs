@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <%# Declared above the include, not below it: head.ejs writes the Twitter
+     card from these two and a const declared after it is not in scope there.
+     See the twitter:title comment in views/head.ejs. %>
+  <% const title = 'Edit Game - OldSchoolGames' %>
+  <% const description = 'Edit classic MS-DOS game details in the OldSchoolGames collection. Admin interface for managing retro games database.' %>
+  <%- include('../head', { title, description }) %>
+  <%#
+     No Open Graph here — see views/games/new-game.ejs, which reasons out the
+     removal for both admin forms. This is the one whose og:url named
+     "/games/edit", an address that does not exist.
+  %>
+  <title><%= title %></title>
+  <meta name="description" content="<%= description %>" />
+</head>
+
+<body class="layout">
+  <%- include('../navbar') %>
+  <%- include('../left-sidebar') %>
+  <main id="main" tabindex="-1">
+    <div class="container">
+      <h1>Edit Game</h1>
+      <%- include('game-form') %>
+    </div>
+  </main>
+  <%- include('../right-sidebar') %>
+  <%- include('../footer') %>
+</body>
+
+</html>

@@ -1,0 +1,96 @@
+<%
+  // Defaulted here rather than relied on: the error views render this sidebar
+  // on paths that deliberately skip loading its data, and a bare reference to
+  // a local that was never set is a ReferenceError out of the template.
+  const sidebarComments = locals.latestComments || [];
+  const sidebarRecentlyAdded = locals.recentlyAddedGames || [];
+  const sidebarTopRated = locals.topRatedGames || [];
+  const sidebarMostPlayed = locals.mostPlayedGames || [];
+%>
+<aside class="right-sidebar" aria-label="Site highlights">
+  <% if (sidebarComments.length) { %>
+  <h2>Latest comments</h2>
+  <ul class="nav nav-column sidebar-comments">
+    <% sidebarComments.forEach(comment => { %>
+    <li>
+      <a class="nav-link" href="/<%= comment.gameSlug %>#comment-<%= comment.id %>">
+        <span class="sidebar-comment-nick"><%= comment.nick || "anonymous" %></span>
+        <span class="sidebar-comment-game text-truncate">on <%= comment.gameTitle %></span>
+      </a>
+    </li>
+    <% }); %>
+    <li>
+      <a class="nav-link <%= req.path === '/comments' ? 'active' : '' %>" href="/comments">All...</a>
+    </li>
+  </ul>
+
+  <br />
+  <% } %>
+
+  <h2>Recently added</h2>
+  <ul class="nav nav-column">
+    <% sidebarRecentlyAdded.map(game => { %>
+    <li>
+      <a class="nav-link text-truncate" href="/<%= game.slug %>">
+        <%= game.title %>
+      </a>
+    </li>
+    <% }); %>
+    <li>
+      <a class="nav-link" href="/?orderBy=createdAt&orderDir=DESC">All...</a>
+    </li>
+  </ul>
+
+  <br />
+
+  <h2>Popular games</h2>
+  <ul class="nav nav-column">
+    <% sidebarTopRated.map(game => { %>
+    <li>
+      <a class="nav-link text-truncate" href="/<%= game.slug %>">
+        <%= game.title %>
+      </a>
+    </li>
+    <% }); %>
+    <li>
+      <a class="nav-link" href="/?orderBy=rating&orderDir=DESC">All...</a>
+    </li>
+  </ul>
+
+  <br />
+
+  <h2>Most played</h2>
+  <ul class="nav nav-column">
+    <% sidebarMostPlayed.map(game => { %>
+    <li>
+      <a class="nav-link text-truncate" href="/<%= game.slug %>">
+        <%= game.title %>
+      </a>
+    </li>
+    <% }); %>
+    <li>
+      <a class="nav-link" href="/most-played">All...</a>
+    </li>
+  </ul>
+
+  <br />
+
+  <h2>Browse by</h2>
+  <ul class="nav nav-column">
+    <li>
+      <a class="nav-link <%= req.path === '/developers' ? 'active' : '' %>" href="/developers">
+        All Developers
+      </a>
+    </li>
+    <li>
+      <a class="nav-link <%= req.path === '/publishers' ? 'active' : '' %>" href="/publishers">
+        All Publishers
+      </a>
+    </li>
+    <li>
+      <a class="nav-link <%= req.path === '/years' ? 'active' : '' %>" href="/years">
+        Browse by Year
+      </a>
+    </li>
+  </ul>
+</aside>

@@ -131,3 +131,26 @@ dist
 .yarn/build-state.yml
 .yarn/install-state.gz
 .pnp.*
+
+# This file started as a copy of .gitignore, which meant everything git tracks
+# was shipped into the runtime image — including .git itself. None of the
+# following is reachable from `node index.ts`: the history is 2.6 MB of it,
+# and the suite cannot run in an image installed with --omit=dev anyway.
+.git
+.github
+tests
+tsconfig.tests.json
+vitest.config.ts
+
+# Nothing `node index.ts` reads. The README and the licence are documentation,
+# .env.example is a template (the real values arrive as Fly secrets), and the
+# eslint config is only ever loaded by `npm run lint`, which runs in CI
+# against a full install — this image has no eslint to load it. Checked
+# against the sources: no route, view or util opens any of them.
+README.md
+LICENSE
+eslint.config.js
+.env.example
+.nvmrc
+.gitattributes
+.gitignore

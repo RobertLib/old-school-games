@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <%- include('head') %>
+  <meta name="description" content="<%= locals.description || siteDescription %>" />
+  <title><%= locals.title || siteTitle %></title>
+  <!-- Open Graph -->
+  <meta property="og:title" content="<%= locals.title || siteTitle %>" />
+  <meta property="og:description" content="<%= locals.description || siteDescription %>" />
+  <%- include('og-image') %>
+  <meta property="og:url" content="<%= locals.ogUrl || locals.canonicalUrl || (siteUrl + req.path) %>" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="<%= siteName %>" />
+  <script defer src="<%= asset('/js/rating-stars.js') %>"></script>
+  <script defer src="<%= asset('/js/carousel.js') %>"></script>
+  <%
+    // Skipped on a page that asks not to be indexed — a search result, a
+    // re-sort of a listing that already exists. views/head.ejs makes that call
+    // for the robots tag, the canonical and the breadcrumb schema; this is the
+    // same question asked of the same helper, so a page cannot describe itself
+    // in detail to a consumer it has just told to go away. See
+    // utils/indexability.ts.
+    const describePage = !isNoindex(req, locals);
+
+    // Where this page starts in the listing as a whole.
+    //
+    // `position` used to be `index + 1` on every page, so /?page=2 and
+    // /shooter?page=7 each announced that they held positions 1 to 10 of their
+    // list — three hundred-odd addresses in the sitemap all claiming to be the
+    // top of the same ranking. A ListItem position is an ordinal within the
+    // list, not within the page it happens to be rendered on;
+    // views/news/news-list.ejs has always offset it this way and was the only
+    // listing on the site that did.
+    const listOffset = ((locals.page || 1) - 1) * (locals.limit || games.length);
+  %>
+  <% if (describePage) { %>
+  <script type="application/ld+json"><%- JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    name: locals.title || siteTitle,
+    description: locals.description || siteDescription,
+    url: locals.ogUrl || locals.canonicalUrl || siteUrl + req.path,
+    mainEntity: {
+      // The whole listing, not the slice of it on this page: schema.org defines
+      // numberOfItems as the size of the list, and a paginated description is
+      // exactly the case its own note on the property calls out. Without it a
+      // reader of this node had no way to tell a genre with eleven games from
+      // one with four hundred.
+      "@type": "ItemList",
+      ...(typeof locals.total === "number"
+        ? { numberOfItems: locals.total }
+        : {}),
+      // Every game the page draws, rather than the first ten of them. The cap
+      // was arbitrary — the page renders twenty-five — and structured data
+      // describes what is on the page, which is the rule routes/home.ts states
+      // for the comments it puts in a game's node. The extra fifteen entries
+      // are a few hundred bytes of highly repetitive JSON behind compression.
+      itemListElement: games.map((game, index) => ({
+        "@type": "ListItem",
+        position: listOffset + index + 1,
+        item: {
+          "@type": "VideoGame",
+          name: game.title,
+          genre: game.genre,
+          gamePlatform: "MS-DOS",
+          url: `${siteUrl}/${game.slug}`,
+          // Only when there is one. A game whose cover slot was left blank
+          // holds "" there, and an `image` naming the empty string is worse
+          // than no image field at all — it is a broken address stated as
+          // fact. Same reasoning as the og:image on the detail page, which
+          // fell into exactly that trap before it was fixed.
+          ...(game.cover ? { image: game.cover } : {}),
+        },
+      })),
+    },
+  }).replace(/</g, "\\u003c") %></script>
+  <% } %>
+  <%
+    // Page 1 of the homepage only. These two describe the site rather than the
+    // page, so repeating them on every listing would say the same thing a few
+    // thousand times; Google reads them off the home page.
+    const isHome = req.originalUrl === '/' || req.originalUrl === '';
+  %>
+  <% if (isHome) { %>
+  <!-- The WebSite node names the site as an entity and states what a query URL
+       looks like, so a consumer that wants to search this catalogue does not
+       have to reverse-engineer the form in the navbar.
+
+       It was added for Google's sitelinks search box, and that is gone: Google
+       retired the feature in November 2024 and the SearchAction no longer
+       produces a search field under a result for anybody. Written down because
+       the comment here promised the box for a year after it stopped existing,
+       and because the obvious next move — deleting the node — is the wrong
+       one. WebSite is what carries the site's name, language and publisher,
+       Bing still reads the SearchAction, and so do the answer engines that
+       now send a growing share of the traffic a sitelinks box used to.
+
+       The address it points at is one utils/indexability.ts marks "noindex,
+       follow" — a populated ?search= is a slice of the catalogue no crawler
+       should file separately — and that pairing is deliberate rather than an
+       oversight, which is the only reason it is written down here. The two
+       tags answer different questions: a SearchAction says how to query this
+       site, a robots tag says whether to keep the answer. Nothing in
+       schema.org or in Google's guidance ever asked for an indexable results
+       page, and making one to satisfy this node would trade a hint a handful
+       of consumers read for several hundred near-duplicates of a listing that
+       already ranks. So the noindex stays and the template keeps naming the
+       real search URL, because a template naming anything else would describe
+       a form the site does not have.
+
+       The Organization beside it comes from utils/organization.ts, which is
+       now the only description of it anywhere. The copy that used to be
+       written out here named /favicon.png as its logo — 32x32, where Google
+       requires 112x112, so the node had effectively no logo — and called
+       itself "OldSchoolGames.eu" while the WebSite node above and every
+       og:site_name on the site said "OldSchoolGames". Two names is two
+       entities. See the comment on ORGANIZATION_ID for the three copies this
+       merges. -->
+  <script type="application/ld+json"><%- JSON.stringify({
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebSite",
+        "@id": `${siteUrl}/#website`,
+        url: `${siteUrl}/`,
+        name: siteName,
+        description: siteDescription,
+        inLanguage: "en",
+        publisher: organizationRef,
+        potentialAction: {
+          "@type": "SearchAction",
+          target: {
+            "@type": "EntryPoint",
+            urlTemplate: `${siteUrl}/?search={search_term_string}`,
+          },
+          "query-input": "required name=search_term_string",
+        },
+      },
+      organizationNode(),
+    ],
+  }).replace(/</g, "\\u003c") %></script>
+  <% } %>
+</head>
+
+<body class="layout">
+  <%- include('navbar') %>
+  <%- include('left-sidebar') %>
+  <main id="main" tabindex="-1">
+    <div class="container">
+      <%- include('flash') %>
+      <!-- The partial renders nothing on the bare homepage and on a search,
+           which have no path to show — a trail of "Home" alone is not a trail.
+           On a genre, letter, developer, publisher or year listing it draws the
+           one those pages never had: views/breadcrumb.ejs has carried branches
+           for all five since it was written, and until now the only view that
+           included it was the game detail. -->
+      <%- include('breadcrumb') %>
+      <section>
+        <% if (req.originalUrl === '/' || req.originalUrl === '') { %>
+        <!-- The site's strongest page had an H1 naming neither what it offers
+             nor what anybody searches for. The welcome it used to carry is the
+             first line of the ticker below, which is where it reads better
+             anyway. -->
+        <h1 class="text-lg" style="margin: 0 0 7px">Play Classic MS-DOS Games Online</h1>
+        <div class="ticker-wrap" aria-hidden="true">
+          <span class="ticker">👋 Welcome to our portal dedicated to the golden age of gaming! Relive the nostalgia and immerse yourself in the magic of classic games from the MS-DOS era that shaped the world of gaming. Here, you can easily play these timeless classics directly in your browser, without any complicated setup. Just click and let yourself be transported back to a time when games were crafted with heart and soul. Get ready for an adventure filled with pixelated graphics, unforgettable music, and a unique atmosphere. Welcome back to the past! 💾🕹️👾</span>
+        </div>
+
+        <%- include('continue-playing') %>
+
+        <!-- Game of the Week and Latest News side by side -->
+        <div class="homepage-features">
+          <%- include('game-of-the-week') %>
+          <%- include('news/news-preview') %>
+        </div>
+
+        <!-- Featured Games Carousel -->
+        <%- include('featured-games-carousel') %>
+
+        <hr />
+        <% } %>
+        <% if (req.session?.user?.role === "ADMIN") { %>
+        <div class="text-right" style="margin-bottom: 25px; display: flex; gap: 10px; justify-content: flex-end; align-items: center;">
+          <a class="btn btn-outline" href="/games/new">+ Add a new game</a>
+          <a class="btn btn-outline" href="/news/new">+ Add news</a>
+        </div>
+        <% } %>
+        <% if (req.originalUrl === '/' || req.originalUrl === '') { %>
+        <% } else if (locals.search) { %>
+        <h1 class="text-xl" style="margin: 0 0 6px">
+          Search results for &ldquo;<%= search %>&rdquo;
+        </h1>
+        <p class="text-sm" style="margin: 0 0 17px; color: rgb(var(--muted-rgb))">
+          <% if (locals.total === 0) { %>
+          No games matched your search.
+          <% } else { %>
+          <strong><%= locals.total %></strong>
+          game<%= locals.total === 1 ? '' : 's' %> found &mdash; searched across
+          titles, developers and publishers.
+          <% } %>
+          <a class="color-primary underline" href="/">Clear search</a>
+        </p>
+        <% } else if (locals.letter) { %>
+        <h1 class="text-xl" style="margin: 0 0 17px">MS-DOS Games Starting with '<%= letter.toUpperCase() %>'</h1>
+        <% } else if (locals.genre) { %>
+        <h1 class="text-xl" style="margin: 0 0 12px">Classic MS-DOS <%= genre.charAt(0).toUpperCase() + genre.slice(1).toLowerCase() %> Games</h1>
+        <% if (locals.genreBlurb) { %>
+        <div style="margin-bottom: 1.5em; padding: 1em; background: var(--panel-tint); border-left: 3px solid rgb(var(--primary-rgb)); border-radius: var(--border-radius);">
+          <p style="margin: 0; line-height: 1.7; color: rgb(var(--color-rgb))"><%= genreBlurb %></p>
+        </div>
+        <% } %>
+        <% } else if (locals.year) { %>
+        <h1 class="text-xl" style="margin: 0 0 12px">Classic MS-DOS Games from <%= locals.year %></h1>
+        <% if (locals.yearBlurb) { %>
+        <div style="margin-bottom: 1.5em; padding: 1em; background: var(--panel-tint); border-left: 3px solid rgb(var(--primary-rgb)); border-radius: var(--border-radius);">
+          <p style="margin: 0; line-height: 1.7; color: rgb(var(--color-rgb))"><%= yearBlurb %></p>
+        </div>
+        <% } %>
+        <% } else if (locals.developer) { %>
+        <h1 class="text-xl" style="margin: 0 0 12px">MS-DOS Games by <%= locals.developer %></h1>
+        <% if (locals.studioBlurb) { %>
+        <div style="margin-bottom: 1.5em; padding: 1em; background: var(--panel-tint); border-left: 3px solid rgb(var(--primary-rgb)); border-radius: var(--border-radius);">
+          <p style="margin: 0; line-height: 1.7; color: rgb(var(--color-rgb))"><%= studioBlurb %></p>
+        </div>
+        <% } %>
+        <% } else if (locals.publisher) { %>
+        <h1 class="text-xl" style="margin: 0 0 12px">MS-DOS Games published by <%= locals.publisher %></h1>
+        <% if (locals.studioBlurb) { %>
+        <div style="margin-bottom: 1.5em; padding: 1em; background: var(--panel-tint); border-left: 3px solid rgb(var(--primary-rgb)); border-radius: var(--border-radius);">
+          <p style="margin: 0; line-height: 1.7; color: rgb(var(--color-rgb))"><%= studioBlurb %></p>
+        </div>
+        <% } %>
+        <% } else { %>
+        <h1 class="text-xl" style="margin: 0 0 17px">All games</h1>
+        <% } %>
+        <%- include('games/alphabet-filter') %>
+        <%- include('games/game-filters') %>
+
+        <!-- Contextual Links for filtered pages -->
+        <% if (locals.publisher || locals.developer || locals.year) { %>
+        <div style="margin: 20px 0; padding: 15px; background: var(--panel-tint); border: 1px solid rgb(var(--border-rgb)); border-radius: var(--border-radius); color: rgb(var(--color-rgb));">
+          <h3 style="margin: 0 0 10px; color: rgb(var(--primary-rgb)); text-shadow: var(--text-shadow);">Related:</h3>
+          <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+            <% if (locals.publisher) { %>
+            <a href="/publishers" class="btn btn-sm btn-outline">All Publishers</a>
+            <% if (locals.year) { %><a href="/year/<%= locals.year %>" class="color-primary underline">Games from <%= locals.year %></a><% } %>
+            <% } %>
+            <% if (locals.developer) { %>
+            <a href="/developers" class="btn btn-sm btn-outline">All Developers</a>
+            <% if (locals.year) { %><a href="/year/<%= locals.year %>" class="color-primary underline">Games from <%= locals.year %></a><% } %>
+            <% } %>
+            <% if (locals.year) { %>
+            <a href="/years" class="btn btn-sm btn-outline">All Years</a>
+            <%
+                const prevYear = locals.year - 1;
+                const nextYear = locals.year + 1;
+                const validYears = locals.allYears || [];
+              %>
+            <% if (validYears.includes(prevYear)) { %><a href="/year/<%= prevYear %>" class="color-primary underline"><%= prevYear %></a><% } %>
+            <% if (validYears.includes(nextYear)) { %><a href="/year/<%= nextYear %>" class="color-primary underline"><%= nextYear %></a><% } %>
+            <% } %>
+            <a href="/" class="btn btn-sm btn-outline">All Games</a>
+          </div>
+        </div>
+        <% } %>
+
+        <%- include('games/game-list') %>
+      </section>
+    </div>
+  </main>
+  <%- include('right-sidebar') %>
+  <%- include('footer') %>
+</body>
+
+</html>

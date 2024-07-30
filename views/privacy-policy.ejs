@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <%- include('head') %>
+  <title><%= locals.title %></title>
+  <meta name="description" content="<%= locals.description %>" />
+  <meta property="og:title" content="<%= locals.title %>" />
+  <meta property="og:description" content="<%= locals.description %>" />
+  <%- include('og-image') %>
+  <meta property="og:url" content="<%= siteUrl %>/privacy-policy" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="<%= siteName %>" />
+</head>
+
+<body class="layout">
+  <%- include('navbar') %> <%- include('left-sidebar') %>
+  <main id="main" tabindex="-1">
+    <div class="container">
+      <%- include('flash') %>
+      <%# Drawn here because the page is indexable now, and views/head.ejs
+          writes a BreadcrumbList for it from the same `breadcrumbs` local:
+          structured data is meant to describe what a reader can see, so the
+          trail in the markup and the trail in the JSON-LD arrive together.
+          Same pairing as views/about.ejs. %>
+      <%- include('breadcrumb') %>
+      <section>
+        <h1 class="text-lg" style="margin-bottom: 5px">Privacy Policy</h1>
+        <p style="
+              color: rgb(var(--muted-rgb));
+              font-size: 0.9em;
+              margin-bottom: 25px;
+            ">
+          Last updated: March 2026
+        </p>
+
+        <p style="margin-bottom: 20px">
+          This Privacy Policy describes how
+          <strong>OldSchoolGames.eu</strong> ("we", "us", "our") collects,
+          uses, and protects your personal data when you use this website. We
+          are committed to protecting your privacy, and this policy is written
+          to describe the site accurately rather than to claim more than it
+          does. It follows the General Data Protection Regulation (GDPR) and
+          applicable EU/Czech data protection law, with one departure we would
+          rather name than bury: the analytics cookies in section 2(b) are set
+          on your first visit, before you are asked. That section says what
+          they are and how to refuse them.
+        </p>
+
+        <h2 class="text-md" style="margin: 25px 0 10px">
+          1. Data Controller
+        </h2>
+        <p style="margin-bottom: 15px">
+          The data controller responsible for this website is:<br />
+          <strong>RobLib</strong><br />
+          Czech Republic<br />
+          Email:
+          <a class="color-primary underline" href="mailto:contact@oldschoolgames.eu">contact@oldschoolgames.eu</a>
+        </p>
+
+        <h2 class="text-md" style="margin: 25px 0 10px">
+          2. What Data We Collect
+        </h2>
+
+        <h3 style="margin-bottom: 8px; font-weight: 600">a) Comments</h3>
+        <p style="margin-bottom: 15px">
+          Anyone can post a comment without creating an account. When you post
+          a comment, we store the comment text, an optional display name
+          (nickname) you provide, and a timestamp. If no nickname is given, the
+          comment is posted as <em>anonymous</em>. Comments are publicly
+          visible.
+        </p>
+
+        <h3 style="margin-bottom: 8px; font-weight: 600">
+          b) Usage data (Google Analytics)
+        </h3>
+        <p style="margin-bottom: 15px">
+          We use <strong>Google Analytics 4</strong> to understand how
+          visitors use the site. This service collects anonymized information
+          including pages visited, time spent on pages, device type, and
+          approximate geographic location (country/region level). IP addresses
+          are anonymized. Google Analytics sets cookies in your browser. For
+          more information, see
+          <a class="color-primary underline" href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer">Google's Privacy Policy</a>.
+        </p>
+        <p style="margin-bottom: 15px">
+          These cookies are set on every visit, and they are set without
+          asking you first — this site shows no consent banner. If you would
+          rather they were not set, you can block them in your browser's settings, refuse
+          third-party or all cookies for this site, or use one of the browser
+          extensions that block analytics scripts — the site works exactly the
+          same either way, and nothing here checks whether analytics loaded.
+          Clearing this site's cookies removes them again.
+        </p>
+
+        <h3 style="margin-bottom: 8px; font-weight: 600">
+          c) Browser-local storage (favorites & recently played)
+        </h3>
+        <p style="margin-bottom: 15px">
+          Your favorite games and recently played games are stored in your
+          browser's <strong>localStorage</strong> as a list of game
+          identifiers. The list never leaves your device except to ask our
+          server for the current title and artwork of those games, and we do
+          not store or link that request to you.
+        </p>
+
+        <h3 style="margin-bottom: 8px; font-weight: 600">d) Game ratings</h3>
+        <p style="margin-bottom: 15px">
+          Ratings are attributed to a first-party cookie
+          (<strong>osg_vid</strong>) containing a randomly generated
+          identifier that expires after one year. It is set on your first page
+          view rather than when you actually vote — it has to already be there
+          for the stars to show you a rating you gave earlier — and it exists
+          solely so that one browser counts as one vote. It contains no
+          personal data and is not used for advertising or for tracking across
+          other sites. When you do rate a game we also store the IP address of
+          that vote for abuse prevention, and delete it again after 90 days.
+          Deleting the cookie simply lets you rate again.
+        </p>
+
+        <h3 style="margin-bottom: 8px; font-weight: 600">
+          e) Cookies the site itself needs
+        </h3>
+        <p style="margin-bottom: 15px">
+          Two more first-party cookies are set for the site to work at all.
+          Neither is used for analytics, advertising or tracking across other
+          sites, and neither carries anything about you.
+        </p>
+        <ul style="padding-left: 20px; line-height: 2; margin-bottom: 15px">
+          <li>
+            <strong>osg_csrf</strong> — a random value set on your first page
+            view and kept for one month. Every form on this site has to echo
+            it back, which is what stops another website submitting a comment,
+            a rating or an administrator's form on your behalf. It identifies
+            nobody: it is the same kind of random number as a coin toss, and
+            it is read only to compare it against what a form sent.
+          </li>
+          <li>
+            <strong>connect.sid</strong> — set only when an administrator logs
+            in, and cleared when they log out. It holds nothing but a
+            reference to a server-side session, expires after 30 days, and is
+            never set for ordinary visitors.
+          </li>
+        </ul>
+        <p style="margin-bottom: 15px">
+          Both are strictly necessary for the site to function and are listed
+          here for completeness rather than because they are optional —
+          blocking them means forms and logging in stop working.
+        </p>
+
+        <h3 style="margin-bottom: 8px; font-weight: 600">
+          f) Abuse prevention and server logs
+        </h3>
+        <p style="margin-bottom: 15px">
+          Every request to this site is counted against a limit, so that one
+          visitor cannot flood the comment form, the rating stars or the login
+          page. The counter is keyed by your <strong>IP address</strong>, which
+          means the address is briefly stored in our database alongside a
+          number of requests and an expiry time. Nothing else is recorded with
+          it, it is never linked to your comments, ratings or analytics data,
+          and it is <strong>deleted within 25 minutes</strong> — the longest
+          counting window is 15 minutes and expired entries are swept away
+          every 10.
+        </p>
+        <p style="margin-bottom: 15px">
+          The server also writes one line per request to its log — the method
+          and the address requested, which for a search includes the words you
+          searched for. These lines carry <strong>no IP address</strong> and
+          nothing else identifying you. They go to our hosting provider's log
+          collector, which discards them on its own schedule; we keep no copy
+          of our own.
+        </p>
+
+        <h2 class="text-md" style="margin: 25px 0 10px">
+          3. Legal Basis for Processing
+        </h2>
+        <ul style="padding-left: 20px; line-height: 2; margin-bottom: 15px">
+          <li>
+            <strong>Comments:</strong> Legitimate interest (enabling community
+            interaction; no account or personal data required)
+          </li>
+          <li>
+            <strong>Strictly necessary cookies</strong> (osg_csrf, osg_vid,
+            connect.sid): Necessary for the service you asked for — form
+            protection, one vote per browser, and keeping an administrator
+            logged in. They store no personal data.
+          </li>
+          <li>
+            <strong>Abuse prevention</strong> (the IP address behind a
+            rate-limit counter, and the IP address recorded with a rating):
+            Legitimate interest in keeping the site usable — protecting the
+            comment form, the rating stars and the login page from flooding.
+            Both are kept for no longer than that needs: minutes for the
+            counter, 90 days for a vote.
+          </li>
+          <li>
+            <strong>Google Analytics:</strong> Legitimate interest in knowing
+            how many people visit the site and which games they look at, so it
+            can be maintained and improved. The reports behind it are
+            aggregate visitor counts; no attempt is made to identify anyone or
+            to follow a visitor across other sites.
+          </li>
+        </ul>
+
+        <h2 class="text-md" style="margin: 25px 0 10px">4. Data Sharing</h2>
+        <p style="margin-bottom: 15px">
+          We do not sell or rent your personal data. We share anonymized usage
+          data with Google via Google Analytics. Our hosting provider stores
+          the site's database and collects its server logs on our behalf, as a
+          processor acting under our instructions. No other third parties
+          receive your personal data.
+        </p>
+
+        <h2 class="text-md" style="margin: 25px 0 10px">5. Data Retention</h2>
+        <ul style="padding-left: 20px; line-height: 2; margin-bottom: 15px">
+          <li>
+            <strong>Comments:</strong> Retained until an administrator removes
+            them. Because comments are posted without an account, we have no
+            way to link them to you after submission — if you need a comment
+            removed, please contact us.
+          </li>
+          <li>
+            <strong>Game ratings:</strong> The rating itself is kept for as
+            long as the game is listed. The IP address recorded alongside it
+            is deleted after 90 days — the rating, which carries no personal
+            data, stays.
+          </li>
+          <li>
+            <strong>Play counts:</strong> A record that a game was started
+            (the game and the time, nothing identifying you) is kept for 12
+            months and then deleted.
+          </li>
+          <li>
+            <strong>Rate-limit counters:</strong> The IP address behind a
+            counter is deleted within 25 minutes of your last request — see
+            2f) above.
+          </li>
+          <li>
+            <strong>Server logs:</strong> Kept by our hosting provider on
+            their own schedule; they contain no IP address and we keep no copy.
+          </li>
+          <li>
+            <strong>Cookies:</strong> osg_vid expires after one year, osg_csrf
+            after one month, and an administrator's connect.sid after 30 days
+            or when they log out, whichever comes first. Clearing this site's
+            cookies removes all three immediately.
+          </li>
+          <li>
+            <strong>Google Analytics:</strong> Retained for 14 months per
+            Google's default settings.
+          </li>
+        </ul>
+
+        <h2 class="text-md" style="margin: 25px 0 10px">
+          6. Your Rights (GDPR)
+        </h2>
+        <p style="margin-bottom: 10px">
+          Under GDPR, you have the following rights:
+        </p>
+        <ul style="padding-left: 20px; line-height: 2; margin-bottom: 15px">
+          <li>
+            <strong>Right of access</strong> — request a copy of your personal
+            data
+          </li>
+          <li>
+            <strong>Right to rectification</strong> — request correction of
+            inaccurate data
+          </li>
+          <li>
+            <strong>Right to erasure</strong> — request deletion of your
+            personal data ("right to be forgotten")
+          </li>
+          <li><strong>Right to restrict processing</strong></li>
+          <li><strong>Right to data portability</strong></li>
+          <li>
+            <strong>Right to object</strong> to processing based on legitimate
+            interest
+          </li>
+        </ul>
+        <p style="margin-bottom: 15px">
+          To exercise any of these rights, contact us at
+          <a class="color-primary underline" href="mailto:contact@oldschoolgames.eu">contact@oldschoolgames.eu</a>. We will respond within 30 days.
+        </p>
+
+        <h2 class="text-md" style="margin: 25px 0 10px">7. Security</h2>
+        <p style="margin-bottom: 15px">
+          All data is transmitted over HTTPS. We take reasonable technical and
+          organisational measures to protect your data against unauthorised
+          access.
+        </p>
+
+        <h2 class="text-md" style="margin: 25px 0 10px">
+          8. Changes to This Policy
+        </h2>
+        <p style="margin-bottom: 15px">
+          We may update this Privacy Policy from time to time. The "last
+          updated" date at the top of this page will reflect any changes.
+          Continued use of the site after changes constitutes acceptance of
+          the revised policy.
+        </p>
+
+        <h2 class="text-md" style="margin: 25px 0 10px">9. Contact</h2>
+        <p>
+          For any privacy-related questions or requests, email us at
+          <a class="color-primary underline" href="mailto:contact@oldschoolgames.eu">contact@oldschoolgames.eu</a>.
+        </p>
+      </section>
+    </div>
+  </main>
+  <%- include('right-sidebar') %> <%- include('footer') %>
+</body>
+
+</html>

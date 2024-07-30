@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <%- include('../head') %>
+  <title><%= title %></title>
+  <meta name="description" content="<%= description %>" />
+  <meta property="og:title" content="<%= title %>" />
+  <meta property="og:description" content="<%= description %>" />
+  <meta property="og:url" content="<%= siteUrl %>/publishers" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="<%= siteName %>" />
+  <%- include('../og-image') %>
+  <%
+    // Only on a page that asks to be indexed. views/head.ejs already gates the
+    // robots tag, the canonical and the breadcrumb schema on this one answer;
+    // a node describing the page in detail belongs on the same side of it.
+    // Nothing here was ever wrong — it was sent to consumers that had just
+    // been told the page is not for them. See utils/indexability.ts.
+  %>
+  <% if (!isNoindex(req, locals)) { %>
+  <script type="application/ld+json"><%- JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    name: "Game Publishers",
+    description: "Browse classic MS-DOS games by publisher",
+    url: `${siteUrl}/publishers`,
+    mainEntity: {
+      "@type": "ItemList",
+      itemListElement: publishers.map((publisher, index) => ({
+        "@type": "ListItem",
+        position: index + 1,
+        item: {
+          "@type": "Organization",
+          name: publisher,
+          url: `${siteUrl}/publisher/${encodeURIComponent(publisher)}`,
+        },
+      })),
+    },
+  }).replace(/</g, "\\u003c") %></script>
+  <% } %>
+</head>
+
+<body class="layout">
+  <%- include('../navbar') %>
+  <%- include('../left-sidebar') %>
+  <main id="main" tabindex="-1">
+    <div class="container">
+      <%- include('../flash') %>
+      <%- include('../breadcrumb') %>
+      <section>
+        <h1 class="text-lg">Classic MS-DOS Game Publishers</h1>
+        <div style="margin: 12px 0 1.5em; padding: 1em; background: var(--panel-tint); border-left: 3px solid rgb(var(--primary-rgb)); border-radius: var(--border-radius);">
+          <p style="margin: 0; line-height: 1.7; color: rgb(var(--color-rgb))">Publishers played a vital role in bringing MS-DOS games to players throughout the 1980s and 1990s. Companies like Electronic Arts, Activision, Broderbund, Interplay and Virgin Interactive funded, distributed and marketed titles that defined the era — often taking risks on experimental games that went on to become classics. The shareware model, pioneered by publishers like Apogee Software, also allowed small studios to reach millions of players without traditional retail. Browse all publishers below to discover their catalogues.</p>
+        </div>
+
+        <!-- Quick Navigation -->
+        <div style="margin: 20px 0; padding: 15px; background: var(--panel-tint); border: 1px solid rgb(var(--border-rgb)); border-radius: var(--border-radius);">
+          <%# An <h2>, not an <h3>: the only heading above this is the page <h1>,
+              so an h3 here skipped a level and broke the outline a screen reader
+              navigates by. font-size is stated so the change is semantic only. %>
+          <h2 style="margin: 0 0 10px; font-size: 1.17em; color: rgb(var(--primary-rgb)); text-shadow: var(--text-shadow);">Quick Navigation:</h2>
+          <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+            <a href="/developers" class="btn btn-sm btn-outline">Browse Developers</a>
+            <a href="/years" class="btn btn-sm btn-outline">Browse by Year</a>
+            <a href="/" class="btn btn-sm btn-outline">All Games</a>
+          </div>
+        </div>
+
+        <hr />
+
+        <div class="company-list">
+          <% if (publishers.length) { %>
+          <ul>
+            <% publishers.forEach(publisher => { %>
+            <li>
+              <a href="/publisher/<%= encodeURIComponent(publisher) %>"><%= publisher %></a>
+            </li>
+            <% }); %>
+          </ul>
+          <% } else { %>
+          <p>No publishers found</p>
+          <% } %>
+        </div>
+
+        <!-- Popular Publishers Section -->
+        <% if (publishers.length > 5) { %>
+        <div style="margin: 30px 0; padding: 20px; background: var(--panel-tint); border: 1px solid rgb(var(--border-rgb)); border-radius: var(--border-radius);">
+          <h3 style="margin: 0 0 15px; color: rgb(var(--primary-rgb)); text-shadow: var(--text-shadow);">Popular Publishers:</h3>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
+            <% publishers.slice(0, 8).forEach(publisher => { %>
+            <a href="/publisher/<%= encodeURIComponent(publisher) %>" class="color-primary underline">
+              <%= publisher %>
+            </a>
+            <% }); %>
+          </div>
+        </div>
+        <% } %>
+      </section>
+    </div>
+  </main>
+  <%- include('../right-sidebar') %>
+  <%- include('../footer') %>
+</body>
+
+</html>

@@ -1,0 +1,36 @@
+<% if (recentNews && recentNews.length > 0) { %>
+<div class="news-preview-card">
+  <h2 class="news-preview-title"><a href="/news" class="news-title-link">Latest News</a></h2>
+  <div class="card-body">
+    <% recentNews.forEach((newsItem, index) => { %>
+    <article class="news-item-preview <% if (index > 0) { %>news-item-preview-bordered<% } %>">
+      <h3 class="news-item-preview-title"><a href="/news/<%= newsItem.slug %>"><%= newsItem.title %></a></h3>
+      <div class="news-item-preview-meta">
+        <time datetime="<%= new Date(newsItem.createdAt).toISOString() %>">
+          <%= new Date(newsItem.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) %>
+        </time>
+      </div>
+      <%#
+        The excerpt, not the article.
+
+        This rendered `newsItem.content` raw — three whole articles' worth of
+        markup on the homepage, clamped to three lines by CSS that then hid
+        the rest of it. Every visitor paid for the bytes and the parse, and a
+        screen reader, which does not honour a line clamp, read all three
+        articles out in full where the page shows a teaser.
+
+        routes/home.ts flattens and cuts the text (utils/html-text.ts), so
+        what arrives here is plain prose and goes out escaped, like any other
+        string the templates print.
+      %>
+      <div class="news-content-preview">
+        <%= newsItem.excerpt %>
+      </div>
+      <p class="news-item-preview-more">
+        <a class="color-primary underline text-sm" href="/news/<%= newsItem.slug %>">Read more &rarr;</a>
+      </p>
+    </article>
+    <% }); %>
+  </div>
+</div>
+<% } %>
