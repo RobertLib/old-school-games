@@ -1,0 +1,36 @@
+<aside class="left-sidebar">
+  <header>Genres</header>
+  <ul class="nav nav-column">
+    <li>
+      <a class="nav-link" href="/">All Genres</a>
+    </li>
+    <% gameGenres.map(genre => { %>
+    <li>
+      <a class="nav-link <%= genre.toLowerCase() === req.params.genre ? 'active' : '' %>" href="/<%= genre.toLowerCase() %>">
+        <%= genre.charAt(0) %><%= genre.slice(1).toLowerCase() %>
+      </a>
+    </li>
+    <% }); %>
+  </ul>
+
+  <br />
+
+  <header>Browse by</header>
+  <ul class="nav nav-column">
+    <li>
+      <a class="nav-link <%= req.path === '/developers' ? 'active' : '' %>" href="/developers">
+        All Developers
+      </a>
+    </li>
+    <li>
+      <a class="nav-link <%= req.path === '/publishers' ? 'active' : '' %>" href="/publishers">
+        All Publishers
+      </a>
+    </li>
+    <li>
+      <a class="nav-link <%= req.path === '/years' ? 'active' : '' %>" href="/years">
+        Browse by Year
+      </a>
+    </li>
+  </ul>
+</aside>

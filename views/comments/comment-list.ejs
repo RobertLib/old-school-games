@@ -1,0 +1,11 @@
+<% if (typeof comments !== 'undefined' && Array.isArray(comments) && comments.length > 0) { %>
+<div id="comment-list">
+  <% comments.forEach((comment) => { %>
+  <%- include('comment-item', { comment }) %>
+  <% }); %>
+</div>
+<% } %>
+
+<% if (comments.length === 0) { %>
+<p id="no-comments">No comments</p>
+<% } %>

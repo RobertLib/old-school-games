@@ -1,0 +1,5 @@
+<% if (req.session?.user) { %>
+<% Object.entries(req.flash()).forEach(([type, message]) => { %>
+<div class="alert <%= type %>"><%= message %></div>
+<% }); %>
+<% } %>
