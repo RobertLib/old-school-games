@@ -1,0 +1,28 @@
+<%#
+  The "Browse by" block, which views/left-sidebar.ejs and views/right-sidebar.ejs
+  both render.
+
+  It was written out twice, character for character, in two files that are
+  otherwise nothing alike — so the active-link rule, the wording and the three
+  destinations had two authors and no way to stay in step. One of them getting
+  a fourth entry, or "/years" being renamed, would have left the other quietly
+  wrong on every page of the site, since both sidebars render on every page.
+%>
+<h2>Browse by</h2>
+<ul class="nav nav-column">
+  <li>
+    <a class="nav-link <%= req.path === '/developers' ? 'active' : '' %>" href="/developers">
+      All Developers
+    </a>
+  </li>
+  <li>
+    <a class="nav-link <%= req.path === '/publishers' ? 'active' : '' %>" href="/publishers">
+      All Publishers
+    </a>
+  </li>
+  <li>
+    <a class="nav-link <%= req.path === '/years' ? 'active' : '' %>" href="/years">
+      Browse by Year
+    </a>
+  </li>
+</ul>

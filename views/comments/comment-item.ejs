@@ -1,0 +1,53 @@
+<%
+  // locals.req rather than req: this partial is also rendered standalone for
+  // the JSON batch endpoint, where a bare reference would throw.
+  const isAdminUser = locals.req?.session?.user?.role === "ADMIN";
+%>
+<article class="comment <%= locals.isReply ? 'comment-reply' : '' %>" id="comment-<%= comment.id %>">
+  <header class="comment-header">
+    <h3 class="comment-nick text-md"><%= comment.nick || "anonymous" %></h3>
+    <small><time datetime="<%= new Date(comment.createdAt).toISOString() %>" data-date="<%= new Date(comment.createdAt).toISOString() %>"><%= new Date(comment.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) %></time></small>
+  </header>
+  <div class="comment-content"><%= comment.content %></div>
+  <div class="comment-actions">
+    <% if (!locals.isReply) { %>
+    <button class="comment-reply-btn" data-comment-id="<%= comment.id %>" data-nick="<%= comment.nick || 'anonymous' %>" type="button">
+      Reply
+    </button>
+    <% } %>
+    <% if (isAdminUser) { %>
+    <form action="/comments/<%= comment.id %>/delete" method="POST" data-confirm="Delete this comment<%= locals.isReply ? '' : ' and its replies' %>?">
+      <input type="hidden" name="_csrf" value="<%= locals.csrfToken %>" />
+      <input type="hidden" name="from" value="game" />
+      <button class="comment-delete-btn" type="submit">Delete</button>
+    </form>
+    <%# Every comment from the same source, for a flood. It opens the review
+        page in routes/comments.ts rather than deleting anything, which is
+        why it needs no data-confirm; the page is the confirmation. Only
+        where there is a source to group by — see Comment.hasSource. %>
+    <% if (comment.hasSource) { %>
+    <form action="/comments/<%= comment.id %>/source" method="POST">
+      <input type="hidden" name="_csrf" value="<%= locals.csrfToken %>" />
+      <button class="comment-delete-btn" type="submit">All from this source&hellip;</button>
+    </form>
+    <% } %>
+    <% } %>
+  </div>
+  <div class="comment-replies" id="replies-<%= comment.id %>" data-newest-reply="<%= comment.replies?.at(-1)?.id ?? '' %>">
+    <%# Above the replies because the initial window keeps the newest fifty.
+        A linked old reply can also be present, so the cursor comes from the
+        normal window rather than from whichever reply is first on screen. %>
+    <% if (comment.hiddenReplies > 0) { %>
+    <div class="comment-load-more comment-replies-more">
+      <button class="btn btn-sm btn-outline comment-replies-load" data-game-id="<%= comment.gameId %>" data-root-id="<%= comment.id %>" data-before="<%= comment.replyCursor ?? comment.replies?.[0]?.id ?? '' %>" type="button">
+        <span class="comment-replies-idle">Load earlier replies</span>
+        <span class="comment-replies-busy" hidden>Loading&hellip;</span>
+      </button>
+      <p class="alert error comment-replies-error" hidden role="alert"></p>
+    </div>
+    <% } %>
+    <% (comment.replies || []).forEach((reply) => { %>
+    <%- include('comment-item', { comment: reply, isReply: true }) %>
+    <% }); %>
+  </div>
+</article>
