@@ -1,0 +1,47 @@
+-- VARCHAR(255) to TEXT on the four slug columns, because the longest slug the
+-- site can generate is longer than the longest one it can store.
+--
+-- "title" is VARCHAR(255) on both "games" and "news", and slugify() does not
+-- shorten: a 255-character title reduces to at most 255 characters of slug,
+-- and resolveSlug then appends "-2", "-3", ... when the base is taken or
+-- reserved. So a second game sharing a long title produces a 257-character
+-- slug and the INSERT fails with
+--
+--   value too long for type character varying(255)
+--
+-- which surfaces as the 500 page with the admin's entry gone. Worse, it is
+-- not a collision error: withResolvedSlug only retries SQLSTATE 23505 on the
+-- named slug constraints, so 22001 is rethrown on the first attempt and there
+-- is no amount of retrying that would have helped. 0045 makes the same thing
+-- reachable without a duplicate title at all — a 255-character title whose
+-- slug happens to be reserved is suffixed too.
+--
+-- TEXT rather than a wider VARCHAR, because there is no length here worth
+-- naming. Postgres stores the two identically (varchar(n) is text plus a
+-- length check), so this costs nothing and rules the whole class out instead
+-- of moving the cliff to 300. The application-level limit belongs in
+-- validations/, where a too-long *title* can be reported to the person typing
+-- it; a storage limit only turns it into a stack trace.
+--
+-- Every index on these columns survives the change untouched, and that is
+-- worth stating because the obvious way to write this migration — drop the
+-- indexes, alter, recreate them — would leave a window with no unique
+-- constraint on "games"."slug" at all.
+--
+-- varchar is binary coercible to text, so Postgres rewrites neither the table
+-- nor a single index: it changes the column's type in the catalogue and stops.
+-- Checked rather than assumed — pg_class.relfilenode is identical either side
+-- of the ALTER for the table, the unique index and the pattern index — and
+-- pg_indexes shows every definition, name, operator class and uniqueness
+-- unchanged afterwards. "text_pattern_ops" on "idx_game_slugs_slug_pattern"
+-- and "idx_news_slugs_slug_pattern" (0036) was always the text operator class
+-- applied to a binary-coercible column, so it does not even become more
+-- correct here; it simply stays valid.
+--
+-- The ALTER still takes an ACCESS EXCLUSIVE lock on each table. With no
+-- rewrite behind it that is held for the length of a catalogue update, which
+-- is why this is four plain statements and not a CONCURRENTLY dance.
+ALTER TABLE "games" ALTER COLUMN "slug" TYPE TEXT;
+ALTER TABLE "game_slugs" ALTER COLUMN "slug" TYPE TEXT;
+ALTER TABLE "news" ALTER COLUMN "slug" TYPE TEXT;
+ALTER TABLE "news_slugs" ALTER COLUMN "slug" TYPE TEXT;

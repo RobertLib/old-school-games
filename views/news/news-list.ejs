@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <%- include('../head') %>
+  <meta name="description" content="<%= description %>" />
+  <title><%= title %></title>
+  <%# Open Graph %>
+  <meta property="og:title" content="<%= title %>" />
+  <meta property="og:description" content="<%= description %>" />
+  <meta property="og:url" content="<%= locals.ogUrl || locals.canonicalUrl || (siteUrl + req.originalUrl.split('?')[0]) %>" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="<%= siteName %>" />
+  <%- include('../og-image') %>
+  <%
+    // Only on a page that asks to be indexed. views/head.ejs already gates the
+    // robots tag, the canonical and the breadcrumb schema on this one answer;
+    // a node describing the page in detail belongs on the same side of it.
+    // Nothing here was ever wrong — it was sent to consumers that had just
+    // been told the page is not for them. See utils/indexability.ts.
+  %>
+  <% if (!isNoindex(req, locals)) { %>
+  <script type="application/ld+json"><%- JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    name: title,
+    url: canonicalUrl || `${siteUrl}/news`,
+    itemListElement: news.map((item, index) => ({
+      "@type": "ListItem",
+      position: (currentPage - 1) * 10 + index + 1,
+      item: {
+        "@type": "NewsArticle",
+        headline: item.title,
+        url: `${siteUrl}/news/${item.slug}`,
+        datePublished: new Date(item.createdAt).toISOString(),
+      },
+    })),
+  }).replace(/</g, "\\u003c") %></script>
+  <% } %>
+</head>
+
+<body class="layout">
+  <%- include('../navbar') %>
+  <%- include('../left-sidebar') %>
+  <main id="main" tabindex="-1">
+    <div class="container">
+      <%- include('../flash') %>
+      <%- include('../breadcrumb') %>
+      <section>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+          <h1 class="text-xl" style="margin: 0;">News & Updates</h1>
+          <% if (req.session?.user?.role === 'ADMIN') { %>
+          <a class="btn btn-outline" href="/news/new">+ Add News</a>
+          <% } %>
+        </div>
+        <div style="margin-bottom: 1.5em; padding: 1em; background: var(--panel-tint); border-left: 3px solid rgb(var(--primary-rgb)); border-radius: var(--border-radius);">
+          <p style="margin: 0; line-height: 1.7; color: rgb(var(--color-rgb))">Stay up to date with everything happening at OldSchoolGames — newly added titles, retro gaming highlights, site updates and articles about the golden age of MS-DOS gaming. Whether you're looking for the latest additions to our library or want to read about the history of classic PC games from the 80s and 90s, you'll find it here.</p>
+        </div>
+        <% if (news.length === 0) { %>
+        <p class="news-empty">
+          No news yet. Check back later!
+        </p>
+        <% } else { %> <% news.forEach((newsItem, index) => { %>
+        <article class="news-item <% if (index > 0) { %>news-item-bordered<% } %>">
+          <h2 class="news-title"><a href="/news/<%= newsItem.slug %>"><%= newsItem.title %></a></h2>
+          <div class="news-meta">
+            <time datetime="<%= new Date(newsItem.createdAt).toISOString() %>">
+              <%= new Date(newsItem.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }) %>
+            </time>
+          </div>
+          <%#
+            The excerpt, not the article — routes/news.ts flattens and cuts it
+            (utils/html-text.ts), so what arrives here is plain prose and goes
+            out escaped. Rendering ten articles' markup in full made this page
+            several times its own weight and read all ten out to a screen
+            reader. views/news/news-preview.ejs does the same on the homepage.
+          %>
+          <div class="news-content"><%= newsItem.excerpt %></div>
+          <p class="news-item-more">
+            <a class="color-primary underline text-sm" href="/news/<%= newsItem.slug %>">Read more &rarr;</a>
+          </p>
+        </article>
+        <% }); %>
+
+        <%#
+          The site's pager, not this page's own. The copy that stood here wrote
+          "/news?page=1" for page 1 — a second crawlable address for a page
+          whose canonical link names the bare "/news" — threw away every other
+          query parameter, and carried neither rel="prev"/rel="next" nor a
+          "first"/"last" jump. It also hid itself entirely on a single-page
+          listing while printing the "Showing 1-3 of 3" line underneath
+          regardless, so the two halves of one control disagreed about whether
+          there was anything to say.
+
+          `limit` is stated because routes/news.ts does not pass it; 10 is the
+          page size that file uses and that the ItemList positions above assume.
+        %>
+        <%- include('../pagination', {
+          items: news,
+          page: currentPage,
+          limit: 10,
+          itemNoun: 'news item',
+          paginationLabel: 'News pagination',
+        }) %>
+
+        <% } %>
+      </section>
+    </div>
+  </main>
+  <%- include('../right-sidebar') %>
+  <%- include('../footer') %>
+</body>
+
+</html>

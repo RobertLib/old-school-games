@@ -1,0 +1,22 @@
+-- The last two unindexed foreign keys in the schema.
+--
+-- "games"."userId" (0001) and "news"."userId" (0015) both reference
+-- "users" ("id") ON DELETE SET NULL, and neither ever had an index. Postgres
+-- indexes the referenced side automatically and the referencing side never:
+-- to apply the SET NULL it has to find the rows pointing at the user being
+-- deleted, so deleting one account sequentially scans the whole catalogue and
+-- the whole of "news" — while holding the row locks it takes on every row it
+-- rewrites. 0043 is the same omission on "game_of_the_week".
+--
+-- No admin account is deleted often, which is why this went unnoticed; it is
+-- also why it would be at its worst when it happened, on the largest table on
+-- the site, inside one request.
+--
+-- The column is NULL for anything imported rather than submitted, so both
+-- indexes are partial: a btree stores NULLs and would otherwise hold one
+-- entry per row for a lookup that is never made by NULL — "userId" IS NULL
+-- appears in no query, and the foreign key check only ever looks for a
+-- concrete id. What is left is one entry per authored row, which is the part
+-- that is actually searched.
+CREATE INDEX "idx_games_userId" ON "games" ("userId") WHERE "userId" IS NOT NULL;
+CREATE INDEX "idx_news_userId" ON "news" ("userId") WHERE "userId" IS NOT NULL;

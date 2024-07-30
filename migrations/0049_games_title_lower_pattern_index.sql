@@ -1,0 +1,32 @@
+-- The letter pages match a case-insensitive prefix, and until now nothing
+-- could serve it.
+--
+-- Game.find's letter filter was `g."title" ILIKE $n` with a "A%" pattern.
+-- ILIKE can use no btree at all — not "idx_games_title_id" (0037), which is
+-- case-sensitive, and not "idx_games_title_lower" (0027), which indexes an
+-- expression the predicate does not mention — so /letter/a read the whole
+-- catalogue and threw most of it away. models/game.ts now asks
+-- `LOWER(g."title") LIKE $n` with an already-lowercased pattern, which is the
+-- same question in a form an index can answer.
+--
+-- Two indexes are needed for that, not one, and this is the second:
+--
+--   - equality and ordering on LOWER("title") go to "idx_games_title_lower"
+--     (0027), built under the database's collation;
+--   - a LIKE *prefix* needs the column indexed in plain byte order, which is
+--     what "text_pattern_ops" is for. Under en_US.UTF-8 — and under any
+--     collation that is not C — the collated index cannot be turned into the
+--     range scan a prefix match is, so Postgres ignores it and scans.
+--
+-- Exactly the reasoning 0036 wrote out for the slug history, applied to the
+-- one other prefix match on the site. The pair also mirrors what "games"
+-- already carries for the slug columns: a collated unique index for equality
+-- and a pattern index beside it.
+--
+-- LOWER("title") rather than "title": the pattern is lowercased before it is
+-- sent, so a game titled "DOOM" belongs on /letter/d like every other. The
+-- expression is written the way 0027 writes it, so both indexes are built on
+-- the same lower("title"::text) — "title" is VARCHAR, and the cast is
+-- implicit in both.
+CREATE INDEX "idx_games_title_lower_pattern"
+  ON "games" (LOWER("title") text_pattern_ops);
