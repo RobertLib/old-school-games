@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <%- include('../head') %>
+  <% const title = 'Game Developers - Browse by Development Studios | OldSchoolGames' %>
+  <% const description = 'Explore classic MS-DOS games by developer. Find your favorite game studios and check out their games.' %>
+  <title><%= title %></title>
+  <meta name="description" content="<%= description %>" />
+  <meta property="og:title" content="<%= title %>" />
+  <meta property="og:description" content="<%= description %>" />
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "CollectionPage",
+      "name": "Game Developers",
+      "description": "Browse classic MS-DOS games by developer",
+      "url": "https://oldschoolgames.eu/developers",
+      "mainEntity": {
+        "@type": "ItemList",
+        "itemListElement": [
+          <% developers.forEach((developer, index) => { %>
+          {
+            "@type": "ListItem",
+            "position": <%= index + 1 %>,
+            "item": {
+              "@type": "SoftwareApplication",
+              "applicationCategory": "Game",
+              "name": "<%= developer %>",
+              "url": "https://oldschoolgames.eu/developer/<%= encodeURIComponent(developer) %>"
+            }
+          }<%= index < developers.length - 1 ? ',' : '' %>
+          <% }); %>
+        ]
+      }
+    }
+  </script>
+</head>
+
+<body class="layout">
+  <%- include('../navbar') %>
+  <%- include('../left-sidebar') %>
+  <main>
+    <div class="container">
+      <%- include('../flash') %>
+      <section>
+        <h1 class="text-lg">Game Developers</h1>
+        <p>Browse games by developer:</p>
+
+        <hr />
+
+        <div class="company-list">
+          <% if (developers.length) { %>
+          <ul>
+            <% developers.forEach(developer => { %>
+            <li>
+              <a href="/developer/<%= encodeURIComponent(developer) %>"><%= developer %></a>
+            </li>
+            <% }); %>
+          </ul>
+          <% } else { %>
+          <p>No developers found</p>
+          <% } %>
+        </div>
+      </section>
+    </div>
+  </main>
+  <%- include('../right-sidebar') %>
+  <%- include('../footer') %>
+</body>
+
+</html>

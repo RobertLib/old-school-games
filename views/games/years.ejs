@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <%- include('../head') %>
+  <title><%= title %></title>
+  <meta name="description" content="<%= description %>" />
+  <meta property="og:title" content="<%= title %>" />
+  <meta property="og:description" content="<%= description %>" />
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "CollectionPage",
+      "name": "Game Years",
+      "description": "Browse classic MS-DOS games by release year",
+      "url": "https://oldschoolgames.eu/years",
+      "mainEntity": {
+        "@type": "ItemList",
+        "itemListElement": [
+          <% years.forEach((year, index) => { %>
+          {
+            "@type": "ListItem",
+            "position": <%= index + 1 %>,
+            "item": {
+              "@type": "Thing",
+              "name": "<%= year %>",
+              "url": "https://oldschoolgames.eu/year/<%= year %>"
+            }
+          }<%= index < years.length - 1 ? ',' : '' %>
+          <% }); %>
+        ]
+      }
+    }
+  </script>
+</head>
+
+<body class="layout">
+  <%- include('../navbar') %>
+  <%- include('../left-sidebar') %>
+  <main>
+    <div class="container">
+      <%- include('../flash') %>
+      <section>
+        <h1 class="text-lg">Game Years</h1>
+        <p>Browse games by release year:</p>
+
+        <hr />
+
+        <div class="company-list">
+          <% if (years.length) { %>
+          <ul>
+            <% years.forEach(year => { %>
+            <li>
+              <a href="/year/<%= year %>"><%= year %></a>
+            </li>
+            <% }); %>
+          </ul>
+          <% } else { %>
+          <p>No years found</p>
+          <% } %>
+        </div>
+      </section>
+    </div>
+  </main>
+  <%- include('../right-sidebar') %>
+  <%- include('../footer') %>
+</body>
+
+</html>
