@@ -1,0 +1,41 @@
+<div class="breadcrumb" style="
+    margin: 10px 0;
+    padding: 10px;
+    background: rgba(var(--border-rgb), 0.2);
+    border: 1px solid rgb(var(--border-rgb));
+    border-radius: var(--border-radius);
+    font-size: 14px;
+    color: rgb(var(--muted-rgb));
+  ">
+  <a href="/" class="color-primary">Home</a>
+
+  <% if (locals.genre) { %>
+  <span style="margin: 0 5px">›</span>
+  <a href="/<%= genre.toLowerCase() %>" class="color-primary"><%= genre %> Games</a>
+  <% } %> <% if (locals.letter) { %>
+  <span style="margin: 0 5px">›</span>
+  <a href="/letter/<%= letter.toLowerCase() %>" class="color-primary">Games starting with '<%= letter.toUpperCase() %>'</a>
+  <% } %> <% if (locals.developer) { %>
+  <span style="margin: 0 5px">›</span>
+  <a href="/developers" class="color-primary">Developers</a>
+  <span style="margin: 0 5px">›</span>
+  <a href="/developer/<%= encodeURIComponent(developer) %>" class="color-primary"><%= developer %></a>
+  <% } %> <% if (locals.publisher) { %>
+  <span style="margin: 0 5px">›</span>
+  <a href="/publishers" class="color-primary">Publishers</a>
+  <span style="margin: 0 5px">›</span>
+  <a href="/publisher/<%= encodeURIComponent(publisher) %>" class="color-primary"><%= publisher %></a>
+  <% } %> <% if (locals.year) { %>
+  <span style="margin: 0 5px">›</span>
+  <a href="/years" class="color-primary">Years</a>
+  <span style="margin: 0 5px">›</span>
+  <a href="/year/<%= year %>" class="color-primary"><%= year %></a>
+  <% } %> <% if (locals.game && game.title) { %>
+  <span style="margin: 0 5px">›</span>
+  <% if (game.genre) { %>
+  <a href="/<%= game.genre.toLowerCase() %>" class="color-primary"><%= game.genre %></a>
+  <span style="margin: 0 5px">›</span>
+  <% } %>
+  <span><%= game.title %></span>
+  <% } %>
+</div>
