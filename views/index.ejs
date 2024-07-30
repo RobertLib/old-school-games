@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <%- include('head') %>
+    <script src="/js/rating-stars.js"></script>
+  </head>
+  <body class="layout">
+    <%- include('navbar') %>
+    <%- include('left-sidebar') %>
+    <main>
+      <div class="container">
+        <%- include('flash') %>
+        <section>
+          <h2 class="text-lg" style="margin: 0 0 5px">Welcome to Old School Games!</h2>
+          <p style="margin-top: 0">
+            👋 to our portal dedicated to the golden age of gaming! Relive the
+            nostalgia and immerse yourself in the magic of classic games from the
+            MS-DOS era that shaped the world of gaming. Here, you can easily play
+            these timeless classics directly in your browser, without any
+            complicated setup. Just click and let yourself be transported back to
+            a time when games were crafted with heart and soul. Get ready for an
+            adventure filled with pixelated graphics, unforgettable music, and a
+            unique atmosphere. Welcome back to the past! 💾🕹️👾
+          </p>
+          <hr />
+          <% if (req.session.user?.role === "ADMIN") { %>
+          <div class="text-right" style="margin-bottom: 15px">
+            <a class="btn btn-outline" href="/games/new">+ Add a new game</a>
+          </div>
+          <% } %>
+          <%- include('games/game-filters') %>
+          <%- include('games/game-list') %>
+        </section>
+      </div>
+    </main>
+    <%- include('right-sidebar') %>
+    <%- include('footer') %>
+  </body>
+</html>

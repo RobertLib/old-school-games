@@ -1,0 +1,40 @@
+<article class="game-item card">
+  <div style="view-transition-name: game-item-<%= game.id %>">
+    <a class="color-primary font-bold" href="/<%= game.slug %>">
+      <h3 class="text-lg" style="margin: 0"><%= game.title %></h3>
+    </a>
+    <div class="clearfix">
+      <a class="game-item-initial" href="/<%= game.slug %>">
+        <img
+          alt="<%= game.title %>"
+          loading="lazy"
+          src="<%= game.images[0] %>"
+          width="100"
+        />
+      </a>
+      <div><%= game.description?.replaceAll("<br />", "").slice(0, 250) %>...</div>
+    </div>
+    <div class="text-sm">
+      <strong>Genre</strong>: <%= game.genre %><br />
+      <strong>Release</strong>: <%= game.release %><br />
+      <strong>Developer / Publisher</strong>:
+        <%= [game.developer, game.publisher].filter(Boolean).join(", ") %><br />
+    </div>
+    <rating-stars gameId="<%= game.id %>" rating="<%= game.averageRating %>">
+    </rating-stars>
+  </div>
+  <% if (req.session.user?.role === "ADMIN") { %>
+  <div class="flex" style="gap: 5px; justify-content: end; width: 100%">
+    <a class="btn btn-outline btn-sm" href="/games/<%= game.id %>/edit">Edit</a>
+    <form action="/games/<%= game.id %>/delete" method="POST">
+      <button
+        class="btn btn-outline btn-sm"
+        onclick="return confirm('Are you sure?')"
+        type="submit"
+      >
+        Delete
+      </button>
+    </form>
+  </div>
+  <% } %>
+</article>
