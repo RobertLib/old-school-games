@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <%- include('../head') %>
+  <meta name="description" content="<%= description %>" />
+  <title><%= title %></title>
+  <%# Open Graph %>
+  <meta property="og:title" content="<%= title %>" />
+  <meta property="og:description" content="<%= description %>" />
+  <%- include('../og-image') %>
+  <meta property="og:url" content="<%= locals.ogUrl || locals.canonicalUrl || (siteUrl + req.originalUrl.split('?')[0]) %>" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="<%= siteName %>" />
+  <link rel="stylesheet" href="<%= asset('/css/gallery.css') %>" />
+</head>
+
+<%# No "overflow: hidden" here any more. The overlay is a fixed box of
+    100dvh with 80px of top padding and 100px of bottom padding, and on a short
+    landscape phone that leaves the image squeezed to nothing — with the page
+    locked, there was no way to reach any of it. The container scrolls instead
+    when its content does not fit (see .gallery-container in
+    public/css/gallery.css), which changes nothing on a screen where it does. %>
+<body>
+  <%# This page has no navbar, so it carries its own copy of the skip link
+      that views/navbar.ejs provides on every other page. %>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <main id="main" tabindex="-1">
+    <div class="gallery-container">
+      <div class="gallery-header">
+        <h1 class="gallery-title"><%= game.title %></h1>
+        <a href="/<%= game.slug %>" class="gallery-close">✕ Close</a>
+      </div>
+
+      <div class="gallery-content">
+        <%
+          // The same picture, described the same way it is described on the page
+          // that links here.
+          //
+          // This said "Doom - Image 2" where views/games/game-detail.ejs, whose
+          // thumbnail is the link that opens this slide, said "Doom – screenshot
+          // 1". Two names for one file: the detail page numbers by the array
+          // index, which is also what the /gallery/:index address carries, and
+          // this counted from one — so every screenshot on the site was off by
+          // one between the two views.
+          //
+          // Slot 0 is the cover rather than a screenshot; the detail page skips
+          // it (it is already rendered large further up) but the Previous button
+          // below walks back onto it, so it is reachable here and needs the
+          // wording the rest of the site gives it.
+          const imageAlt =
+            currentIndex === 0
+              ? `${game.title} – MS-DOS cover art`
+              : `${game.title} – screenshot ${currentIndex}`;
+        %>
+        <div class="gallery-image-wrapper">
+          <%# No width/height attributes. 320x200 is the classic VGA mode and
+              a fair guess for a DOS screenshot, but it is only a guess: box
+              art is portrait, later titles ran at 320x240 and 640x480, and an
+              intrinsic size stated wrongly is worse than none — the browser
+              reserves a box of the wrong shape and, with the "aspect-ratio:
+              auto" that a width/height pair implies, letterboxes or stretches
+              the picture inside it until the file has loaded. The stylesheet
+              gives the wrapper a min-height so the layout still does not jump
+              while it arrives. %>
+          <img src="<%= image %>" alt="<%= imageAlt %>" class="gallery-image" id="galleryImage" />
+        </div>
+      </div>
+
+      <div class="gallery-nav">
+        <% if (currentIndex > 0) { %>
+        <a href="/<%= game.slug %>/gallery/<%= currentIndex - 1 %>" class="gallery-nav-btn" id="prevBtn">
+          <svg class="gallery-arrow" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512" fill="currentColor">
+            <path d="M9.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l192 192c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L77.3 256 246.6 86.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-192 192z" />
+          </svg>
+          Previous
+        </a>
+        <% } else { %>
+        <button class="gallery-nav-btn" disabled>
+          <svg class="gallery-arrow" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512" fill="currentColor">
+            <path d="M9.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l192 192c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L77.3 256 246.6 86.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-192 192z" />
+          </svg>
+          Previous
+        </button>
+        <% } %>
+
+        <div class="gallery-counter">
+          <%= currentIndex + 1 %> / <%= game.images.filter(Boolean).length %>
+        </div>
+
+        <% if (currentIndex < game.images.filter(Boolean).length - 1) { %>
+        <a href="/<%= game.slug %>/gallery/<%= currentIndex + 1 %>" class="gallery-nav-btn" id="nextBtn">
+          Next
+          <svg class="gallery-arrow" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512" fill="currentColor">
+            <path d="M310.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-192 192c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L242.7 256 73.4 86.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l192 192z" />
+          </svg>
+        </a>
+        <% } else { %>
+        <button class="gallery-nav-btn" disabled>
+          Next
+          <svg class="gallery-arrow" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512" fill="currentColor">
+            <path d="M310.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-192 192c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L242.7 256 73.4 86.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l192 192z" />
+          </svg>
+        </button>
+        <% } %>
+      </div>
+    </div>
+  </main>
+
+  <script nonce="<%= cspNonce %>">
+    // Keyboard navigation
+    document.addEventListener('keydown', function(event) {
+      // A modified arrow or Escape belongs to the browser, not to this page:
+      // Alt+Left is Back, Cmd+Left is Back on a Mac, Ctrl+Left jumps a word.
+      // Navigating the gallery instead took the visitor to the next screenshot
+      // and left the address bar showing a page they had asked to leave.
+      if (event.ctrlKey || event.altKey || event.metaKey) return;
+
+      if (event.key === 'ArrowLeft') {
+        const prevBtn = document.getElementById('prevBtn');
+        if (prevBtn && !prevBtn.disabled) {
+          window.location.href = prevBtn.href;
+        }
+      } else if (event.key === 'ArrowRight') {
+        const nextBtn = document.getElementById('nextBtn');
+        if (nextBtn && !nextBtn.disabled) {
+          window.location.href = nextBtn.href;
+        }
+      } else if (event.key === 'Escape') {
+        window.location.href = '/<%= game.slug %>';
+      }
+    });
+
+    // Preload adjacent images
+    const galleryIndex = <%= currentIndex %>;
+    const images = <%- JSON.stringify(game.images.filter(Boolean)).replace(/</g, "\\u003c") %>;
+
+    if (galleryIndex > 0) {
+      const prevImg = new Image();
+      prevImg.src = images[galleryIndex - 1];
+    }
+
+    if (galleryIndex < images.length - 1) {
+      const nextImg = new Image();
+      nextImg.src = images[galleryIndex + 1];
+    }
+  </script>
+</body>
+
+</html>

@@ -1,0 +1,18 @@
+{
+  // The suite was the one part of the codebase nothing type-checked: the base
+  // config excludes it, because vitest resolves imports bundler-style
+  // (extensionless relative paths) and nodenext rejects those by design.
+  //
+  // Rewriting every test import to carry ".ts" would also mean keeping each
+  // vi.mock() specifier in step with it, so the resolution mode is what moves
+  // here instead. Same strictness, same sources on the other side of the
+  // imports — only the way a specifier turns into a file differs.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "module": "preserve",
+    "moduleResolution": "bundler",
+    "types": ["node", "vitest/globals"]
+  },
+  "include": ["tests/**/*.ts"],
+  "exclude": ["node_modules"]
+}

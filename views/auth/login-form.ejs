@@ -1,0 +1,29 @@
+<form action="/login" method="POST">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+  <%# The same alert every other failure on the site is reported with — see
+      views/flash.ejs, which reasons out the class and the role. This was a
+      bare <p>: it rendered in body text with no colour and no role, so
+      "Invalid credentials." looked like part of the form, and a screen reader
+      was told nothing at all — the message arrives on a fresh page load, after
+      the announcement of the page itself, and nothing marked it as the reason
+      the login did not go through. %>
+  <% if (locals.error) { %>
+  <div class="alert alert-danger" role="alert"><%= error %></div>
+  <% } %>
+  <p>
+    <label class="form-label" for="email">Email *</label><br />
+    <%# The address comes back on a refused attempt; the password never does.
+        Typing both again because one of them was wrong is the ordinary cost of
+        a typo, and a browser that has just been told the login failed will not
+        refill the field for you. A password re-rendered into HTML would sit in
+        the page source, in the browser's back/forward cache and in any proxy
+        that saw the response, which is the wrong price for the same
+        convenience. %>
+    <input autocomplete="email" class="form-control" id="email" maxlength="255" name="email" required type="email" value="<%= locals.email || '' %>" />
+  </p>
+  <p>
+    <label class="form-label" for="password">Password *</label><br />
+    <input autocomplete="current-password" class="form-control" id="password" maxlength="255" name="password" required type="password" />
+  </p>
+  <button class="btn" type="submit">Login</button> | <a href="/">Back</a>
+</form>

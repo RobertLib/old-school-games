@@ -1,0 +1,53 @@
+-- The letter pages file a game under the first character of its slug now,
+-- and this is the index that serves them.
+--
+-- They used to match the first character of the title, through
+-- "idx_games_title_lower_pattern" (0049). A title is whatever was typed, so
+-- only the twenty-six Latin letters had a page and a game whose title began
+-- with anything else was on none of them: "1942", "688 Attack Sub", "Über
+-- Racer". slugify() folds every slug onto [a-z0-9-], so by slug every game
+-- lands on exactly one page — a letter, or the one "/letter/0-9" page for the
+-- digits. See utils/letter-buckets.ts, and the `letter` filter in
+-- models/game.ts, which asks
+--
+--   "slug" LIKE 'y%'                          for a letter, and
+--   "slug" ~>=~ '0' AND "slug" ~<~ ':'        for the digits.
+--
+-- Both are prefix ranges, and a prefix range needs the column indexed in byte
+-- order, which is what text_pattern_ops is — the reasoning 0036 wrote out for
+-- the slug history and 0049 for the title. "games_slug_key" (0008) is built
+-- under the database's collation, so under en_US.UTF-8 Postgres can use it for
+-- equality and nothing else here. The slug column is TEXT (0046), which is the
+-- type this operator class is for.
+--
+-- Checked with EXPLAIN (ANALYZE, BUFFERS) on a 20,000-game catalogue in an
+-- en_US.UTF-8 database, as Game.find and Game.count send them:
+--
+--   - /letter/y with the slug filter and no index: a sequential scan of the
+--     whole table (308 buffers), as expected of a collated unique index;
+--   - with this one, a bitmap index scan on it, Index Cond
+--     (slug ~>=~ 'y' AND slug ~<~ 'z'): 203 buffers, 0.3ms — the same work
+--     the title filter did through 0049 (209 buffers);
+--   - /letter/0-9, the range above: a bitmap index scan on it, Index Cond
+--     (slug ~>=~ '0' AND slug ~<~ ':');
+--   - both counts: an index-only scan on it once the table has been vacuumed
+--     (4 buffers for "y");
+--   - the same plans with the pattern sent as a bind parameter through
+--     node-postgres, which is how the route sends it.
+--
+-- The MATERIALIZED fence in Game.find is still what keeps the planner on this
+-- index: without it /letter/y walked "idx_games_title_id" in title order and
+-- discarded 19,329 rows (19,429 buffers), exactly as the comment there says of
+-- the title filter, because a slug sorts the way its title does.
+CREATE INDEX "idx_games_slug_pattern" ON "games" ("slug" text_pattern_ops);
+
+-- And 0049's index goes, because nothing asks it anything any more. The letter
+-- filter was the only query on the site that compared LOWER("title") by
+-- prefix: the searches match with ILIKE and "%", which no btree serves (the
+-- trigram index from 0020 does), the exact-title relevance test is an ORDER BY
+-- expression, and the previous/next lookups use the collated
+-- (LOWER("title"), "id") index from 0051. An index no query reads is one more
+-- write on every save for nothing — the reasoning 0051 gave for dropping 0027's.
+-- 0049 has been applied and is not edited; the index its comment describes
+-- does not exist from here on.
+DROP INDEX IF EXISTS "idx_games_title_lower_pattern";
