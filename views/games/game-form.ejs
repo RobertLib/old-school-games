@@ -1,0 +1,23 @@
+<form action="/games/<%= game?.id %>" method="POST">
+  <p>
+    <label for="title">Title *</label><br />
+    <input
+      id="title"
+      maxlength="255"
+      name="title"
+      required
+      type="text"
+      value="<%= game?.title %>"
+    />
+  </p>
+  <p>
+    <label for="description">Description</label><br />
+    <textarea id="description" name="description" rows="10"><%= game?.description %></textarea>
+  </p>
+  <p>
+    <label for="stream">Stream</label><br />
+    <input id="stream" name="stream" type="text" value="<%= game?.stream %>" />
+  </p>
+  <button type="submit"><%= game ? "Update" : "Create" %> Game</button> |
+  <a href="/">Back to games</a>
+</form>

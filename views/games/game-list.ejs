@@ -1,0 +1,9 @@
+<% if (games.length) { %>
+<ul>
+  <% games.forEach((game) => { %>
+  <%- include('game-item', { game }) %>
+  <% }); %>
+</ul>
+<% } else { %>
+<p>No games found</p>
+<% } %>

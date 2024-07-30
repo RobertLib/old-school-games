@@ -1,0 +1,5 @@
+<ul id="comment-list">
+  <% comments.forEach((comment) => { %>
+  <%- include('comment-item', { comment }) %>
+  <% }); %>
+</ul>

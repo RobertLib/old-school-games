@@ -1,0 +1,38 @@
+<form id="comment-form">
+  <input name="gameId" type="hidden" value="<%= game.id %>" />
+  <p>
+    <label for="content">Content *</label><br />
+    <textarea id="content" name="content" required rows="10"></textarea>
+  </p>
+  <button type="submit">Create Comment</button>
+</form>
+
+<script>
+  document
+    .querySelector("#comment-form")
+    .addEventListener("submit", function (event) {
+      event.preventDefault();
+
+      const content = event.target.content.value;
+      const gameId = event.target.gameId.value;
+
+      fetch("/comments", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ content, gameId }),
+      })
+        .then((response) => response.text())
+        .then((data) => {
+          document
+            .querySelector("#comment-list")
+            .insertAdjacentHTML("beforeend", data);
+
+          event.target.reset();
+        })
+        .catch((error) => {
+          console.error("Error:", error);
+        });
+    });
+</script>

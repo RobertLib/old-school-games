@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>OldSchoolGames</title>
+    <link rel="stylesheet" href="/css/style.css" />
+  </head>
+  <body>
+    <main>
+      <h1><%= game.title %></h1>
+      <p><%= game.description %></p>
+      <p><%- game.stream %></p>
+      <a href="/">Back to games</a>
+      <h2>Comments</h2>
+      <%- include('../comments/comment-list', { comments }) %>
+      <h2>New Comment</h2>
+      <%- include('../comments/comment-form', { game }) %>
+    </main>
+  </body>
+</html>
