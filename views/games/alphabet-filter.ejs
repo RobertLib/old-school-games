@@ -1,0 +1,12 @@
+<nav class="alphabet-filter">
+  <span>Browse by letter:</span>
+  <div class="alphabet-links">
+    <% const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split(''); %>
+    <% alphabet.forEach(letter => { %>
+    <a href="/letter/<%= letter.toLowerCase() %>" class="<%= (req.params.letter && req.params.letter.toUpperCase() === letter) ? 'active' : '' %>">
+      <%= letter %>
+    </a>
+    <% }); %>
+    <a href="/" class="<%= !req.params.letter ? 'active' : '' %>">All</a>
+  </div>
+</nav>

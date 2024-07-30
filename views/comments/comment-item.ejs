@@ -1,0 +1,5 @@
+<article>
+  <h3 class="text-md" style="margin: 0"><%= comment.nick || "anonymous" %></h3>
+  <small><time datetime="<%= new Date(comment.createdAt).toISOString() %>" data-date="<%= comment.createdAt %>"><%= new Date(comment.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) %></time></small>
+  <%= comment.content %>
+</article>

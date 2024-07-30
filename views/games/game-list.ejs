@@ -1,0 +1,45 @@
+<div class="align-center flex justify-between" style="margin-bottom: 1em;">
+  <span>Page <%= page %></span>
+  <span>
+    <% if (page > 1) { %>
+    <a class="btn btn-sm" href="?<%= new URLSearchParams({ ...req.query, page: 1 }).toString() %>" rel="first">
+      &lt;&lt; First
+    </a>
+    <a class="btn btn-sm" href="?<%= new URLSearchParams({ ...req.query, page: page - 1 }).toString() %>" rel="prev">
+      &lt; Previous
+    </a>
+    <% } %> <% if (games.length === limit) { %>
+    <a class="btn btn-sm" href="?<%= new URLSearchParams({ ...req.query, page: page + 1 }).toString() %>" rel="next">
+      Next &gt;
+    </a>
+    <% } %>
+  </span>
+</div>
+
+<% if (games.length) { %>
+<div class="game-list">
+  <% games.forEach((game) => { %>
+  <%- include('game-item', { game }) %>
+  <% }); %>
+</div>
+<% } else { %>
+<p>No games found</p>
+<% } %>
+
+<div class="align-center flex justify-between">
+  <span>Page <%= page %></span>
+  <span>
+    <% if (page > 1) { %>
+    <a class="btn btn-sm" href="?<%= new URLSearchParams({ ...req.query, page: 1 }).toString() %>" rel="first">
+      &lt;&lt; First
+    </a>
+    <a class="btn btn-sm" href="?<%= new URLSearchParams({ ...req.query, page: page - 1 }).toString() %>" rel="prev">
+      &lt; Previous
+    </a>
+    <% } %> <% if (games.length === limit) { %>
+    <a class="btn btn-sm" href="?<%= new URLSearchParams({ ...req.query, page: page + 1 }).toString() %>" rel="next">
+      Next &gt;
+    </a>
+    <% } %>
+  </span>
+</div>

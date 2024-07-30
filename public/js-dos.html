@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex, nofollow" />
+    <!-- js-dos style sheet -->
+    <link rel="stylesheet" href="https://v8.js-dos.com/latest/js-dos.css" />
+    <!-- js-dos -->
+    <script src="https://v8.js-dos.com/latest/js-dos.js"></script>
+    <script>
+      let dosInstance = null;
+
+      window.addEventListener("DOMContentLoaded", () => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const stream = urlParams.get("stream");
+
+        if (stream) {
+          const match = stream.match(/\/assets\/([^\/]+)/);
+          if (match && match[1]) {
+            let gameName = match[1];
+            gameName = gameName.replace(/\.jsdos$/, "");
+            const canonicalLink = document.createElement("link");
+            canonicalLink.rel = "canonical";
+            canonicalLink.href = `https://oldschoolgames.eu/${gameName}`;
+            document.head.appendChild(canonicalLink);
+          }
+        }
+      });
+
+      window.addEventListener("message", function (event) {
+        if (event.data.action === "clickFullscreen" && dosInstance) {
+          dosInstance.setFullScreen(!document.fullscreenElement);
+        }
+      });
+
+      document.addEventListener(
+        "keydown",
+        function (event) {
+          if (event.altKey && event.key === "Enter") {
+            event.preventDefault();
+            event.stopPropagation();
+            event.stopImmediatePropagation();
+
+            if (dosInstance) {
+              dosInstance.setFullScreen(!document.fullscreenElement);
+            }
+          }
+        },
+        true,
+      );
+    </script>
+    <style>
+      #dos .pointer-events-none {
+        display: none;
+      }
+
+      /* ── CRT filter ─────────────────────────────────────────────── */
+      #dos {
+        position: relative;
+        overflow: hidden;
+      }
+
+      /* Slight contrast boost to compensate scanline darkening */
+      #dos.crt-on canvas {
+        filter: url(#crt-phosphor) brightness(1.02) contrast(1.04) blur(0.3px) !important;
+      }
+
+      /* Scanlines – dark gap after every 2 bright pixels */
+      #crt-scanlines {
+        display: none;
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        z-index: 10;
+        background: repeating-linear-gradient(
+          to bottom,
+          transparent 0px,
+          transparent 2px,
+          rgba(0, 0, 0, 0.45) 2px,
+          rgba(0, 0, 0, 0.45) 3px
+        );
+      }
+
+      /* Vignette */
+      #crt-vignette {
+        display: none;
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        z-index: 11;
+        background: radial-gradient(
+          ellipse at center,
+          transparent 55%,
+          rgba(0, 0, 0, 0.18) 100%
+        );
+      }
+
+      /* RGB phosphor dot matrix (the "matice") */
+      #crt-matrix {
+        display: none;
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        z-index: 12;
+        background-image: repeating-linear-gradient(
+          90deg,
+          rgba(255, 50, 30, 0.05) 0px,
+          rgba(255, 50, 30, 0.05) 1px,
+          rgba(50, 255, 50, 0.05) 1px,
+          rgba(50, 255, 50, 0.05) 2px,
+          rgba(30, 50, 255, 0.05) 2px,
+          rgba(30, 50, 255, 0.05) 3px
+        );
+      }
+
+      #dos.crt-on #crt-scanlines,
+      #dos.crt-on #crt-vignette,
+      #dos.crt-on #crt-matrix {
+        display: block;
+      }
+
+      /* Toggle button */
+      #crt-btn {
+        position: absolute;
+        bottom: 12px;
+        right: 12px;
+        z-index: 100;
+        padding: 5px 11px;
+        background: rgba(0, 0, 0, 0.6);
+        color: #88ff88;
+        border: 1px solid rgba(136, 255, 136, 0.35);
+        border-radius: 3px;
+        font:
+          11px/1.4 "Courier New",
+          monospace;
+        letter-spacing: 0.06em;
+        cursor: pointer;
+        transition:
+          background 0.15s,
+          border-color 0.15s;
+        user-select: none;
+      }
+
+      #crt-btn:hover {
+        background: rgba(0, 40, 0, 0.75);
+        border-color: rgba(136, 255, 136, 0.7);
+      }
+
+      #dos.crt-on #crt-btn {
+        color: #aaffaa;
+        border-color: rgba(170, 255, 170, 0.6);
+      }
+      /* ─────────────────────────────────────────────────────────── */
+    </style>
+  </head>
+  <body>
+    <div id="dos" style="width: 100vw; height: 100vh">
+      <!-- SVG filter lives inside #dos so it survives fullscreen -->
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        style="position: absolute; width: 0; height: 0; overflow: hidden"
+        aria-hidden="true"
+      >
+        <defs>
+          <filter
+            id="crt-phosphor"
+            x="0%"
+            y="0%"
+            width="100%"
+            height="100%"
+            color-interpolation-filters="sRGB"
+          >
+            <!-- Phosphor tint only – no glow, no brightening -->
+            <!-- Slightly warm white point, pull blue down, keep R+G ≤ 1 -->
+            <feColorMatrix
+              in="SourceGraphic"
+              type="matrix"
+              values="1.02 0.01 0.00 0  0.00
+                      0.00 1.02 0.01 0  0.00
+                      0.00 0.00 0.95 0  0.00
+                      0.00 0.00 0.00 1  0.00"
+            />
+          </filter>
+        </defs>
+      </svg>
+
+      <!-- CRT overlay layers (all inside #dos → work in fullscreen) -->
+      <div id="crt-scanlines"></div>
+      <div id="crt-vignette"></div>
+      <div id="crt-matrix"></div>
+
+      <!-- Toggle button (inside #dos → visible in fullscreen) -->
+      <button id="crt-btn" title="Toggle CRT filter (Alt+F7)">CRT: OFF</button>
+    </div>
+
+    <script>
+      const urlParams = new URLSearchParams(window.location.search);
+      const stream = urlParams.get("stream");
+
+      dosInstance = Dos(document.getElementById("dos"), {
+        autoStart: true,
+        autoSave: true,
+        mouseCapture: true,
+        mouseSensitivity: 0.4,
+        theme: "dark",
+        url: stream,
+      });
+
+      // ── CRT toggle ────────────────────────────────────────────────
+      const dosEl = document.getElementById("dos");
+      const crtBtn = document.getElementById("crt-btn");
+      let crtOn = localStorage.getItem("osg-crt") !== "0";
+
+      function setCRT(on) {
+        crtOn = on;
+        dosEl.classList.toggle("crt-on", on);
+        crtBtn.textContent = on ? "CRT: ON" : "CRT: OFF";
+        localStorage.setItem("osg-crt", on ? "1" : "0");
+      }
+
+      setCRT(crtOn);
+      crtBtn.addEventListener("click", () => setCRT(!crtOn));
+
+      // Alt+F7 toggles CRT (works in fullscreen too)
+      document.addEventListener("keydown", (e) => {
+        if (e.altKey && e.key === "F7") {
+          e.preventDefault();
+          setCRT(!crtOn);
+        }
+      });
+      // ─────────────────────────────────────────────────────────────
+    </script>
+  </body>
+</html>

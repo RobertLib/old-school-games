@@ -1,0 +1,18 @@
+<form action="/register" method="POST">
+  <% if (locals.error) { %>
+  <p><%= error %></p>
+  <% } %>
+  <p>
+    <label class="form-label" for="email">Email *</label><br />
+    <input autocomplete="email" class="form-control" id="email" maxlength="255" name="email" required type="text" />
+  </p>
+  <p>
+    <label class="form-label" for="password">Password *</label><br />
+    <input autocomplete="new-password" class="form-control" id="password" maxlength="255" name="password" required type="password" />
+  </p>
+  <p>
+    <label class="form-label" for="confirm-password">Confirm password *</label><br />
+    <input autocomplete="new-password" class="form-control" id="confirm-password" maxlength="255" name="confirmPassword" required type="password" />
+  </p>
+  <button class="btn" type="submit">Register</button> | <a href="/">Back</a>
+</form>

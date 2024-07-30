@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <%- include('head') %>
+  <title><%= locals.title %></title>
+  <meta name="description" content="<%= locals.description %>" />
+  <meta name="robots" content="noindex, follow" />
+  <meta property="og:title" content="<%= locals.title %>" />
+  <meta property="og:description" content="<%= locals.description %>" />
+  <meta property="og:url" content="https://oldschoolgames.eu/dmca" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="OldSchoolGames" />
+</head>
+
+<body class="layout">
+  <%- include('navbar') %> <%- include('left-sidebar') %>
+  <main>
+    <div class="container">
+      <%- include('flash') %>
+      <section>
+        <h1 class="text-lg" style="margin-bottom: 5px">
+          DMCA / Copyright Policy
+        </h1>
+        <p style="
+              color: rgb(var(--muted-rgb));
+              font-size: 0.9em;
+              margin-bottom: 25px;
+            ">
+          Last updated: March 2026
+        </p>
+
+        <p style="margin-bottom: 20px">
+          OldSchoolGames.eu respects the intellectual property rights of
+          others and expects users to do the same. This page describes our
+          policy regarding copyright infringement claims under the Digital
+          Millennium Copyright Act (DMCA) and equivalent European copyright
+          law.
+        </p>
+
+        <h2 class="text-md" style="margin: 25px 0 10px">
+          Our Approach to Games
+        </h2>
+        <p style="margin-bottom: 15px">
+          This site is a non-commercial hobby project. The games hosted here
+          are believed to fall into one of the following categories:
+        </p>
+        <ul style="padding-left: 20px; line-height: 2; margin-bottom: 15px">
+          <li>
+            Games officially released as <strong>freeware</strong> by their
+            publishers or copyright holders
+          </li>
+          <li>
+            Games whose publishers are no longer active and for which no
+            commercial version is available
+          </li>
+          <li>
+            Games hosted for historical preservation and educational purposes
+          </li>
+        </ul>
+        <p style="margin-bottom: 20px">
+          We do not generate revenue from the games distributed on this site.
+          However, we understand that the legal status of some titles may be
+          unclear, and we are committed to addressing any legitimate copyright
+          concerns quickly.
+        </p>
+
+        <h2 class="text-md" style="margin: 25px 0 10px">
+          How to Submit a Takedown Request
+        </h2>
+        <p style="margin-bottom: 15px">
+          If you are a copyright owner, or authorized to act on behalf of a
+          copyright owner, and you believe that content on OldSchoolGames.eu
+          infringes your copyright, please send a written notice to:
+        </p>
+        <p style="
+              margin-bottom: 20px;
+              padding: 15px;
+              background: rgba(var(--border-rgb), 0.2);
+              border: 1px solid rgb(var(--border-rgb));
+              border-radius: var(--border-radius);
+            ">
+          📧
+          <a class="color-primary underline" href="mailto:contact@oldschoolgames.eu">contact@oldschoolgames.eu</a>
+        </p>
+
+        <h2 class="text-md" style="margin: 25px 0 10px">
+          Your Notice Must Include
+        </h2>
+        <ol style="padding-left: 25px; line-height: 2.2; margin-bottom: 20px">
+          <li>
+            Your full legal name and contact information (email address)
+          </li>
+          <li>
+            Identification of the copyrighted work you claim has been
+            infringed
+          </li>
+          <li>
+            The specific URL(s) on OldSchoolGames.eu where the allegedly
+            infringing content is located
+          </li>
+          <li>
+            A statement that you have a good-faith belief that the use of the
+            material is not authorized by the copyright owner, its agent, or
+            the law
+          </li>
+          <li>
+            A statement that the information in your notice is accurate and,
+            under penalty of perjury, that you are the copyright owner or
+            authorized to act on the owner's behalf
+          </li>
+          <li>Your electronic or physical signature</li>
+        </ol>
+
+        <h2 class="text-md" style="margin: 25px 0 10px">Our Response</h2>
+        <p style="margin-bottom: 15px">
+          Upon receipt of a valid takedown notice, we will:
+        </p>
+        <ul style="padding-left: 20px; line-height: 2; margin-bottom: 20px">
+          <li>Review the notice within <strong>5 business days</strong></li>
+          <li>
+            Remove or disable access to the allegedly infringing content
+            promptly if the claim is valid
+          </li>
+          <li>Notify you once the content has been removed</li>
+        </ul>
+        <p style="margin-bottom: 20px">
+          <strong>Please note:</strong> Submitting a false or misleading DMCA
+          notice may result in legal liability for damages, costs, and
+          attorneys' fees.
+        </p>
+
+        <h2 class="text-md" style="margin: 25px 0 10px">Counter-Notice</h2>
+        <p style="margin-bottom: 15px">
+          If you believe your content was removed in error, you may submit a
+          counter-notice to the same email address with:
+        </p>
+        <ul style="padding-left: 20px; line-height: 2; margin-bottom: 20px">
+          <li>Your contact information</li>
+          <li>
+            Identification of the removed content and its location before
+            removal
+          </li>
+          <li>
+            A statement under penalty of perjury that you have a good-faith
+            belief the content was removed due to a mistake or
+            misidentification
+          </li>
+          <li>Your signature</li>
+        </ul>
+
+        <h2 class="text-md" style="margin: 25px 0 10px">Contact</h2>
+        <p>
+          All copyright-related inquiries:
+          <a class="color-primary underline" href="mailto:contact@oldschoolgames.eu">contact@oldschoolgames.eu</a>. For general information about the site, see our
+          <a class="color-primary underline" href="/about">About page</a>.
+        </p>
+      </section>
+    </div>
+  </main>
+  <%- include('right-sidebar') %> <%- include('footer') %>
+</body>
+
+</html>

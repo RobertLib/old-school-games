@@ -1,0 +1,2 @@
+ALTER TABLE "game_of_the_week"
+  ADD COLUMN "updatedAt" TIMESTAMP NOT NULL DEFAULT NOW();

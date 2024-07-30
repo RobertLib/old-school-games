@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <%- include('head') %>
+  <title><%= locals.title %></title>
+  <meta name="description" content="<%= locals.description %>" />
+  <meta property="og:title" content="<%= locals.title %>" />
+  <meta property="og:description" content="<%= locals.description %>" />
+  <meta property="og:url" content="https://oldschoolgames.eu/how-to-play" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="OldSchoolGames" />
+  <meta property="og:image" content="https://oldschoolgames.eu/images/navbar.webp" />
+</head>
+
+<body class="layout">
+  <%- include('navbar') %> <%- include('left-sidebar') %>
+  <main>
+    <div class="container">
+      <%- include('flash') %>
+      <section>
+        <h1 class="text-lg" style="margin-bottom: 20px">
+          How to Play MS-DOS Games
+        </h1>
+        <p style="margin-bottom: 25px">
+          MS-DOS games from the 80s and 90s were built for a very different era of computing.
+          If you're new to retro gaming, some things can feel a little unfamiliar at first.
+          This guide covers the essentials — controls, saving your progress, and tips for getting the best experience in your browser.
+        </p>
+
+        <!-- Quick start -->
+        <div style="margin-bottom: 30px; padding: 15px 20px; background: rgba(var(--primary-rgb), 0.08); border: 1px solid rgba(var(--primary-rgb), 0.3); border-radius: var(--border-radius);">
+          <h2 class="text-md" style="margin: 0 0 10px; color: rgb(var(--primary-rgb))">Quick Start</h2>
+          <ol style="padding-left: 20px; line-height: 2; margin: 0">
+            <li>Open any game and wait for the emulator to load (usually a few seconds).</li>
+            <li>Click inside the game window to give it keyboard/mouse focus.</li>
+            <li>Press <kbd>Alt + Enter</kbd> to switch to fullscreen for the best experience.</li>
+            <li>Read the game's intro screen — many games display controls right at the start.</li>
+            <li>If the game asks for a key press to continue, just press any key.</li>
+          </ol>
+        </div>
+
+        <!-- Browser keyboard shortcuts -->
+        <h2 class="text-md" style="margin-bottom: 10px">Browser &amp; Emulator Shortcuts</h2>
+        <p style="margin-bottom: 10px">
+          These shortcuts work in the browser while the game window is focused:
+        </p>
+        <div style="overflow-x: auto; margin-bottom: 25px">
+          <table style="width: 100%; border-collapse: collapse; font-size: 0.9em">
+            <thead>
+              <tr style="border-bottom: 1px solid rgb(var(--border-rgb)); color: rgb(var(--accent-rgb))">
+                <th style="text-align: left; padding: 8px 12px">Shortcut</th>
+                <th style="text-align: left; padding: 8px 12px">What it does</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr style="border-bottom: 1px solid rgba(var(--border-rgb), 0.4)">
+                <td style="padding: 8px 12px"><kbd>Alt + Enter</kbd></td>
+                <td style="padding: 8px 12px">Toggle fullscreen mode</td>
+              </tr>
+              <tr style="border-bottom: 1px solid rgba(var(--border-rgb), 0.4)">
+                <td style="padding: 8px 12px"><kbd>Ctrl + F10</kbd></td>
+                <td style="padding: 8px 12px">Release / capture mouse cursor</td>
+              </tr>
+              <tr style="border-bottom: 1px solid rgba(var(--border-rgb), 0.4)">
+                <td style="padding: 8px 12px"><kbd>Ctrl + F5</kbd></td>
+                <td style="padding: 8px 12px">Take a screenshot (DOSBox)</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 12px"><kbd>Esc</kbd></td>
+                <td style="padding: 8px 12px">Often pauses or exits menus in games</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Saving games -->
+        <h2 class="text-md" style="margin-bottom: 10px">Saving Your Progress</h2>
+        <p style="margin-bottom: 10px">
+          Saving in MS-DOS games is very different from game to game — there was no universal standard. Here are the most common methods:
+        </p>
+        <ul style="padding-left: 20px; line-height: 2; margin-bottom: 10px">
+          <li>
+            <strong>In-game save menu</strong> — Most RPGs and adventure games have a dedicated
+            <em>Save Game</em> option in their in-game menu, usually accessed via <kbd>Esc</kbd> or <kbd>F1</kbd>.
+          </li>
+          <li>
+            <strong>Save slots</strong> — Many action and strategy games let you press a key like <kbd>F5</kbd>
+            (save) and <kbd>F7</kbd> or <kbd>F8</kbd> (load). Always check the game's help or README.
+          </li>
+          <li>
+            <strong>Passwords</strong> — Some older games (especially platformers and action games from the late 80s)
+            don't save at all — instead they give you a password at the end of each level to resume later.
+          </li>
+          <li>
+            <strong>No saving</strong> — Arcade-style games typically have no save feature. You play until you run
+            out of lives, just like in an arcade.
+          </li>
+          <li>
+            <strong>Auto-save</strong> — Some games save automatically when you exit or at certain checkpoints.
+          </li>
+        </ul>
+        <p style="margin-bottom: 25px">
+          <strong>Tip:</strong> If you're unsure how to save, check whether the game has a manual linked on its page — many DOS games came with detailed printed manuals.
+        </p>
+
+        <!-- Common controls -->
+        <h2 class="text-md" style="margin-bottom: 10px">Common Controls by Genre</h2>
+        <p style="margin-bottom: 10px">
+          Controls varied a lot between genres. Here's a general overview:
+        </p>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 15px; margin-bottom: 25px">
+          <div style="padding: 15px; background: rgba(var(--border-rgb), 0.2); border: 1px solid rgb(var(--border-rgb)); border-radius: var(--border-radius)">
+            <strong style="color: rgb(var(--accent-rgb))">Action / Platformers</strong>
+            <ul style="padding-left: 18px; margin: 8px 0 0; line-height: 1.8">
+              <li>Arrow keys — move / jump</li>
+              <li><kbd>Alt</kbd> or <kbd>Ctrl</kbd> — fire / attack</li>
+              <li><kbd>Space</kbd> — jump (in some games)</li>
+              <li>Joystick / gamepad supported in many titles</li>
+            </ul>
+          </div>
+          <div style="padding: 15px; background: rgba(var(--border-rgb), 0.2); border: 1px solid rgb(var(--border-rgb)); border-radius: var(--border-radius)">
+            <strong style="color: rgb(var(--accent-rgb))">Adventure / RPG</strong>
+            <ul style="padding-left: 18px; margin: 8px 0 0; line-height: 1.8">
+              <li>Mouse — click to interact / move</li>
+              <li>Arrow keys — navigate menus or move character</li>
+              <li><kbd>Enter</kbd> — confirm / talk</li>
+              <li><kbd>Esc</kbd> — back / menu</li>
+              <li><kbd>F1</kbd> — help / save in many games</li>
+            </ul>
+          </div>
+          <div style="padding: 15px; background: rgba(var(--border-rgb), 0.2); border: 1px solid rgb(var(--border-rgb)); border-radius: var(--border-radius)">
+            <strong style="color: rgb(var(--accent-rgb))">First-Person Shooters</strong>
+            <ul style="padding-left: 18px; margin: 8px 0 0; line-height: 1.8">
+              <li>Arrow keys — move &amp; turn</li>
+              <li><kbd>Ctrl</kbd> — shoot</li>
+              <li><kbd>Space</kbd> — open doors / interact</li>
+              <li><kbd>Alt</kbd> + arrows — strafe</li>
+              <li>Number keys — switch weapons</li>
+            </ul>
+          </div>
+          <div style="padding: 15px; background: rgba(var(--border-rgb), 0.2); border: 1px solid rgb(var(--border-rgb)); border-radius: var(--border-radius)">
+            <strong style="color: rgb(var(--accent-rgb))">Strategy / Simulation</strong>
+            <ul style="padding-left: 18px; margin: 8px 0 0; line-height: 1.8">
+              <li>Mouse — select and give orders</li>
+              <li>Arrow keys or <kbd>WASD</kbd> — scroll the map</li>
+              <li><kbd>Space</kbd> or <kbd>P</kbd> — pause</li>
+              <li>Number keys — speeds or unit groups</li>
+              <li><kbd>F10</kbd> — main menu in many games</li>
+            </ul>
+          </div>
+          <div style="padding: 15px; background: rgba(var(--border-rgb), 0.2); border: 1px solid rgb(var(--border-rgb)); border-radius: var(--border-radius)">
+            <strong style="color: rgb(var(--accent-rgb))">Sports &amp; Racing</strong>
+            <ul style="padding-left: 18px; margin: 8px 0 0; line-height: 1.8">
+              <li>Arrow keys — steer / move</li>
+              <li><kbd>Space</kbd> — accelerate / action</li>
+              <li><kbd>Ctrl</kbd> / <kbd>Alt</kbd> — brake / special</li>
+              <li>Joystick often works better than keyboard</li>
+            </ul>
+          </div>
+          <div style="padding: 15px; background: rgba(var(--border-rgb), 0.2); border: 1px solid rgb(var(--border-rgb)); border-radius: var(--border-radius)">
+            <strong style="color: rgb(var(--accent-rgb))">Puzzle / Arcade</strong>
+            <ul style="padding-left: 18px; margin: 8px 0 0; line-height: 1.8">
+              <li>Arrow keys — move / navigate</li>
+              <li><kbd>Space</kbd> or <kbd>Enter</kbd> — confirm / action</li>
+              <li><kbd>Esc</kbd> — pause or quit</li>
+              <li>Often very simple — controls shown on title screen</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Mouse capture -->
+        <h2 class="text-md" style="margin-bottom: 10px">Mouse in Games</h2>
+        <p style="margin-bottom: 25px">
+          Some games (like first-person shooters or strategy games) capture your mouse cursor so it stays inside the game window.
+          To release the cursor — for example to switch tabs or resize the window — press
+          <kbd>Ctrl + F10</kbd>. To recapture it, click inside the game again.
+        </p>
+
+        <!-- Sound -->
+        <h2 class="text-md" style="margin-bottom: 10px">Sound &amp; Music</h2>
+        <p style="margin-bottom: 10px">
+          Many DOS games were written for specific sound hardware (AdLib, Sound Blaster, PC speaker).
+          The emulator tries to match the best sound card automatically, but in some games you may need to configure
+          sound in the in-game setup or at the main menu. Look for an option like <em>Sound Setup</em>, <em>Options</em>,
+          or a separate <code>SETUP.EXE</code> / <code>SETSOUND.EXE</code> in the game's start menu.
+        </p>
+        <p style="margin-bottom: 25px">
+          If a game starts in silence, check the volume settings in your browser and on your system — some games
+          default to very low volume.
+        </p>
+
+        <!-- General tips -->
+        <h2 class="text-md" style="margin-bottom: 10px">General Tips</h2>
+        <ul style="padding-left: 20px; line-height: 2; margin-bottom: 25px">
+          <li>
+            <strong>Read the intro screens</strong> — most DOS games display basic controls or instructions
+            when you first start them. Don't skip them too fast.
+          </li>
+          <li>
+            <strong>Check the manual</strong> — if a game has a manual linked on its page, it's worth a look.
+            Many DOS games were complex and relied on the manual to explain mechanics that aren't obvious in-game.
+          </li>
+          <li>
+            <strong>Use fullscreen</strong> — press <kbd>Alt + Enter</kbd> for a more immersive experience.
+          </li>
+          <li>
+            <strong>Be patient with load times</strong> — some larger games take a few extra seconds to boot up in the emulator.
+          </li>
+          <li>
+            <strong>Game won't start?</strong> — try clicking directly on the game window and pressing any key. Some games wait for user input before starting.
+          </li>
+          <li>
+            <strong>Controls not working?</strong> — make sure the game window has focus (click inside it). Your browser may be intercepting some key combinations.
+          </li>
+          <li>
+            <strong>Every game is different</strong> — the controls above are general guidelines. When in doubt,
+            look at the game's help screen (<kbd>F1</kbd> or <kbd>?</kbd> key in most games) or the manual.
+          </li>
+        </ul>
+
+        <p style="color: rgb(var(--muted-rgb)); font-size: 0.9em">
+          Have a question or found something that's not covered here?
+          Feel free to leave a comment on any game page and the community can help.
+        </p>
+      </section>
+    </div>
+  </main>
+  <%- include('right-sidebar') %>
+  <%- include('footer') %>
+</body>
+
+</html>
