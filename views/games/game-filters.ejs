@@ -1,0 +1,120 @@
+<%
+  // The first value of a repeated parameter, the same way utils/query.ts reads
+  // one on the server: "?orderBy=title&orderBy=rating" arrives as an array,
+  // and an array written into a link would come back out comma-joined.
+  const firstValue = (value) => (Array.isArray(value) ? value[0] : value);
+%>
+<div class="game-filters">
+  <h2 class="text-lg" style="margin: 0">
+    <% if (locals.letter) { %>
+    <%# The route's own name for the bucket (see letterBucketInSentence in
+        utils/letter-buckets.ts), as the <h1> in views/index.ejs uses its
+        title-case twin — upper-casing the parameter here printed
+        "Games starting with '0-9'" on the digits' page, a range of
+        characters rather than the titles it stands for. %>
+    Games starting with <%= locals.letterInSentence || `'${letter.toUpperCase()}'` %>
+    <% } else if (locals.genre) { %>
+    Games in the "<%= genre %>" genre
+    <% } else if (locals.developer) { %>
+    Games by developer "<%= developer %>"
+    <% } else if (locals.publisher) { %>
+    Games by publisher "<%= publisher %>"
+    <% } else if (locals.year) { %>
+    Games from <%= year %>
+    <% } else if (locals.search) { %>
+    Matches for "<%= search %>"
+    <% } else { %>
+    Games of all genres
+    <% } %>
+    <small>
+      <% if (req.query.orderBy === "title") { %>
+      (alphabetical)
+      <% } else if (req.query.orderBy === "createdAt") { %>
+      (recently added)
+      <% } else if (req.query.orderBy === "release") { %>
+      (by release years)
+      <% } else if (req.query.orderBy === "rating") { %>
+      (by rating)
+      <% } %>
+    </small>
+  </h2>
+  <%
+    // Re-sorting keeps the rest of the query, and only drops the page.
+    //
+    // The four buttons below wrote a bare "?orderBy=…&orderDir=…", which threw
+    // away everything else the address carried — most visibly `search`, so
+    // sorting a set of results silently replaced it with the whole unfiltered
+    // catalogue. `page` is dropped because a new sort re-orders the whole list
+    // and page 7 of the old order means nothing in the new one.
+    //
+    // Built by appending entry by entry rather than by handing req.query to
+    // URLSearchParams whole, exactly as views/pagination.ejs builds its links
+    // and for the same two reasons. A repeated key ("?genre=rpg&genre=action")
+    // is an array there, and the object form stringifies an array by joining
+    // it with commas — one parameter reading "rpg,action", which no route
+    // parses back. And a key whose value is undefined would be written out as
+    // the literal string "undefined".
+    //
+    // The two arrows further down used to spread req.query inline instead, so
+    // they had both bugs plus a third: they kept `page`, which pointed page 7
+    // of an ascending listing at page 7 of the descending one — a different
+    // set of games under the same number. They call this now.
+    const sortHref = (orderBy, orderDir) => {
+      const params = new URLSearchParams();
+
+      for (const [key, value] of Object.entries(req.query)) {
+        if (key === "page" || key === "orderBy" || key === "orderDir") continue;
+
+        if (Array.isArray(value)) {
+          for (const item of value) params.append(key, String(item));
+        } else if (value !== undefined) {
+          params.append(key, String(value));
+        }
+      }
+
+      if (orderBy !== undefined) params.append("orderBy", String(orderBy));
+      if (orderDir !== undefined) params.append("orderDir", String(orderDir));
+
+      return "?" + params.toString();
+    };
+
+    // The arrows change the direction and leave the field alone, so they carry
+    // whatever orderBy the request arrived with — including none.
+    const dirHref = (orderDir) =>
+      sortHref(firstValue(req.query.orderBy), orderDir);
+
+    // No arrows on a search that has not been given a field to sort by. Its
+    // results are ranked by relevance (see Game.find), which has no direction:
+    // ▲ led to "?search=x&orderDir=ASC", the same list in the same order, with
+    // ▲ now marked active — a control that visibly did something and changed
+    // nothing. Pick a field above and the arrows are back, meaning something.
+    const showDirection = !(locals.search && !firstValue(req.query.orderBy));
+  %>
+  <ul class="sorting-options">
+    <li>
+      <a class="<%= req.query.orderBy === 'title' ? 'active' : '' %>" href="<%= sortHref('title', 'ASC') %>">A-Z</a>
+    </li>
+    <li>
+      <a class="<%= req.query.orderBy === 'createdAt' ? 'active' : '' %>" href="<%= sortHref('createdAt', 'DESC') %>">New</a>
+    </li>
+    <li>
+      <a class="<%= req.query.orderBy === 'release' ? 'active' : '' %>" href="<%= sortHref('release', 'ASC') %>">Year</a>
+    </li>
+    <li>
+      <a class="<%= req.query.orderBy === 'rating' ? 'active' : '' %>" href="<%= sortHref('rating', 'DESC') %>">Rating</a>
+    </li>
+    <% if (showDirection) { %>
+    <li class="separator">|</li>
+    <li>
+      <a aria-label="Order by ASC" class="inline-block hover-scale <%= req.query.orderDir === 'ASC' || (!req.query.orderDir && (locals.letter || locals.year || locals.developer || locals.publisher)) ? 'active' : '' %>" href="<%= dirHref('ASC') %>" title="Order by ASC" style="margin: -2px -3px">
+        ▲
+      </a>
+    </li>
+    <li>
+      <a aria-label="Order by DESC" class="inline-block hover-scale <%= req.query.orderDir === 'DESC' || (!req.query.orderDir && !(locals.letter || locals.year || locals.developer || locals.publisher)) ? 'active' : '' %>" href="<%= dirHref('DESC') %>" title="Order by DESC" style="margin: -2px -3px">
+        ▼
+      </a>
+    </li>
+    <% } %>
+  </ul>
+</div>

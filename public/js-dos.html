@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex, nofollow" />
+    <!-- The frame carries its own title on the game page; this is for the
+         document opened on its own, which is a public address. -->
+    <title>Game player - OldSchoolGames</title>
+    <!--
+      js-dos, pinned to one release and checked against its hash.
+
+      Both of these used to be "https://v8.js-dos.com/latest/…". That is a
+      moving target with full script privileges in this origin: whatever the
+      vendor publishes there next runs as this site, with access to its DOM
+      and its cookies, and nothing here would notice the change. Their CDN
+      publishes no versioned path — only /latest/ — so there was nothing to
+      pin to and no fixed bytes to write an integrity hash against.
+
+      The same release is on npm, and jsDelivr serves that immutably. It is
+      the identical build, not merely a compatible one: js-dos.js,
+      js-dos.css, emulators.js, wdosbox.js and wdosbox.wasm are all
+      byte-for-byte what /latest/ was serving when this was pinned, so the
+      switch changed no behaviour on the day it was made.
+
+      Because the address is now immutable, the integrity attributes below
+      mean something: a browser refuses either file if its bytes change.
+      crossorigin is required for that on a cross-origin load, and jsDelivr
+      answers with "Access-Control-Allow-Origin: *".
+
+      Raising the version is deliberate work — a new hash, and the pathPrefix
+      in public/js/js-dos-player.js, which pins the emulator runtime the same
+      way and must name the same release.
+    -->
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/js-dos@8.4.1/dist/js-dos.css"
+      integrity="sha384-tYrgAxbRPufJUrIUwrHMumsQ0yWXdNaYMGKazEkzSgtkpSAps5dIS71lqDFtoVNF"
+      crossorigin="anonymous"
+    />
+    <script
+      src="https://cdn.jsdelivr.net/npm/js-dos@8.4.1/dist/js-dos.js"
+      integrity="sha384-uYvVxxF95v52Wy2Cep+7dZZn2dzU6IAdVyDhfMGEsS8Mi3LfnZYPXSHa2QBB4d5+"
+      crossorigin="anonymous"
+    ></script>
+    <link rel="stylesheet" href="/css/js-dos-player.css" />
+  </head>
+  <body>
+    <div id="dos" style="width: 100vw; height: 100vh">
+      <!-- SVG filter lives inside #dos so it survives fullscreen -->
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        style="position: absolute; width: 0; height: 0; overflow: hidden"
+        aria-hidden="true"
+      >
+        <defs>
+          <filter
+            id="crt-phosphor"
+            x="0%"
+            y="0%"
+            width="100%"
+            height="100%"
+            color-interpolation-filters="sRGB"
+          >
+            <!-- Phosphor tint only – no glow, no brightening -->
+            <!-- Slightly warm white point, pull blue down, keep R+G ≤ 1 -->
+            <feColorMatrix
+              in="SourceGraphic"
+              type="matrix"
+              values="1.02 0.01 0.00 0  0.00
+                      0.00 1.02 0.01 0  0.00
+                      0.00 0.00 0.95 0  0.00
+                      0.00 0.00 0.00 1  0.00"
+            />
+          </filter>
+        </defs>
+      </svg>
+
+      <!-- CRT overlay layers (all inside #dos → work in fullscreen) -->
+      <div id="crt-scanlines"></div>
+      <div id="crt-vignette"></div>
+      <div id="crt-matrix"></div>
+
+      <!-- Toggle button (inside #dos → visible in fullscreen)
+
+           Shipped reading "ON", because that is what the player does: crtOn in
+           public/js/js-dos-player.js is `readStored("osg-crt") !== "0"`, so a
+           visitor who has never touched the toggle gets the filter. The markup
+           said "OFF" and the script corrected it on load, which is one frame of
+           a wrong label for everyone — and the whole label for anyone whose
+           script is blocked or has not arrived yet, with the scanlines already
+           drawn by the stylesheet. aria-pressed is here for the same reason and
+           kept in step by setCRT; tests/public-assets.test.ts holds the two
+           together. -->
+      <button id="crt-btn" title="Toggle CRT filter (Alt+F7)" aria-pressed="true">CRT: ON</button>
+    </div>
+
+    <!-- External, not inline: the Content-Security-Policy allows inline script
+         only by nonce, and a static file cannot carry one. See
+         public/js/js-dos-player.js.
+
+         The "?retired-v8" is not a version to keep bumping — app.ts serves
+         this script "no-cache", so an edit to it reaches a browser on the
+         next request. It is here to walk away from one particular set of
+         stored copies: the ones a browser kept for a day before that header
+         existed, whose pathPrefix still names v8.js-dos.com. Such a copy
+         paired with a current frame asks for a host this policy no longer
+         allows, and the emulator is refused with nothing but a console
+         message to show for it — the same failure as a stale frame, from
+         the other side. A new address is the only thing those copies
+         answer to. -->
+    <script src="/js/js-dos-player.js?retired-v8"></script>
+  </body>
+</html>

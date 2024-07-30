@@ -1,0 +1,424 @@
+<%# Must stay first: a browser only scans the opening bytes of a document for
+    the encoding, and anything placed above this competes for that budget. %>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<%
+  // Every cover and screenshot on the site is served from the media bucket,
+  // which is a different origin — so the first one costs a DNS lookup, a TCP
+  // handshake and a TLS negotiation before a single byte of image can move.
+  // On a game page views/games/game-detail.ejs preloads the cover and that
+  // opens the connection early as a side effect; on every listing page
+  // nothing did, and the browser only started the handshake once the parser
+  // reached the first <img> — some 200 lines of markup, a navbar and a
+  // sidebar later. That wait lands squarely on the largest image in the
+  // viewport, which is the element Largest Contentful Paint is measured on.
+  //
+  // Emitted high in the <head> because the point is to start the handshake
+  // before anything else competes for the connection, and below the charset
+  // meta for the reason given above it.
+  //
+  // No `crossorigin`: a plain <img src> is fetched in no-CORS mode, and a
+  // browser keeps CORS and non-CORS connections to one origin in separate
+  // pools. A preconnect declared crossorigin would open the pool the images
+  // never use and leave them to handshake again — the common way to write
+  // this tag and have it do nothing.
+  //
+  // Only where there is artwork to fetch. A connection opened and never used
+  // is held idle for ten seconds or so and then dropped, and the legal pages,
+  // /about, /how-to-play, /login, /profile and the error views show no game
+  // images at all — the sidebars they render are text. `games` covers every
+  // listing (the home page, the filters, the curated lists, /most-played) and
+  // `game` the detail page and the gallery, which is exactly the set that
+  // renders a cover.
+  //
+  // `locals.mediaOrigin` rather than the bare name the other app.locals are
+  // read by, for the reason views/right-sidebar.ejs gives about its own:
+  // this partial is rendered directly by the suite with a hand-written set of
+  // locals, and a bare reference to one that was not passed is a
+  // ReferenceError out of the template rather than an absent tag.
+  const hasMedia =
+    Boolean(locals.mediaOrigin) &&
+    Boolean(
+      locals.game || (Array.isArray(locals.games) && locals.games.length > 0),
+    );
+%>
+<% if (hasMedia) { %>
+<link rel="preconnect" href="<%= locals.mediaOrigin %>" />
+<% } %>
+<meta name="csrf-token" content="<%= locals.csrfToken %>" />
+<%#
+     Google Analytics, on every visit. High in <head> so a hit is recorded
+     before a visitor can navigate away again, but below the charset meta,
+     which has to stay first.
+
+     An EJS comment rather than an HTML one, which is what this used to be:
+     <!-- --> is copied into the response, so every word here was shipped to
+     every visitor and every crawler on every page view. None of it is for
+     them — and the consent paragraphs below least of all, which have no
+     business being published as part of the page they describe.
+
+     The ad signals are denied explicitly: this site runs no advertising and
+     has no use for them. analytics_storage is left alone, so it keeps gtag's
+     own default of granted and hits are reported normally — a "denied" there
+     would switch the tag to cookieless pings, which feed modelling rather
+     than the plain visitor count this is here for. The call has to precede
+     gtag("js"), or it arrives too late to apply.
+
+     Worth knowing if the numbers ever go quiet: these defaults can also be
+     set on the tag itself, in GA under Admin -> Data streams -> Configure tag
+     settings, and denying analytics_storage there would zero out collection
+     for every European visitor without a line of this file changing.
+
+     There is no consent banner, and that is a decision rather than an
+     oversight — written down here because the alternative is that every
+     review rediscovers it and proposes the same fix.
+
+     Analytics cookies are not strictly necessary, so the ePrivacy Directive
+     wants them asked about *before* they are set; the Czech implementation
+     (Act No. 127/2005 Sb.) has been opt-in since 2022. Nothing here asks.
+     Both ways of closing that were weighed and both were declined:
+
+       - a banner, which the operator does not want on the site;
+       - denying analytics_storage above, which removes the cookie outright
+         and so removes the question with it, at the cost of the plain
+         visitor count this tag exists for (see the paragraph above).
+
+     What is left is a disclosed, accepted risk, and the disclosure is real:
+     views/privacy-policy.ejs names these cookies, says plainly that they are
+     set without asking, and tells the reader how to refuse them. README.md
+     records the decision under "A note on analytics and cookie consent".
+
+     Reopen it if the trade changes — if the site starts advertising, if it
+     begins collecting anything beyond page views, or if modelled numbers
+     become good enough after all. Until then this is known, not missed.
+%>
+<script async nonce="<%= locals.cspNonce %>" src="https://www.googletagmanager.com/gtag/js?id=G-76SK68FN8Y"></script>
+<script nonce="<%= locals.cspNonce %>">
+  window.dataLayer = window.dataLayer || [];
+
+  function gtag() {
+    dataLayer.push(arguments);
+  }
+
+  gtag("consent", "default", {
+    ad_storage: "denied",
+    ad_user_data: "denied",
+    ad_personalization: "denied",
+  });
+
+  gtag("js", new Date());
+
+  // No "anonymize_ip": that is a Universal Analytics parameter and GA4
+  // ignores it. GA4 truncates the address on collection unconditionally.
+  gtag("config", "G-76SK68FN8Y");
+</script>
+<%
+  // One tag, not two. A URL carrying both a search and a sort — which the
+  // filter controls produce together — used to emit "noindex, follow" twice.
+  //
+  // locals.noindex is the other half: pages that are never worth indexing
+  // whatever their query string — the login form, the legal boilerplate, a
+  // gallery slide, page 2 of the comment archive. Each of those used to write
+  // a robots tag of its own further down its own <head>, which put the
+  // decision out of reach of the canonical tag below. The gallery is what
+  // that cost: it canonicalises to the game page, so it emitted a noindex and
+  // a canonical pointing elsewhere together — the one pairing the comment on
+  // that tag calls conflicting. Routed through here the two cannot disagree,
+  // because one variable decides both.
+  // The expression this used to spell out lives in utils/indexability.ts now.
+  // It was never only this file's decision: every listing view writes a JSON-LD
+  // node of its own and emitted it whatever the robots tag beside it said, so
+  // the same question was being answered in two places with two copies of the
+  // rule. One function, one answer, and a view can ask it too.
+  const noindex = isNoindex(req, locals);
+%>
+<% if (noindex) { %>
+<meta name="robots" content="noindex, follow" />
+<% } else { %>
+<%#
+     The other half of the same decision, and it used to be nothing at all: a
+     page that wanted indexing emitted no robots tag, which reads as "no
+     preferences stated" — and the defaults a crawler falls back to are not the
+     ones this site wants.
+
+     An EJS comment rather than an HTML one, for the reason the analytics block
+     above gives about its own: <!-- --> is copied into the response, so a
+     paragraph of reasoning written for whoever edits this file next would
+     otherwise be shipped to every visitor and every crawler on every page
+     view. This branch runs on all of them.
+
+     max-image-preview:large is the one that costs something to leave unsaid.
+     Article 15 of the EU Copyright Directive makes showing a preview of
+     someone else's content a licensable act, and Google's answer is to serve
+     EU users a thumbnail unless the site opts in with this exact directive.
+     That is the whole of what this catalogue is: cover art and screenshots,
+     submitted to image search through the image:loc entries routes/sitemap.ts
+     writes, on a .eu domain whose audience is precisely the one the
+     restriction applies to. So the site was going to the trouble of publishing
+     an image sitemap and then having those images shown at thumbnail size to
+     the people most likely to be looking for them.
+
+     max-snippet:-1 lifts the cap on the text snippet for the same reason —
+     stated, rather than left to a default that varies by jurisdiction. The
+     descriptions here are written to be read in a result (see
+     META_DESCRIPTION_MAX and the routes that compose them against it), which
+     is an odd amount of care to take over a sentence and then let it be cut by
+     a policy nobody on this side chose.
+
+     There is no max-video-preview. The directive is real and Google reads it,
+     but no page on this site carries video, so it would be a third value
+     shipped on every request for a crawler to parse and discard — the same
+     objection routes/sitemap.ts makes to changefreq and priority, and
+     routes/home.ts to the keywords tag.
+
+     Deliberately not "index, follow" alongside these. Both are already the
+     default, and stating a default is how the tags in this file came to
+     contradict each other in the first place: `noindex` above is the one place
+     that decides this, and a tag asserting "index" in the branch where that is
+     false adds no information while giving a future edit something to
+     disagree with.
+%>
+<meta name="robots" content="max-image-preview:large, max-snippet:-1" />
+<% } %>
+<%# The file is a PNG and was declared as an .ico, which is a different format
+    entirely. Browsers sniff it and cope, but there is no reason to make them. %>
+<link rel="icon" type="image/png" href="/favicon.png" />
+<%#
+     The icon iOS uses when a visitor adds the site to their home screen, and
+     the one Safari shows beside a bookmark.
+
+     Without it iOS takes a screenshot of the page instead, which on a site
+     this dark is a thumbnail of a blue rectangle. There is no separate file
+     for it: /images/logo.png is the 360x360 mark utils/site.ts already keeps
+     for the Organization node, and it is the right shape for this too —
+     Apple wants 180x180, scales anything larger down, and requires an opaque
+     image, which that one is (SITE_LOGO explains why it was flattened onto
+     the site's background rather than left transparent).
+
+     No `sizes` attribute. It is only worth writing when several files are
+     offered and iOS has to choose between them; with one, it is a second
+     thing that can disagree with the pixels behind it.
+%>
+<link rel="apple-touch-icon" href="/images/logo.png" />
+<%#
+     The browser chrome's colour, and the manifest that names it again for an
+     installed window.
+
+     Neither is a ranking signal and neither is here pretending to be one. The
+     site is themed top to bottom after a DOS file manager and then handed the
+     phone a white address bar above it, which is the one part of the screen
+     the design never reached.
+
+     The value is the classic palette's --nc-bg (see :root in style.css), which
+     is what .navbar's top row paints itself — so the chrome continues the bar
+     directly beneath it rather than approximating it.
+
+     It cannot be rendered correctly from here, and that is worth understanding
+     before someone tries: the chosen theme lives in localStorage and only the
+     browser knows it, so this tag ships as the classic blue on every response
+     and public/js/theme-switcher.js corrects it for the other two. That script
+     already runs synchronously in <head> for exactly this class of problem —
+     it puts the theme on <html> before anything is painted — so the correction
+     lands with the same timing. The meta is emitted *above* it deliberately:
+     the script reaches for this element by name, and the parser has to have
+     seen it first.
+
+     The manifest is a static file rather than a route, which is the opposite
+     of what routes/sitemap.ts decided for robots.txt — the difference being
+     that robots.txt has to name the canonical host in its Sitemap line, and
+     every address in a manifest resolves relative to the manifest itself.
+     There is nothing in it that depends on where the site is deployed. It is
+     "minimal-ui" rather than "standalone" because this is a catalogue people
+     browse — an installed window with no back button is the wrong shape for
+     it. tests/public-assets.test.ts keeps its name and its icons honest
+     against utils/site.ts and against the files on disk, the same way that
+     suite already keeps public/js-dos.html honest about the media origin.
+%>
+<meta name="theme-color" content="#0000aa" />
+<link rel="manifest" href="/site.webmanifest" />
+<link rel="preload" href="/fonts/vt323.woff2" as="font" type="font/woff2" crossorigin />
+<link rel="preload" href="/fonts/orbitron.woff2" as="font" type="font/woff2" crossorigin />
+<link rel="stylesheet" href="<%= asset('/css/style.css') %>" />
+<%# Only on a page that asks to be indexed. Everything the block above marks
+    noindex used to name a *different* address here — "/" for a search, the
+    unsorted page for a sort, the game page for a gallery slide — which is
+    the one combination Google explicitly calls conflicting: a canonical
+    pointing away says "index that one instead", the noindex says "index
+    nothing", and which of the two wins is then anybody's guess. Saying
+    nothing here leaves the noindex to speak for itself. %>
+<% if (!noindex) { %>
+<link rel="canonical" href="<%= locals.canonicalUrl || (siteUrl + req.originalUrl.split('?')[0]) %>" />
+<% } %>
+<%
+  // Built here rather than by each route, so a page cannot have a visible
+  // trail and no schema for it — which is what every listing page had. Gated
+  // on the same `noindex` as the canonical above: a page that asks not to be
+  // indexed has no use for a rich result, and the gallery (noindex, and
+  // rendered with a `game` local) would otherwise claim a breadcrumb for a
+  // page that is not the game page.
+  const crumbLdJson = noindex
+    ? null
+    : breadcrumbLdJson(locals.breadcrumbs || buildBreadcrumbs(locals));
+%>
+<% if (crumbLdJson) { %>
+<script type="application/ld+json"><%- JSON.stringify(crumbLdJson).replace(/</g, "\\u003c") %></script>
+<% } %>
+<link rel="alternate" type="application/rss+xml" title="OldSchoolGames — New games" href="<%= siteUrl %>/feed.xml" />
+<link rel="alternate" type="application/rss+xml" title="OldSchoolGames — News" href="<%= siteUrl %>/news/feed.xml" />
+<%#
+     The paging hints, and what they are and are not worth — written down for
+     the same reason the SearchAction in views/index.ejs is, which is that the
+     obvious next move is the wrong one.
+
+     Google announced in March 2019 that it had not used rel=prev/next for
+     indexing in years and dropped it from its documentation, so nothing here
+     should be read as a Google signal. Deleting the pair anyway would be the
+     mistake: Bing has said it still reads them, the relations belong to the
+     HTML spec rather than to anybody's search product, and a browser or a
+     reader mode can chain and prefetch a sequence from them. Two link elements
+     on a paginated page is a cheap price for that.
+
+     What actually carries a paginated set to Google is the rest of what
+     utils/pagination.ts arranges: a self-referencing canonical on every page,
+     a numbered title element and description so the deeper pages are not
+     near-copies of the first, and a nextPageUrl derived from the row count so
+     the chain never points at a page that answers 404. Those were always doing
+     the work; these two are the standards-compliant extra.
+
+     Only on a page that asks to be indexed, the same condition the canonical
+     is written under. The routes build prevPageUrl and nextPageUrl from the
+     unfiltered listing — that is what the canonical names — so on a search or
+     a re-sort they described a different sequence from the one on screen:
+     "/?search=doom&page=2" said its previous page was the homepage and its
+     next "/?page=3", pages of a list that was not being paginated. A noindex
+     page has no sequence worth announcing to the consumers that read these.
+%>
+<% if (!noindex && locals.prevPageUrl) { %>
+<link rel="prev" href="<%= locals.prevPageUrl %>" />
+<% } %>
+<% if (!noindex && locals.nextPageUrl) { %>
+<link rel="next" href="<%= locals.nextPageUrl %>" />
+<% } %>
+<%# theme-switcher.js is the one script here that must block.
+
+    It reads the stored theme and puts the class on <html> before anything
+    is painted; deferred, the page would render in the default palette and
+    then repaint into the chosen one on every single navigation. It is the
+    smallest of the three for exactly that reason.
+
+    The other two do not need the parser to wait: favorites.js registers
+    nothing until it is called, and ui.js attaches its delegated listener to
+    the document, which a deferred script still does before DOMContentLoaded
+    fires. Loaded bare they were some 30 KB of render-blocking script in the
+    <head> of every page on the site. `defer` preserves execution order
+    between them, so the only thing that changes is when it happens. %>
+<script src="<%= asset('/js/theme-switcher.js') %>"></script>
+<script defer src="<%= asset('/js/favorites.js') %>"></script>
+<script defer src="<%= asset('/js/ui.js') %>"></script>
+<%# Here rather than beside the other og: tags in each layout, because unlike
+    them it is the same on every page: the site is written in one language and
+    has no translations. Without it a scraper has to guess the locale of a
+    shared link from the text. %>
+<meta property="og:locale" content="en_US" />
+<%# Twitter card %>
+<%#
+     These read `locals`, which is a contract with the views that include this
+     partial, and it is worth stating because eight of them used to break it.
+
+     Most pages on the site are handed a title and a description by their
+     route, so `locals.title` is set before this file runs and the card agrees
+     with the title element below it. The error views, /profile, /login and the
+     two game forms did it the other way round: each declared the pair as a
+     template const underneath the line that pulls this partial in. A const in
+     the including template is a variable in that template's compiled function
+     and never a property of the data object handed down here, and it was
+     declared after the partial had already rendered besides. So this tag fell
+     through to the fallback, and every one of those pages advertised the
+     site's name where its own title sat two lines further down.
+
+     Nothing was actually lost: all eight are noindex, and the og: tags beside
+     them are written after the const and were always correct. It is fixed
+     because it was a trap rather than a bug — the day one of those pages
+     becomes indexable, the card silently disagrees with the page.
+
+     Those views declare the pair above that line now and pass it down as the
+     partial's second argument, which EJS merges over the parent's data.
+     tests/views/meta-tags.test.ts holds both halves for every view, so the
+     ordering cannot quietly come back.
+
+     Note for whoever edits this paragraph: that suite reads these files as
+     text, so spelling the title element or the partial call literally here
+     would register this comment as a page of its own.
+%>
+<%#
+     The card type, which was the string "summary_large_image" on every page of
+     the site and was wrong on exactly the pages that get shared.
+
+     X renders a large card only if the image is at least 300x157; below that
+     it falls back to the small card, or to no image at all. The comment on
+     twitter:image below already tells this story about the old 180x180
+     navbar.webp fallback — but it ends "except on a game page, where a cover
+     is used instead", and that exception was never checked. The covers in the
+     media bucket are 150 pixels wide: 150x195 for Might and Magic, 150x205 for
+     Space Quest I, 150x207 for Ultima IV. Every one of them is under half the
+     width X needs. So the fallback was fixed and the case it was excused for
+     is the case that still fails — on the game pages, which are the ones
+     anybody actually links to.
+
+     Raising the declaration to meet the image is not an option here: 150 pixels
+     is what the art is. A DOS-era box scan at 1200 wide would be an upscale,
+     and the site has no image pipeline to make one with. So the declaration
+     comes down to meet the art instead. `summary` is a real card — title,
+     description and a square thumbnail of the cover — and it is what X was
+     already falling back to on these pages, minus the chance of it deciding to
+     drop the picture entirely.
+
+     Keyed on `locals.image` because that is the same switch views/og-image.ejs
+     already turns: a page either supplies its own artwork, which on this site
+     is always a game cover from the bucket, or it takes `siteImage`, which is
+     the 1200x630 file the large card was written for. The two tags cannot
+     disagree about which of those is in play.
+
+     Worth reopening if the covers ever grow. If the bucket starts holding art
+     at 600 wide or more, this reverts to one string again.
+     tests/views/twitter-card.test.ts asserts the split and carries the
+     measurements, so that is the file to read before changing it back — the
+     numbers live in the media bucket rather than in the repository, which is
+     why nothing here can check them for itself.
+
+     Open Graph needs no equivalent. Facebook and LinkedIn have one card and
+     size the image into it; there is no declaration there that can contradict
+     the file.
+%>
+<meta name="twitter:card" content="<%= locals.image ? "summary" : "summary_large_image" %>" />
+<meta name="twitter:title" content="<%= locals.title || siteTitle %>" />
+<meta name="twitter:description" content="<%= locals.description || siteDescription %>" />
+<%# The fallback is `siteImage` — a 1200x630 file — and used to be
+    /images/navbar.webp, which is 180x180. The card above declares
+    `summary_large_image` on every page of the site, and X wants 300x157 at
+    the very least before it will render one: below that it quietly downgrades
+    to the small card, or shows no image at all. So the one declaration and
+    the one image contradicted each other everywhere except on a game page,
+    where a cover is used instead. See SITE_IMAGE in utils/site.ts. %>
+<%# Absolute for the reason views/og-image.ejs gives: a cover stored as a path
+    on this site is fine for an <img> and invisible to the X card scraper. %>
+<meta name="twitter:image" content="<%= locals.image ? absoluteUrl(locals.image) : siteImage %>" />
+<%# The card had an image and nothing describing it, which is what a screen
+    reader on Twitter/X reads out as an unlabelled attachment. The page title
+    is what the picture is of — views/og-image.ejs writes the Open Graph half
+    of this pair from the same expression. It used to be written in
+    game-detail.ejs alone, which left every other page's card with a picture
+    and no label.
+
+    The same expression is the same value only while both partials are
+    handed the same `title`. A view that declares its own (the error pages,
+    /profile, /login) passes it to og-image.ejs as well as to this file;
+    six of them passed it here alone, and their Open Graph alt fell back to
+    the site's name. tests/views/share-image-alt.test.ts renders them.
+
+    There is no twitter:image:width/height to go with it because X defines no
+    such properties; the Open Graph pair that does exist is emitted by
+    views/og-image.ejs, and only for the image whose size is known. %>
+<meta name="twitter:image:alt" content="<%= locals.title || siteTitle %>" />
+<meta name="twitter:site" content="@RobertLibsansky" />
+<meta name="twitter:creator" content="@RobertLibsansky" />

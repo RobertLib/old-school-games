@@ -1,0 +1,49 @@
+<%- include('../pagination', { paginationLabel: 'Pagination (top)' }) %>
+
+<% if (games.length) { %>
+<div class="game-list">
+  <% games.forEach((game, index) => { %>
+  <%- include('game-item', { game, index }) %>
+  <% }); %>
+</div>
+<% } else if (locals.search) { %>
+<div class="no-results">
+  <p class="no-results-title">
+    Nothing matched <strong>&ldquo;<%= search %>&rdquo;</strong>.
+  </p>
+
+  <% if (locals.suggestions && suggestions.length) { %>
+  <p>Did you mean:</p>
+  <ul class="no-results-suggestions">
+    <% suggestions.forEach((game) => { %>
+    <li>
+      <a class="color-primary underline" href="/<%= game.slug %>"><%= game.title %></a>
+      <% if (game.release) { %><small>(<%= game.release %>)</small><% } %>
+    </li>
+    <% }); %>
+  </ul>
+  <% } %>
+
+  <p>Or try one of these:</p>
+  <div class="no-results-actions">
+    <a class="btn btn-sm btn-primary" href="/random">🎲 Random game</a>
+    <%# A curated list, which answers 404 when it holds nothing — so offered by
+        the same count the sidebar's "Top Lists" are (see listSlugsWithGames in
+        routes/lists.ts), and offered anyway when that count is not known. %>
+    <% if (!locals.nonEmptyListSlugs || locals.nonEmptyListSlugs.has('top-dos-games')) { %>
+    <a class="btn btn-sm btn-outline" href="/top-dos-games">Top DOS games</a>
+    <% } %>
+    <a class="btn btn-sm btn-outline" href="/most-played">Most played</a>
+    <a class="btn btn-sm btn-outline" href="/">Browse all games</a>
+  </div>
+
+  <p class="text-sm" style="margin-bottom: 0">
+    Searching works on game titles, developers and publishers &mdash; and it
+    tolerates typos, so a shorter query often works better.
+  </p>
+</div>
+<% } else { %>
+<p>No games found</p>
+<% } %>
+
+<%- include('../pagination', { paginationLabel: 'Pagination (bottom)' }) %>

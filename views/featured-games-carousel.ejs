@@ -1,0 +1,92 @@
+<% if (locals.featuredGames && featuredGames.length > 0) { %>
+<div class="featured-games-carousel">
+  <h2 class="carousel-title">Featured Games</h2>
+
+  <div class="carousel-container">
+    <button class="carousel-btn carousel-btn-prev" type="button" aria-label="Previous game">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M15 18L9 12L15 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+      </svg>
+    </button>
+
+    <div class="carousel-track-container">
+      <div class="carousel-track">
+        <% featuredGames.forEach((game, index) => { %>
+        <div class="carousel-slide" data-index="<%= index %>">
+          <a href="/<%= game.slug %>" class="carousel-game-card">
+            <div class="carousel-game-image">
+              <% if (game.cover) { %>
+              <%#
+                 width and height, like every other cover on the site.
+
+                 .carousel-game-image in public/css/style.css fixes the box at
+                 200px tall and the image fills it, so no layout shift was
+                 reachable here in practice — the space is reserved by the
+                 stylesheet whether or not the picture has arrived. What the
+                 pair adds is the aspect ratio: a browser that has the
+                 dimensions can size the placeholder correctly before the
+                 bytes land, and the CSS above keeps object-fit in charge of
+                 how the artwork sits inside it either way.
+
+                 100x127 is the ratio the covers are stored at and what
+                 views/games/game-item.ejs and most-played.ejs already declare
+                 for the same files; this was the one <img> in the codebase
+                 left without it.
+              %>
+              <img src="<%= game.cover %>" alt="<%= game.title %> – MS-DOS cover art" width="100" height="127" loading="<%= index < 3 ? 'eager' : 'lazy' %>" />
+              <% } %>
+            </div>
+            <div class="carousel-game-info">
+              <h3 class="carousel-game-title"><%= game.title %></h3>
+              <p class="carousel-game-genre"><%= game.genre %></p>
+              <% if (game.release) { %>
+              <p class="carousel-game-year"><%= game.release %></p>
+              <% } %>
+              <rating-stars gameId="<%= game.id %>" rating="<%= game.averageRating %>" ratingCount="<%= game.ratingCount || 0 %>" readonly="true"></rating-stars>
+            </div>
+          </a>
+        </div>
+        <% }); %>
+      </div>
+    </div>
+
+    <button class="carousel-btn carousel-btn-next" type="button" aria-label="Next game">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M9 18L15 12L9 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+      </svg>
+    </button>
+  </div>
+
+  <div class="carousel-indicators">
+    <%# type="button" on all three buttons here, or a carousel dropped inside a
+        form submits it. aria-current says which slide is showing — the
+        .active class was the only signal, and a class is invisible to a
+        screen reader; carousel.js keeps the two in step. %>
+    <%# The one unescaped output tag on this page, and it stays. What varies
+        here is whether the attribute is written at all, not what it says:
+        public/js/carousel.js removes aria-current rather than setting it to
+        "false" (see updateCarousel), because aria-current="false" is a claim
+        that this is not the current slide, written on every dot at once. The
+        escaping tag puts a value inside an attribute and cannot decide whether
+        an attribute exists, so the alternative is an if around a second copy
+        of the whole button. What is emitted is a fixed literal written out in
+        this file — no local, no user content, nothing off the database reaches
+        it — so there is nothing here for escaping to do. %>
+    <% featuredGames.forEach((game, index) => { %>
+    <button class="carousel-indicator <%= index === 0 ? 'active' : '' %>" type="button" data-index="<%= index %>" aria-label="Go to game <%= index + 1 %>" <%- index === 0 ? 'aria-current="true"' : '' %>></button>
+    <% }); %>
+    <%# Moving content that a visitor can stop (WCAG 2.2.2). Hovering used to
+        be the only way to pause it, which touch and keyboard users never do;
+        carousel.js also leaves it stopped under prefers-reduced-motion.
+
+        No aria-pressed. The label names what pressing it will do and
+        carousel.js swaps it ("Resume autoplay" once paused), as the icon
+        swaps; with aria-pressed on top, a paused carousel was announced as
+        "Resume autoplay, pressed" — two answers to one question. See
+        renderPauseState. %>
+    <button class="carousel-btn carousel-btn-pause" type="button" aria-label="Pause autoplay">
+      <span class="carousel-pause-icon" aria-hidden="true">❚❚</span>
+    </button>
+  </div>
+</div>
+<% } %>

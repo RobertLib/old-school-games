@@ -1,0 +1,86 @@
+/* ─── <rating-stars> ──────────────────────────────────────────
+   The shadow-root styles for the star widget in public/js/rating-stars.js.
+
+   They were a <style> element written into the shadow root on every render.
+   A shadow tree is part of the document as far as the Content-Security-Policy
+   is concerned, so that block was governed by style-src like any other — and
+   it was the last thing keeping 'unsafe-inline' there, since script-created
+   markup cannot carry a per-response nonce. Linked as a file it falls under
+   'self', and app.ts now refuses injected <style> outright.
+
+   Referenced by its bare name because the component is script, not a
+   template, and cannot call app.locals.asset — so app.ts serves it
+   revalidating rather than with the usual day. See PLAYER_STYLESHEET there.
+
+   The link is created once, in the constructor, and render() refills only
+   .root beneath it; re-creating it per render would re-resolve the sheet
+   every time a visitor cast a vote. */
+
+:host {
+  display: inline-flex;
+}
+
+/* The wrapper render() refills. It is the flex container that :host used to
+   be: the shadow root also holds the <link> above it now, and a rule set on
+   :host would be laying out both. */
+.root {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+/* The theme's title colour, not a hard-coded gold. Custom properties inherit
+   through a shadow boundary, so --nc-title reaches here from :root and the
+   stars follow whichever palette is active — the phosphor-green theme had
+   gold stars sitting in a green terminal. The literal stays as the fallback
+   for a page that somehow loads this sheet without the site's own. */
+.stars {
+  display: inline-flex;
+  color: var(--nc-title, gold);
+}
+.star {
+  cursor: pointer;
+  display: inline-flex;
+  transition: transform 0.2s ease;
+}
+.star:hover {
+  transform: scale(1.25);
+}
+
+/* A real ring, kept separate from :hover.
+   Each star carries role="button" and tabindex="0", so it is a tab stop —
+   and the rule above used to suppress the UA outline for both states at
+   once, leaving a keyboard visitor with a 25% scale-up as the only sign of
+   where they were. Under prefers-reduced-motion even that went away and the
+   focus indicator vanished entirely. */
+.star:focus-visible {
+  transform: scale(1.25);
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+.star.readonly {
+  cursor: default;
+}
+.star.readonly:hover {
+  transform: none;
+}
+.summary {
+  font-size: 0.8em;
+  opacity: 0.75;
+  white-space: nowrap;
+}
+@media (prefers-reduced-motion: reduce) {
+  .star {
+    transition: none;
+  }
+  .star:hover,
+  .star:focus-visible {
+    transform: none;
+  }
+  /* The outline is not motion, and it is the only focus indicator left once
+     the scale is dropped, so it is restated here rather than inherited from
+     a rule this block might otherwise be read as overriding. */
+  .star:focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: 2px;
+  }
+}

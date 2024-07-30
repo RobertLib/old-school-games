@@ -1,0 +1,120 @@
+<%
+  // Defaulted rather than relied on: the error views render this sidebar on
+  // paths that deliberately skip loading its data, and a bare reference to a
+  // local that was never set is a ReferenceError out of the template.
+  //
+  // Only the genres a game is filed under. gameGenres is the whole GAME_GENRE
+  // enum — Game.getGenres reads enum_range — and "/<genre>" answers 404 for a
+  // genre the catalogue holds nothing for, so this list linked "/horror",
+  // "/other" and the rest from every page of the site whether or not they
+  // existed, long after routes/sitemap.ts had stopped listing them.
+  // nonEmptyGenres is off the same cached count as the lists below (see
+  // NonEmptyListings in middlewares/sidebar-data.ts), and null when it is not
+  // known — in which case every genre is linked, as before, rather than none.
+  const genresWithGames = locals.nonEmptyGenres || null;
+  const sidebarGenres = (locals.gameGenres || []).filter(
+    (genre) => !genresWithGames || genresWithGames.has(genre),
+  );
+
+  // Which curated lists actually hold games — see listSlugsWithGames in
+  // routes/lists.ts and the entry in middlewares/sidebar-data.ts that fills
+  // this. Null, not an empty set, when the local is missing: the error views
+  // render this sidebar on paths that deliberately skip loading its data, and
+  // treating "not loaded" as "nothing to link to" would take the block below
+  // off every 404 on the site.
+  const listSlugs = locals.nonEmptyListSlugs || null;
+  const hasList = (slug) => !listSlugs || listSlugs.has(slug);
+%>
+<aside class="left-sidebar" aria-label="Browse games">
+  <h2>Genres</h2>
+  <ul class="nav nav-column">
+    <li>
+      <a class="nav-link" href="/">All Genres</a>
+    </li>
+    <% sidebarGenres.map(genre => { %>
+    <li>
+      <a class="nav-link <%= genre.toLowerCase() === req.params.genre ? 'active' : '' %>" href="/<%= genre.toLowerCase() %>">
+        <%# genreLabel, not a hand-rolled title case: that made "Rpg" of RPG
+            on every page of the site. See utils/genre-label.ts. %>
+        <%= genreLabel(genre) %>
+      </a>
+    </li>
+    <% }); %>
+  </ul>
+
+  <br />
+
+  <%- include('browse-by') %>
+
+  <br />
+
+  <%#
+    Three of the links below are curated lists, and a curated list the
+    catalogue holds nothing for answers 404 (see routes/lists.ts) — while this
+    sidebar renders on every page of the site, so the dead link was offered
+    everywhere and followed by every crawl. routes/sitemap.ts already skipped
+    the same lists, and views/lists/lists-index.ejs now filters its cards the
+    same way, off the same count.
+  %>
+  <h2>Top Lists</h2>
+  <ul class="nav nav-column">
+    <li>
+      <a class="nav-link" href="/random" rel="nofollow">
+        🎲 Random game
+      </a>
+    </li>
+    <li>
+      <a class="nav-link <%= req.path === '/game-lists' ? 'active' : '' %>" href="/game-lists">
+        All Game Lists
+      </a>
+    </li>
+    <li>
+      <a class="nav-link <%= req.path === '/most-played' ? 'active' : '' %>" href="/most-played">
+        Most Played
+      </a>
+    </li>
+    <% if (hasList('top-dos-games')) { %>
+    <li>
+      <a class="nav-link <%= req.path === '/top-dos-games' ? 'active' : '' %>" href="/top-dos-games">
+        Top DOS Games
+      </a>
+    </li>
+    <% } %>
+    <% if (hasList('dos-games-1990s')) { %>
+    <li>
+      <a class="nav-link <%= req.path === '/dos-games-1990s' ? 'active' : '' %>" href="/dos-games-1990s">
+        Best of the 90s
+      </a>
+    </li>
+    <% } %>
+    <% if (hasList('dos-games-1980s')) { %>
+    <li>
+      <a class="nav-link <%= req.path === '/dos-games-1980s' ? 'active' : '' %>" href="/dos-games-1980s">
+        Best of the 80s
+      </a>
+    </li>
+    <% } %>
+  </ul>
+
+  <br />
+
+  <h2>Community</h2>
+  <ul class="nav nav-column">
+    <li>
+      <a class="nav-link <%= req.originalUrl.split('?')[0] === '/comments' ? 'active' : '' %>" href="/comments">
+        Latest Comments
+      </a>
+    </li>
+  </ul>
+
+  <br />
+
+  <h2>Help</h2>
+  <ul class="nav nav-column">
+    <li>
+      <a class="nav-link <%= req.path === '/how-to-play' ? 'active' : '' %>" href="/how-to-play">
+        How to Play
+      </a>
+    </li>
+  </ul>
+</aside>

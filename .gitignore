@@ -1,6 +1,9 @@
 # Logs
 logs
 *.log
+# The rolled-over generation utils/logger.ts keeps in development. "*.log"
+# does not match "combined.log.1" — the name no longer ends in ".log".
+*.log.[0-9]
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
@@ -72,12 +75,12 @@ web_modules/
 # Yarn Integrity file
 .yarn-integrity
 
-# dotenv environment variable files
+# dotenv environment variable files — every variant, so a ".env.production"
+# or a ".env.bak" is not one `git add .` away from the repository. The
+# template is the one that belongs in it.
 .env
-.env.development.local
-.env.test.local
-.env.production.local
-.env.local
+.env.*
+!.env.example
 
 # parcel-bundler cache (https://parceljs.org/)
 .cache
@@ -121,6 +124,12 @@ dist
 
 # Stores VSCode versions used for testing VSCode extensions
 .vscode-test
+
+# macOS Finder leaves one of these in every directory somebody opens, at any
+# depth — public/, views/, migrations/ — and they are trivially committed by a
+# `git add .` from a mac. .dockerignore carries the same pair.
+.DS_Store
+**/.DS_Store
 
 # yarn v2
 .yarn/cache
