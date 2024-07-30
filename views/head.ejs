@@ -1,0 +1,53 @@
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-915H2BJTTY"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+
+  function gtag() {
+    dataLayer.push(arguments);
+  }
+  gtag("js", new Date());
+
+  gtag("config", "G-915H2BJTTY");
+
+</script>
+<script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "name": "OldSchoolGames",
+    "url": "https://oldschoolgames.eu",
+    "description": "Explore the world of classic retro games from the MS-DOS era!"
+  }
+
+</script>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>
+  <% if (locals.letter) { %>
+  Games starting with '<%= letter.toUpperCase() %>' - OldSchoolGames
+  <% } else { %>
+  <%= locals.title || 'OldSchoolGames - Retro MS-DOS Games' %>
+  <% } %>
+</title>
+<link rel="icon" type="image/x-icon" href="/favicon.png" />
+<link rel="stylesheet" href="/css/style.css" />
+<link rel="canonical" href="<%= locals.canonicalUrl || ('https://oldschoolgames.eu' + req.path) %>" />
+<script src="/js/favorites.js"></script>
+<meta name="description" content="<% if (locals.letter) { %>Browse MS-DOS games starting with '<%= letter.toUpperCase() %>' - Play classic retro games from the MS-DOS era online without ads!<% } else { %><%= locals.description || 'Explore the world of classic retro games from the MS-DOS era!' %><% } %>" />
+<meta name="keywords" content="old school games, retro games, classic games, MS-DOS games, dos games, free games, vintage games, game streaming, play old games, online retro gaming, online games, DOSBox, old PC games, 80s games, 90s games" />
+<meta name="robots" content="<%= req.query.page && req.query.page > 1 ? 'noindex, follow' : 'index, follow' %>" />
+<!-- Open Graph -->
+<meta property="og:title" content="<% if (locals.letter) { %>Games starting with '<%= letter.toUpperCase() %>' - OldSchoolGames<% } else { %><%= locals.title || 'OldSchoolGames - Retro MS-DOS Games' %><% } %>" />
+<meta property="og:description" content="<% if (locals.letter) { %>Browse MS-DOS games starting with '<%= letter.toUpperCase() %>' - Play classic retro games from the MS-DOS era online without ads!<% } else { %><%= locals.description || 'Explore and relive the golden era of MS-DOS games with OldSchoolGames. From classics to hidden gems, discover your favorite retro games.' %><% } %>" />
+<meta property="og:image" content="<%= locals.image %>" />
+<meta property="og:url" content="<%= locals.url || req.protocol + '://' + req.get('host') + req.originalUrl %>" />
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="OldSchoolGames" />
+<!-- Twitter card -->
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="<%= locals.title || 'OldSchoolGames - Retro MS-DOS Games' %>" />
+<meta name="twitter:description" content="<%= locals.description || 'Explore and relive the golden era of MS-DOS games with OldSchoolGames. From classics to hidden gems, discover your favorite retro games.' %>" />
+<meta name="twitter:image" content="<%= locals.image %>" />
+<meta name="twitter:site" content="@OldSchoolGames" />
+<meta name="twitter:creator" content="@OldSchoolGames" />

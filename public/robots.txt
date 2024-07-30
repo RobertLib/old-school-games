@@ -1,0 +1,15 @@
+User-agent: *
+Allow: /
+Allow: /letter/
+Allow: /developers
+Allow: /publishers
+Allow: /years
+Allow: /developer/
+Allow: /publisher/
+Allow: /year/
+Disallow: /*?orderBy=*
+Disallow: /*?orderDir=*
+Disallow: /*?page=*
+Disallow: /profile
+
+Sitemap: https://oldschoolgames.eu/sitemap.xml

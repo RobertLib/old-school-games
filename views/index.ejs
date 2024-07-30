@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <%- include('head') %>
+  <script src="/js/rating-stars.js"></script>
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebPage",
+      "name": "<% if (locals.letter) { %>Games starting with '<%= letter.toUpperCase() %>' - OldSchoolGames<% } else { %>OldSchoolGames - Retro MS-DOS Games<% } %>",
+      "description": "<% if (locals.letter) { %>Browse MS-DOS games starting with '<%= letter.toUpperCase() %>' - Play classic retro games from the MS-DOS era online without ads!<% } else { %>Play classic MS-DOS games online without ads. Browse our collection of nostalgic retro games from the golden era of PC gaming.<% } %>",
+      "url": "<%= locals.url || req.protocol + '://' + req.get('host') + req.originalUrl %>",
+      "mainEntity": {
+        "@type": "ItemList",
+        "itemListElement": [
+          <% games.slice(0, 10).forEach((game, index) => { %>
+          {
+            "@type": "ListItem",
+            "position": <%= index + 1 %>,
+            "item": {
+              "@type": "VideoGame",
+              "name": "<%= game.title %>",
+              "genre": "<%= game.genre %>",
+              "gamePlatform": "MS-DOS",
+              "url": "https://oldschoolgames.eu/<%= game.slug %>"
+            }
+          }<%= index < Math.min(games.length - 1, 9) ? ',' : '' %>
+          <% }); %>
+        ]
+      }
+    }
+  </script>
+</head>
+
+<body class="layout">
+  <%- include('navbar') %>
+  <%- include('left-sidebar') %>
+  <main>
+    <div class="container">
+      <%- include('flash') %>
+      <section>
+        <% if (req.originalUrl === '/' || req.originalUrl === '') { %>
+        <h2 class="text-lg" style="margin: 0 0 7px">Welcome to Old School Games!</h2>
+        <marquee>
+          👋 Welcome to our portal dedicated to the golden age of gaming! Relive the
+          nostalgia and immerse yourself in the magic of classic games from the
+          MS-DOS era that shaped the world of gaming. Here, you can easily play
+          these timeless classics directly in your browser, without any
+          complicated setup. Just click and let yourself be transported back to
+          a time when games were crafted with heart and soul. Get ready for an
+          adventure filled with pixelated graphics, unforgettable music, and a
+          unique atmosphere. Welcome back to the past! 💾🕹️👾
+        </marquee>
+        <%- include('game-of-the-week') %>
+        <hr />
+        <% } %>
+        <% if (req.session.user?.role === "ADMIN") { %>
+        <div class="text-right" style="margin-bottom: 15px">
+          <a class="btn btn-outline" href="/games/new">+ Add a new game</a>
+        </div>
+        <% } %>
+        <%- include('games/alphabet-filter') %>
+        <%- include('games/game-filters') %>
+        <%- include('games/game-list') %>
+      </section>
+    </div>
+  </main>
+  <%- include('right-sidebar') %>
+  <%- include('footer') %>
+</body>
+
+</html>
