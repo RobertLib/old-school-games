@@ -1,0 +1,286 @@
+# See https://fly.io/docs/app-guides/continuous-deployment-with-github-actions/
+
+name: Fly Deploy
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+# Neither job writes anything back to the repository: the tests read the
+# checkout and the deploy talks to Fly with a token of its own. The default
+# for GITHUB_TOKEN is write access to most of the repository, which a workflow
+# that runs on pull_request — and so on code from outside it — has no business
+# holding.
+permissions:
+  contents: read
+
+jobs:
+  # The suite existed but never ran here: it needs a Postgres, and its
+  # connection string was hard-coded to one developer's laptop. A release
+  # could ship with every test red.
+  test:
+    name: Lint, typecheck and test
+    runs-on: ubuntu-latest
+    # A pull request that is pushed to three times in a minute used to start
+    # three of these, each holding a Postgres service container, and the first
+    # two were answering a question nobody would read by the time they
+    # finished. Grouped by ref and cancelled on a new push. The deploy job has
+    # a group of its own (`deploy-group`) and is deliberately *not* cancelled
+    # in progress — a half-run `flyctl deploy` is not something to interrupt.
+    concurrency:
+      group: test-${{ github.ref }}
+      cancel-in-progress: true
+    # A wedged Postgres service or a hung test otherwise holds the runner for
+    # the platform's six-hour default, with the deploy queued behind it.
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: old_school_games_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/old_school_games_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          # From .nvmrc rather than repeated here, so the version this runs
+          # on cannot drift from the one a developer's `nvm use` picks. The
+          # other two copies — package.json's "engines" and NODE_VERSION in
+          # fly.toml — still have to be moved by hand.
+          node-version-file: .nvmrc
+          cache: npm
+      # --ignore-scripts for the same reason as the Dockerfile: nothing in
+      # this lockfile needs one. The only package that carries an install
+      # script is fsevents, which is optional and macOS-only and so is never
+      # installed on this runner. It is a guard against a future dependency
+      # running code in the job, not a fix for one that does.
+      - run: npm ci --ignore-scripts
+      - run: npm run lint
+      - run: npm run typecheck
+      # test:coverage rather than test: it runs the same suite and then holds
+      # it to the floors in vitest.config.ts. Run as plain `npm test` those
+      # thresholds are never evaluated, so coverage could fall as far as it
+      # liked without a single job turning red — which is the state this was
+      # in when the thresholds did not exist at all.
+      - run: npm run test:coverage
+      # Advisory rather than a gate on the whole dependency tree: --omit=dev
+      # asks only about what is actually shipped in the image, so a finding
+      # here is a vulnerability reachable in production rather than in a test
+      # runner. --audit-level=high lets the usual stream of low-severity
+      # advisories in dev tooling past without turning the build red.
+      - run: npm audit --omit=dev --audit-level=high
+
+  # The image is what production actually runs, and nothing built it until a
+  # deploy did — so a Dockerfile that no longer builds was found by `flyctl
+  # deploy` failing on main, after the tests had already gone green. This
+  # builds it on every pull request and every push, starts it, and — on main
+  # — pushes the very image it just started to the registry for the deploy
+  # below to release.
+  #
+  # One build, not two. `flyctl deploy --remote-only` used to rebuild from
+  # source on Fly's own builder, so the image this job had tested and the
+  # image production ran were two different builds of the same tree: a
+  # different builder, a different cache, a different resolution of every
+  # unpinned base-layer package. Anything that differed between them was
+  # tested nowhere. Pushing the tested image and releasing it by tag closes
+  # that, and drops a whole second build off the deploy's clock.
+  docker:
+    name: Build Docker image
+    runs-on: ubuntu-latest
+    # Writes to the Fly registry on main, so the token is needed here now.
+    # Still no repository write: `permissions` at the top of this file governs
+    # GITHUB_TOKEN, which neither job uses for anything.
+    concurrency:
+      group: docker-${{ github.ref }}
+      cancel-in-progress: true
+    timeout-minutes: 20
+    env:
+      # One name for the image, written once. The app name is the `app` in
+      # fly.toml; the tag is the commit, so an image is never overwritten and
+      # a rollback names a release that still exists — see "Rolling back" in
+      # README.md for the command and why the schema stays where it is.
+      IMAGE: registry.fly.io/old-school-games:${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+      # The Node major, read from .nvmrc rather than written here.
+      #
+      # fly.toml carries a `[build.args] NODE_VERSION`, but flyctl only applies
+      # that when *it* runs the build — and this workflow builds the image
+      # itself and releases it by tag (see the deploy job), so fly.toml's value
+      # never reached the shipped image at all. The build below used a plain
+      # `docker build` with no --build-arg, which left the Dockerfile's own
+      # `ARG NODE_VERSION=24` default as the only thing deciding what
+      # production ran: bump .nvmrc, package.json and fly.toml and forget the
+      # Dockerfile and the image silently stays on the old major.
+      #
+      # Reading .nvmrc is the same source setup-node uses above, so the image,
+      # CI and a developer's `nvm use` cannot disagree. tests/node-version.test.ts
+      # holds the remaining copies to the same major.
+      - name: Read the Node version from .nvmrc
+        id: nvmrc
+        run: echo "version=$(tr -d '[:space:]' < .nvmrc)" >> "$GITHUB_OUTPUT"
+      # Buildx, for the cache. The Dockerfile's `--mount=type=cache` on npm ci
+      # needs BuildKit — the legacy builder rejects it outright — but BuildKit's
+      # cache mounts live in the *builder*, and a GitHub runner is thrown away
+      # after every job. So the mount was cold on every single run: a full
+      # `npm ci` download, every time, for a lockfile that had usually not
+      # moved. `type=gha` gives the builder somewhere off the runner to keep
+      # its layers between runs.
+      #
+      # Pinned to a commit for the reason spelled out on the deploy job's
+      # setup-flyctl: third-party code in a job that holds FLY_API_TOKEN. This
+      # one is f87e599 = v4.4.1; raising it means reading what changed first.
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069
+      # Tagged with the registry name it will be pushed under rather than
+      # retagged afterwards, so the image that is started below and the image
+      # that is pushed cannot be two different things.
+      #
+      # `load: true` puts the built image into the runner's own docker daemon,
+      # which is what the two steps below need — buildx with the default
+      # docker-container driver otherwise leaves the result in the builder and
+      # `docker run` finds nothing.
+      #
+      # `context: .` rather than the action's default, which is the *git*
+      # context: BuildKit would clone the repository itself and build the
+      # committed tree, quietly ignoring the checkout — and with it anything a
+      # future step writes into the working directory before the build.
+      #
+      # mode=max exports the intermediate stages too, not only the final one.
+      # This is a multi-stage build whose expensive layer (npm ci) lives in a
+      # stage the final image discards, so the default mode would cache
+      # precisely the part that is cheap.
+      #
+      # Pinned as above: c3c9e26 = v7.4.0.
+      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc
+        with:
+          context: .
+          load: true
+          tags: ${{ env.IMAGE }}
+          build-args: NODE_VERSION=${{ steps.nvmrc.outputs.version }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      # Then actually start it. A build that succeeds proves the image can be
+      # assembled and nothing more — the two failures this catches are the
+      # ones a build cannot see: a CMD that exits immediately (a missing
+      # module, a guard refusing a bad SESSION_SECRET, a Node too old to strip
+      # the type annotations) and an app that boots but never answers.
+      #
+      # No Postgres. /healthz is deliberately answered above the session, the
+      # rate limiter and the canonical-host redirect, and it reports the
+      # database rather than letting it decide the answer — this app is built
+      # to outlive Postgres being unreachable, so a 200 with
+      # `"database":"down"` is the correct response here and is exactly what
+      # makes the check runnable without a service container. DATABASE_URL
+      # therefore points somewhere that does not resolve, on purpose.
+      #
+      # SESSION_SECRET is a throwaway of its own: production requires a long
+      # one and refuses the placeholder from .env.example, so a short or
+      # obviously-fake value would fail the boot this step exists to prove.
+      - name: Run the image and wait for /healthz
+        run: |
+          docker run -d --name osg-ci -p 3000:3000 \
+            -e NODE_ENV=production \
+            -e SESSION_SECRET=ci-only-throwaway-session-secret-not-used-anywhere-else \
+            -e DATABASE_URL=postgresql://nowhere:5432/db \
+            "$IMAGE"
+          # Polled rather than slept on: a fixed wait is either slower than it
+          # needs to be or too short on a loaded runner, and the whole point
+          # is to distinguish "not up yet" from "not coming up".
+          for attempt in $(seq 1 30); do
+            if curl -fsS localhost:3000/healthz; then
+              echo
+              echo "Answered after ${attempt}s."
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "/healthz did not answer within 30s."
+          exit 1
+      # Runs even when the step above failed, which is when the logs are worth
+      # having — a container that exited on boot says why there and nowhere
+      # else. Also keeps a self-hosted runner from being left holding port
+      # 3000.
+      - name: Container logs and cleanup
+        if: always()
+        run: |
+          docker logs osg-ci || true
+          docker rm -f osg-ci || true
+
+      # Only from main, and only once the image has been proved to start. A
+      # pull request still builds and runs the image and pushes nothing, which
+      # is what keeps this job runnable on code from outside the repository:
+      # the token below is never handed to a fork's workflow run, because
+      # `if:` skips these two steps entirely.
+      #
+      # Pinned to a commit for the reason spelled out on the deploy job's copy
+      # of it — this step holds FLY_API_TOKEN too.
+      - uses: superfly/flyctl-actions/setup-flyctl@ed8efb33836e8b2096c7fd3ba1c8afe303ebbff1
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+      - name: Push the tested image to the Fly registry
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        # `flyctl auth docker` writes a credential helper for registry.fly.io
+        # into the runner's docker config, so the push below authenticates
+        # with the same token the deploy uses and no second secret is needed.
+        run: |
+          flyctl auth docker
+          docker push "$IMAGE"
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+  deploy:
+    name: Deploy app
+    needs: [test, docker]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    concurrency: deploy-group    # optional: ensure only one action runs at a time
+    # Above release_command_timeout in fly.toml (fifteen minutes) plus the
+    # rolling restart that follows it, and not merely equal to it. flyctl
+    # drives the rolling restart from this runner, so a job timeout that fires
+    # first kills a deploy halfway through — some machines on the new image,
+    # the rest on the old — which is exactly why this job's group is never
+    # cancelled in progress (see the test job's `concurrency`). It was twenty
+    # minutes while the release command had five; now that it has fifteen,
+    # tests/deploy-config.test.ts keeps the gap.
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      # Pinned to a commit, not to "@master". This is third-party code that
+      # runs in the job holding FLY_API_TOKEN — a token that can deploy this
+      # app — and a branch ref means whatever that repository pushes next runs
+      # here, with the token, and nothing in this file changes. It is the same
+      # exposure public/js-dos.html spends thirty lines refusing for the
+      # emulator, which had no token attached to it.
+      #
+      # ed8efb3 is what "master" resolved to when this was pinned (v1.4 plus
+      # later commits, which is what the branch has always served). Raising it
+      # is deliberate work: read what changed, then move the SHA.
+      #
+      # actions/checkout and actions/setup-node stay on their major tags.
+      # Those are GitHub's own actions, served from the same platform that
+      # holds the secret and runs the job, so pinning them buys nothing this
+      # is protecting against.
+      - uses: superfly/flyctl-actions/setup-flyctl@ed8efb33836e8b2096c7fd3ba1c8afe303ebbff1
+      # --image, not a build. This releases the exact image the docker job
+      # built, started and pushed, rather than asking Fly's remote builder for
+      # a fresh one from the same source — which is what this used to do, and
+      # which meant the image CI had tested and the image production ran were
+      # two different builds. It also halves the deploy: the release_command
+      # migration and the rolling restart are all that is left to do.
+      #
+      # The checkout above is still needed: flyctl reads fly.toml from the
+      # working directory for the app name, the release command, the health
+      # check and the concurrency limits.
+      - run: flyctl deploy --image registry.fly.io/old-school-games:${{ github.sha }}
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}

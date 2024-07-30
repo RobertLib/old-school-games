@@ -1,0 +1,44 @@
+<%#
+  Rendered from the browser's recently-played list, so it stays empty (and
+  invisible) for first-time visitors and never affects the server-rendered
+  page for crawlers.
+%>
+<section class="continue-playing" id="continue-playing" hidden>
+  <header class="continue-playing-header">
+    <h2 class="continue-playing-title">Continue playing</h2>
+    <a class="color-primary underline text-sm" href="/profile">My collection →</a>
+  </header>
+  <div class="continue-playing-list" id="continue-playing-list"></div>
+</section>
+<script nonce="<%= cspNonce %>">
+  // Runs while the page is still parsing, before anything below has been
+  // painted. How many games will show is already known from localStorage, so
+  // their space is reserved up front — otherwise the real cards arrive after
+  // the fetch and shove the rest of the homepage down.
+  (function () {
+    try {
+      var stored = JSON.parse(localStorage.getItem("recentlyPlayedGames") || "[]");
+      var count = Math.min(Array.isArray(stored) ? stored.length : 0, 4);
+
+      if (!count) return;
+
+      var section = document.getElementById("continue-playing");
+      var list = document.getElementById("continue-playing-list");
+
+      for (var i = 0; i < count; i++) {
+        var card = document.createElement("div");
+        card.className = "continue-playing-card is-placeholder";
+        card.setAttribute("aria-hidden", "true");
+        card.innerHTML =
+          '<span class="continue-playing-image"></span>' +
+          '<span class="continue-playing-name"></span>';
+        list.appendChild(card);
+      }
+
+      section.hidden = false;
+    } catch (error) {
+      // No localStorage (private mode) — the section just stays hidden until
+      // the script decides otherwise.
+    }
+  })();
+</script>

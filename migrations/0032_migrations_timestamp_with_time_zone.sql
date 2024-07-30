@@ -1,0 +1,35 @@
+-- 0030 converted every timestamp column in the schema to TIMESTAMPTZ for the
+-- reasons written down at length there, and "appliedAt" on the "migrations"
+-- table is one of them.
+--
+-- This file exists because that particular line was added to 0030 after 0030
+-- had already been applied. A migration runner only ever runs a file once, so
+-- editing an applied one leaves two populations of database: those created
+-- afterwards get the line from 0030, and those that had already recorded 0030
+-- as applied never see it at all. This is the second population's copy.
+--
+-- It is therefore deliberately a no-op for anyone whose 0030 already carried
+-- it: ALTER COLUMN ... TYPE to the type a column already has costs a table
+-- rewrite and changes nothing. Both paths converge on the same schema, which
+-- is the only property that matters here.
+--
+-- Why the column was easy to miss: every other table is created by a file in
+-- this directory, and "migrations" is not — it is created by the runner, with
+-- "CREATE TABLE IF NOT EXISTS" in migrate.ts and again in tests/setup.ts,
+-- before any migration runs. So it sat outside the sweep 0030 was written as.
+--
+-- What it costs is smaller than what 0030 fixed — nothing publishes this
+-- column, and nothing but a person reading the table consumes it — but the
+-- ambiguity is the same one: the value stored depends on the database
+-- session's TimeZone and the value read back on the Node process's, and the
+-- two cancel out only while they agree. "When was this deploy applied?" is
+-- exactly the question asked when something has gone wrong, which is the worst
+-- time to be off by the difference between two unpinned settings.
+--
+-- The USING clause matches 0030's: existing rows were written by a database
+-- running UTC, so that is the zone the readings are interpreted in. Both
+-- CREATE TABLE statements now declare TIMESTAMPTZ as well, so a database
+-- created after this change never has the old column either.
+
+ALTER TABLE "migrations"
+  ALTER COLUMN "appliedAt" TYPE TIMESTAMPTZ USING "appliedAt" AT TIME ZONE 'UTC';

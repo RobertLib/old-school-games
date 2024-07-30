@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <%- include('head') %>
+  <title><%= locals.title %></title>
+  <meta name="description" content="<%= locals.description %>" />
+  <meta property="og:title" content="<%= locals.title %>" />
+  <meta property="og:description" content="<%= locals.description %>" />
+  <meta property="og:url" content="<%= siteUrl %>/about" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="<%= siteName %>" />
+  <%- include('og-image') %>
+  <%# Built with JSON.stringify like the other eleven JSON-LD blocks on the
+      site, rather than written out by hand with an escaping interpolation
+      dropped into it. This was the one left in the older shape, and the
+      shape is wrong twice over: the escaping tag escapes for HTML, which is
+      not the escaping a script body or a JSON string needs, and hand-written
+      JSON has to be kept syntactically valid by whoever edits it next. Only
+      `siteUrl` flows in here — a deployment constant — so nothing was
+      exploitable; what it was is a pattern that stops being safe the moment
+      somebody interpolates something a reader can influence. The "<" replace
+      is what keeps a closing script tag inside any value from ending the
+      element early. %>
+  <%# The node itself now comes from utils/organization.ts, which the home
+      page renders too. Written out here it was a *second* organisation as far
+      as a consumer is concerned: it carried no `@id`, so nothing tied it to
+      the one in the home page's @graph, and the two disagreed about the logo
+      anyway. The founder and the contact point were only ever stated here and
+      are part of the shared description now. %>
+  <%
+    // Only on a page that asks to be indexed. views/head.ejs already gates the
+    // robots tag, the canonical and the breadcrumb schema on this one answer;
+    // a node describing the page in detail belongs on the same side of it.
+    // Nothing here was ever wrong — it was sent to consumers that had just
+    // been told the page is not for them. See utils/indexability.ts.
+  %>
+  <% if (!isNoindex(req, locals)) { %>
+  <script type="application/ld+json"><%- JSON.stringify({
+    "@context": "https://schema.org",
+    ...organizationNode(),
+  }).replace(/</g, "\\u003c") %></script>
+  <% } %>
+</head>
+
+<body class="layout">
+  <%- include('navbar') %> <%- include('left-sidebar') %>
+  <main id="main" tabindex="-1">
+    <div class="container">
+      <%- include('flash') %>
+      <%- include('breadcrumb') %>
+      <section>
+        <h1 class="text-lg" style="margin-bottom: 20px">
+          About OldSchoolGames.eu
+        </h1>
+
+        <h2 class="text-md" style="margin-bottom: 10px">
+          What is this site?
+        </h2>
+        <p style="margin-bottom: 15px">
+          OldSchoolGames.eu is a hobby project dedicated to preserving and
+          celebrating classic
+          <strong>MS-DOS games from the 1980s and 1990s</strong>. The goal is
+          to make it easy for anyone to rediscover the games that shaped the
+          history of PC gaming — playable directly in your browser, no
+          installation required.
+        </p>
+        <p style="margin-bottom: 25px">
+          Games run through <strong>js-dos</strong>, a JavaScript port of the
+          legendary
+          <a class="color-primary underline" href="https://www.dosbox.com/" target="_blank" rel="noopener noreferrer">DOSBox</a>
+          emulator. Everything works inside a standard web browser — nothing
+          to install, just click and play.
+        </p>
+
+        <h2 class="text-md" style="margin-bottom: 10px">Who runs this?</h2>
+        <p style="margin-bottom: 15px">
+          This site is created and maintained by
+          <strong>RobLib</strong>, a software developer and retro
+          gaming enthusiast based in the Czech Republic.
+        </p>
+        <ul style="margin-bottom: 25px; padding-left: 20px; line-height: 2">
+          <li>
+            Personal site:
+            <a class="color-primary underline" href="https://roblib.dev" target="_blank" rel="noopener noreferrer">roblib.dev</a>
+          </li>
+          <li>
+            GitHub:
+            <a class="color-primary underline" href="https://github.com/RobertLib" target="_blank" rel="noopener noreferrer">github.com/RobertLib</a>
+          </li>
+          <li>
+            X (Twitter):
+            <a class="color-primary underline" href="https://twitter.com/RobertLibsansky" target="_blank" rel="noopener noreferrer">@RobertLibsansky</a>
+          </li>
+        </ul>
+
+        <h2 class="text-md" style="margin-bottom: 10px">Open Source</h2>
+        <p style="margin-bottom: 25px">
+          The source code for this project is publicly available on GitHub:
+          <a class="color-primary underline" href="https://github.com/RobertLib/old-school-games" target="_blank" rel="noopener noreferrer">github.com/RobertLib/old-school-games</a>. Contributions, bug reports, and feedback are always welcome.
+        </p>
+
+        <h2 class="text-md" style="margin-bottom: 10px">Copyright & Games</h2>
+        <p style="margin-bottom: 15px">
+          This site hosts games that are believed to be freely distributable —
+          including titles officially released as freeware by their
+          publishers, and classic abandonware titles no longer commercially
+          available. We do not profit from the games hosted on this platform.
+        </p>
+        <p style="margin-bottom: 25px">
+          If you are a copyright holder and believe any content hosted here
+          infringes your rights, please contact us via our
+          <a class="color-primary underline" href="/dmca">DMCA policy page</a>
+          and we will remove it promptly.
+        </p>
+
+        <h2 class="text-md" style="margin-bottom: 10px">Contact</h2>
+        <p>
+          For general inquiries, game suggestions, or copyright concerns,
+          reach out at
+          <a class="color-primary underline" href="mailto:contact@oldschoolgames.eu">contact@oldschoolgames.eu</a>.
+        </p>
+      </section>
+    </div>
+  </main>
+  <%- include('right-sidebar') %> <%- include('footer') %>
+</body>
+
+</html>

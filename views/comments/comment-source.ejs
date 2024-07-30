@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <%- include('../head') %>
+  <meta name="description" content="Review every comment posted from one source before deleting them." />
+  <title><%= title %></title>
+</head>
+
+<body class="layout">
+  <%- include('../navbar') %>
+  <%- include('../left-sidebar') %>
+  <main id="main" tabindex="-1">
+    <div class="container">
+      <%- include('../flash') %>
+
+      <%- include('../breadcrumb') %>
+
+      <section>
+        <h1 class="text-xl" style="margin: 0 0 10px">Comments from one source</h1>
+
+        <%# Numbers first, and stated in full, because they are the decision:
+            a source is a keyed hash of an address (see commentSource in
+            models/comment.ts), and on a shared connection — a household, an
+            office, a mobile network's block — it can hold comments from more
+            than one person. The list below is what lets an admin see that
+            before pressing the button, and the count of replies from
+            elsewhere is the part a glance at the list would miss. %>
+        <p style="margin: 0 0 1em; line-height: 1.6;">
+          <strong><%= total.toLocaleString("en-US") %></strong>
+          comment<%= total === 1 ? " was" : "s were" %> posted from the same
+          source as the one you picked, in the last <%= retentionDays %> days
+          &mdash; sources are not kept any longer than that.
+          <% if (otherReplies > 0) { %>
+          Deleting them also deletes
+          <strong><%= otherReplies.toLocaleString("en-US") %></strong>
+          <%= otherReplies === 1 ? "reply" : "replies" %> to them from other
+          sources, as deleting a single comment takes its replies with it.
+          <% } else { %>
+          Nobody else has replied to them.
+          <% } %>
+        </p>
+
+        <form action="/comments/<%= commentId %>/source/delete" method="POST" style="margin: 0 0 1.5em;">
+          <input type="hidden" name="_csrf" value="<%= locals.csrfToken %>" />
+          <button class="btn" type="submit">
+            Delete all <%= total.toLocaleString("en-US") %> comment<%= total === 1 ? "" : "s" %> from this source
+          </button>
+          <a class="color-primary underline" href="/comments" style="margin-left: 1em;">Cancel</a>
+        </form>
+
+        <% if (comments.length < total) { %>
+        <p style="margin: 0 0 0.8em;">The newest <%= comments.length %> of them:</p>
+        <% } %>
+
+        <div class="comment-feed">
+          <% comments.forEach(comment => { %>
+          <article class="comment-feed-item">
+            <header class="comment-header">
+              <h2 class="comment-nick text-md"><%= comment.nick || "anonymous" %></h2>
+              <small>
+                <time datetime="<%= new Date(comment.createdAt).toISOString() %>" data-date="<%= new Date(comment.createdAt).toISOString() %>"><%= new Date(comment.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) %></time>
+              </small>
+              <% if (comment.parentId) { %>
+              <small class="comment-feed-badge">reply</small>
+              <% } %>
+            </header>
+            <div class="comment-feed-game">
+              on
+              <a class="color-primary underline" href="/<%= comment.gameSlug %>"><%= comment.gameTitle %></a>
+            </div>
+            <div class="comment-content"><%= comment.snippet %></div>
+            <div class="comment-feed-actions">
+              <a class="comment-feed-link" href="/<%= comment.gameSlug %>#comment-<%= comment.id %>">Read the thread &rarr;</a>
+            </div>
+          </article>
+          <% }); %>
+        </div>
+      </section>
+    </div>
+  </main>
+  <%- include('../right-sidebar') %>
+  <%- include('../footer') %>
+</body>
+
+</html>

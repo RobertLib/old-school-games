@@ -1,0 +1,34 @@
+-- The index the three "top-level comments on this game" queries actually
+-- want. Every one of them is in models/comment.ts:
+--
+--   - findByGameId pages the roots on an id cursor:
+--       WHERE "gameId" = $1 AND "parentId" IS NULL AND ("id" < $2)
+--       ORDER BY "id" DESC LIMIT $3
+--     This runs on every game page on the site and again on every click of
+--     "load earlier comments".
+--   - countRoots counts the same set, for the button's own arithmetic.
+--   - countOlderThan counts the part of it below a cursor, once per batch.
+--
+-- What served them until now was "idx_comments_gameId" (0014), on ("gameId")
+-- alone. That finds the game's comments and then leaves Postgres to filter
+-- the replies out and sort what is left: on a busy thread — and replies
+-- outnumber roots there — it reads every comment on the game to return
+-- twenty. Adding "id" to the index makes the ordering part of it, so the page
+-- is an index scan of exactly the rows it returns and the cursor is a range
+-- on the second column rather than a filter after the fact.
+--
+-- DESC on "id" to match the ORDER BY, though a btree reads backwards and
+-- countOlderThan's ascending range is served by the same index either way.
+--
+-- Partial on "parentId" IS NULL, which is the point rather than a refinement:
+-- the predicate is in all three queries, so the index holds only root
+-- comments. That is a small fraction of the table on exactly the threads
+-- where the size matters, and it is what lets the planner satisfy the whole
+-- WHERE clause from the index without rechecking the heap.
+--
+-- "idx_comments_gameId" stays: countAll counts a game's comments with no
+-- predicate on "parentId" at all, and the cascade delete on the foreign key
+-- needs a plain index on the column.
+CREATE INDEX "idx_comments_game_roots"
+  ON "comments" ("gameId", "id" DESC)
+  WHERE "parentId" IS NULL;

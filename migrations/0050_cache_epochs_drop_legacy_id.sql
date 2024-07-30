@@ -1,0 +1,23 @@
+-- The follow-up 0040 promised.
+--
+-- 0040 restored "cache_epochs"."id" for one reason: the release that was
+-- running while 0039 applied still addressed the counter as
+-- `WHERE "id" = 1`, on every 10-second sync and every comment, and Fly
+-- migrates before the new machines take traffic — so there is always a window
+-- in which the previous release runs against the new schema. It said, in as
+-- many words, "safe to drop in a later migration once no release addresses
+-- it".
+--
+-- Nothing does. utils/cache-epoch.ts reads ("scope", "epoch") and upserts on
+-- ("scope"); no model, route, test or view names the column — the only
+-- remaining mentions of it in the repository are 0039, which dropped it, and
+-- 0040, which put it back. The release that needed it is two shapes of this
+-- table ago.
+--
+-- The column is not free: it carries a UNIQUE constraint, so it is an index
+-- to maintain and a second thing a row insert can fail on. bumpCacheEpoch now
+-- creates rows itself (the upsert for an unseeded scope), and every one of
+-- them gets NULL here — which the UNIQUE permits, since NULLs do not conflict,
+-- but only by accident of how NULL compares. A column nothing reads whose
+-- correctness depends on that is worth removing rather than explaining again.
+ALTER TABLE "cache_epochs" DROP COLUMN "id";

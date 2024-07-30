@@ -1,0 +1,150 @@
+# fly.toml app configuration file generated for old-school-games on 2024-08-11T07:31:57+02:00
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = 'old-school-games'
+
+# How a machine is stopped — on a deploy and on an auto-stop alike (the proxy
+# uses these two settings for both). Both sit here, above the first [table],
+# because that is the only place a TOML key is top-level: indentation means
+# nothing, and every key after a table header belongs to that table.
+# kill_timeout used to sit below [env], so it was not a setting at all but an
+# environment variable named "kill_timeout" — and every machine got the
+# platform's five seconds while the comment beside it described fifteen.
+# tests/deploy-config.test.ts reads which table each key lands in.
+#
+# The signal: Fly's default is SIGINT. index.ts handles that too, and its
+# comment presents it as the Ctrl+C path for development — so the drain only
+# worked because of a convenience, while every comment describing a deploy
+# (this file's, utils/shutdown.ts's, the Dockerfile's) said SIGTERM. SIGTERM
+# is what `docker stop` and every other supervisor send; naming it here makes
+# the platform take the same path, and makes those comments true rather than
+# lucky.
+kill_signal = "SIGTERM"
+
+# How long a machine has between the signal and SIGKILL. The platform default
+# is five seconds, the same as SHUTDOWN_TIMEOUT_MS in utils/shutdown.ts, so
+# the kill used to arrive exactly as the graceful drain's fallback began. This
+# leaves the drain its five seconds and the fallback room to log and exit on
+# its own.
+kill_timeout = 15
+
+[build]
+  [build.args]
+    # Node 24 is the current LTS. This used to pin 23, which reached end of
+    # life and stopped receiving security fixes.
+    #
+    # Read only when flyctl runs the build itself, which an ordinary release
+    # no longer does: a push to main is built by .github/workflows/fly-deploy.yml,
+    # which passes --build-arg NODE_VERSION from .nvmrc and hands the finished
+    # image to `flyctl deploy --image`. Build arguments are an input to a build,
+    # so on that path this line is read by nothing. It still governs a manual
+    # remote `fly deploy` from a workstation — the break-glass path in the
+    # README — and it is one of the four copies tests/node-version.test.ts
+    # holds to the same major, which is why it is kept in step rather than
+    # deleted.
+    NODE_VERSION = "24"
+
+# Migrations used to be applied by hand: nothing in the deploy ran them, so a
+# release could reach production against a schema it did not expect. The
+# release command runs before the new machines take traffic and aborts the
+# deploy if it fails.
+#
+# Before, though — not instead of. The machines are replaced one at a time
+# after this succeeds, so for the length of the rolling restart the *old* code
+# is serving against the *new* schema. A migration that drops or renames a
+# column the running release still selects breaks production for that window,
+# and nothing here can tell you it did. Schema changes therefore go in two
+# releases: expand first (add the column, write both), contract in a later one
+# (drop the old column) once no running code reads it. That is also why there
+# are no down migrations — see the README.
+#
+# The same rule is what makes a rollback safe. `fly deploy --image <previous
+# tag>` runs this command too, so the *previous* image's migrate.ts meets a
+# database that has already applied the bad release's migration. It used to
+# refuse that — "has been applied but is no longer in …", exit 1 — and so no
+# release that added a migration could be rolled back at all. It now reads
+# the database as ahead of the build, applies nothing and succeeds (see
+# verifyAppliedMigrations in utils/migrations.ts): the schema stays forward,
+# and expand/contract is exactly the promise that the release before a
+# migration runs against the schema after it.
+[deploy]
+  release_command = "node migrate.ts"
+
+  # How long the release command may run before Fly kills it. Left unset it
+  # is five minutes — exactly as long as migrate.ts is prepared to wait for
+  # another run's advisory lock — so a release command that waited out
+  # another deploy was killed the moment it got the lock, with its own
+  # migrations still to run, and an index build migrate.ts lifts
+  # statement_timeout for ("can legitimately run for minutes") had the same
+  # five minutes as everything else. Fifteen leaves the lock wait its five, a
+  # concurrent build its minute of waiting for older transactions
+  # (CONCURRENT_LOCK_TIMEOUT in utils/migrations.ts), and the work itself the
+  # rest.
+  #
+  # The deploy job in .github/workflows/fly-deploy.yml has to outlast this and
+  # the rolling restart after it, or the runner kills flyctl halfway through a
+  # deploy; its timeout-minutes is set against this number, and
+  # tests/deploy-config.test.ts checks both.
+  release_command_timeout = "15m"
+
+[env]
+  NODE_ENV = "production"
+
+  # The two addresses utils/site.ts reads, stated rather than left to their
+  # defaults. Both already default to exactly these values, so this changes
+  # nothing about what the app serves today — the point is that the defaults
+  # are the *fallback for a fork*, and production should not be depending on
+  # one. CANONICAL_HOST is what every canonical tag, feed link, sitemap entry
+  # and the production HTTPS redirect is built from; MEDIA_ORIGIN is named in
+  # two Content-Security-Policy directives, so getting it wrong fails silently
+  # — a refused image or game bundle is reported nowhere but the browser
+  # console.
+  #
+  # Changing MEDIA_ORIGIN means changing the constant in
+  # public/js/js-dos-player.js with it: the player refuses a bundle from any
+  # other origin and is a static file with no access to this. The suite checks
+  # the two agree (tests/public-assets.test.ts).
+  CANONICAL_HOST = "oldschoolgames.eu"
+  MEDIA_ORIGIN = "https://trwglibsccninuamefls.supabase.co"
+
+[http_service]
+  internal_port = 3000
+  force_https = true
+  auto_stop_machines = 'stop'
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ['app']
+
+# Requests in flight per machine, capped just under what the process can
+# actually serve. db.ts builds a pool of ten connections and waits two seconds
+# for a free one (connectionTimeoutMillis), and a single page renders several
+# queries — the sidebar alone asks for six lists at once — so past a couple of
+# dozen concurrent requests the machine stops being slow and starts answering
+# pool timeouts, which render as blank widgets. The soft limit tells the proxy
+# to prefer another machine first; the hard limit makes it queue rather than
+# pile onto this one. Raise these together with `max` in db.ts, not on their
+# own.
+[http_service.concurrency]
+  type = "requests"
+  soft_limit = 20
+  hard_limit = 40
+
+# An HTTP check rather than the default TCP one, which only establishes that
+# something still holds the port — a process whose event loop has wedged, or
+# whose express instance has thrown its listener away, passes that and answers
+# nothing. /healthz is answered above the session, the rate limiter and the
+# canonical-host redirect, so a check costs no queries; it reports the
+# database without failing on it, for the reasons written down at the route.
+[[http_service.checks]]
+  interval = "30s"
+  timeout = "5s"
+  grace_period = "10s"
+  method = "GET"
+  path = "/healthz"
+
+[[vm]]
+  memory = '1gb'
+  cpu_kind = 'shared'
+  cpus = 1

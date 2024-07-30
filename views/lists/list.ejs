@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <%- include('../head') %>
+  <%# `title` and `description`, not `list.title` and `list.description`. The
+      two say the same thing now that a list is one page, but the locals are
+      what every other view on the site reads, and reading the definition
+      instead is what put every page of a paginated list under one title back
+      when they differed. Its neighbours most-played.ejs and lists-index.ejs
+      have always read the locals. %>
+  <meta name="description" content="<%= description %>" />
+  <title><%= title %></title>
+  <%# Open Graph %>
+  <meta property="og:title" content="<%= title %>" />
+  <meta property="og:description" content="<%= description %>" />
+  <meta property="og:url" content="<%= canonicalUrl %>" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="<%= siteName %>" />
+  <%- include('../og-image') %>
+  <script defer src="<%= asset('/js/rating-stars.js') %>"></script>
+  <%
+    // Only on a page that asks to be indexed. views/head.ejs already gates the
+    // robots tag, the canonical and the breadcrumb schema on this one answer;
+    // a node describing the page in detail belongs on the same side of it.
+    // Nothing here was ever wrong — it was sent to consumers that had just
+    // been told the page is not for them. See utils/indexability.ts.
+  %>
+  <% if (!isNoindex(req, locals)) { %>
+  <script type="application/ld+json"><%- JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    name: list.h1,
+    description: list.description,
+    url: canonicalUrl,
+    numberOfItems: games.length,
+    // Every game on the page, not the first ten of them.
+    //
+    // These two fields used to contradict each other: numberOfItems said 100
+    // and the array beside it held 10, so the node announced a hundred-item
+    // ranking and then described a tenth of it. schema.org does allow the
+    // count to cover a list a description only samples — that is what its note
+    // about multi-page pagination is for — but nothing here is paginated.
+    // These lists are a fixed hundred games on one page (see LIST_SIZE in
+    // routes/lists.ts), so the page has every item to hand and there is no
+    // reason to describe ninety of them as missing. Which is also the whole
+    // point of the page: "the hundred best" is a ranking, and a ranking cut
+    // off at ten is a different claim.
+    //
+    // The bytes are real — a hundred entries of name, genre and URL — and they
+    // are the most repetitive JSON on the site, so compression takes most of
+    // it back. The page already ships a hundred game cards and their artwork.
+    itemListElement: games.map((game, index) => ({
+      "@type": "ListItem",
+      position: index + 1,
+      item: {
+        "@type": "VideoGame",
+        name: game.title,
+        genre: game.genre,
+        gamePlatform: "MS-DOS",
+        url: `${siteUrl}/${game.slug}`,
+      },
+    })),
+  }).replace(/</g, "\\u003c") %></script>
+  <% } %>
+</head>
+
+<body class="layout">
+  <%- include('../navbar') %>
+  <%- include('../left-sidebar') %>
+  <main id="main" tabindex="-1">
+    <div class="container">
+      <%- include('../flash') %>
+
+      <%- include('../breadcrumb') %>
+
+      <section>
+        <h1 class="text-xl" style="margin: 0 0 12px"><%= list.h1 %></h1>
+
+        <div style="margin-bottom: 1.5em; padding: 1em; background: var(--panel-tint); border-left: 3px solid rgb(var(--primary-rgb)); border-radius: var(--border-radius);">
+          <p style="margin: 0; line-height: 1.7; color: rgb(var(--color-rgb))"><%= list.intro %></p>
+        </div>
+
+        <%#
+             No sort bar here, and no pagination.
+
+             views/games/game-filters.ejs was included on this page and did
+             nothing: it writes "?orderBy=…" links, and the route never read
+             them — it orders by list.findParams. So every control in it
+             returned the identical list, under a heading that read "Games of
+             all genres" (no `genre` local reaches this view) with a
+             parenthetical claiming a sort that had not happened. It also
+             minted a query-string variant of this address for every control,
+             each one noindex, for a crawler to spend its budget on.
+
+             A shortlist has one order by definition — that order is the whole
+             claim the page makes. Somebody who wants this genre alphabetically
+             wants the exhaustive listing at "/<genre>", which sorts and pages
+             for real.
+        %>
+        <ol class="game-list" style="list-style: none; padding: 0;">
+          <% games.forEach((game, index) => { %>
+          <li style="position: relative;">
+            <div style="position: absolute; top: 0.6em; left: 0.6em; font-size: 1.4em; font-weight: bold; color: rgb(var(--primary-rgb)); opacity: 0.6; line-height: 1; min-width: 2ch; text-align: right;">#<%= index + 1 %></div>
+            <%# headingLevel 2: nothing stands between the <h1> above and these
+                cards, so their titles are the page's second level — see
+                views/games/game-item.ejs. %>
+            <%- include('../games/game-item', { game, index, rankPadding: true, headingLevel: 2 }) %>
+          </li>
+          <% }); %>
+        </ol>
+
+        <%# Related Lists %>
+        <% if (relatedLists && relatedLists.length > 0) { %>
+        <div style="margin-top: 2em; padding: 1.2em; background: var(--panel-tint); border: 1px solid rgb(var(--border-rgb)); border-radius: var(--border-radius);">
+          <h2 style="margin: 0 0 0.8em; font-size: 1rem; color: rgb(var(--primary-rgb));">More game lists you might enjoy:</h2>
+          <div style="display: flex; flex-wrap: wrap; gap: 0.6em;">
+            <% relatedLists.forEach(related => { %>
+            <a href="/<%= related.slug %>" class="btn btn-sm btn-outline"><%= related.h1 %></a>
+            <% }); %>
+          </div>
+        </div>
+        <% } %>
+
+        <%# Link back to all lists %>
+        <div style="margin-top: 1.5em; text-align: center;">
+          <a href="/game-lists" class="btn btn-outline">Browse all game lists &rarr;</a>
+        </div>
+      </section>
+    </div>
+  </main>
+  <%- include('../right-sidebar') %>
+  <%- include('../footer') %>
+</body>
+
+</html>

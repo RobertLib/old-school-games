@@ -1,6 +1,9 @@
 # Logs
 logs
 *.log
+# The rolled-over generation utils/logger.ts keeps in development. "*.log"
+# does not match "combined.log.1" — the name no longer ends in ".log".
+*.log.[0-9]
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
@@ -121,6 +124,12 @@ dist
 
 # Stores VSCode versions used for testing VSCode extensions
 .vscode-test
+
+# macOS Finder leaves one of these in every directory somebody opens, at any
+# depth — public/, views/, migrations/ — and they are trivially committed by a
+# `git add .` from a mac. .dockerignore carries the same pair.
+.DS_Store
+**/.DS_Store
 
 # yarn v2
 .yarn/cache

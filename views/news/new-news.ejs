@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <%- include('../head') %>
+  <meta name="description" content="Add a new news item to OldSchoolGames" />
+  <title><%= title %></title>
+</head>
+
+<body class="layout">
+  <%- include('../navbar') %>
+  <%- include('../left-sidebar') %>
+  <main id="main" tabindex="-1">
+    <div class="container">
+      <%- include('../flash') %>
+      <section>
+        <h1 class="text-xl" style="margin: 0 0 20px;">Add New News</h1>
+
+        <%
+          // The same two helpers views/games/game-form.ejs declares, for the
+          // same reason: every control now writes three things off one lookup
+          // — the is-invalid class, aria-invalid and aria-describedby — and
+          // spelling the find() out three times per field is how one of them
+          // ends up naming a different field than the other two.
+          const errorFor = (field) => locals.errors?.find((error) => error.field === field);
+          const invalid = (field) => (errorFor(field) ? "is-invalid" : "");
+        %>
+        <%# id="<field>-error" on the message and aria-describedby on the
+            control it belongs to: the message was a sibling <div> with nothing
+            tying it to the field, so a screen reader announced the field as
+            ordinary and valid while the page showed it in red. Written only
+            when there is an error — aria-describedby pointing at an id that is
+            not in the document is ignored, which is the failure that looks
+            like it works. %>
+        <form action="/news" method="POST">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+          <div class="form-group">
+            <label for="title" class="form-label">Title *</label><br />
+            <input type="text" class="form-control <%= invalid('title') %>" id="title" name="title" value="<%= locals.formData?.title || '' %>" maxlength="255" required style="max-width: 768px; width: 100%"<% if (errorFor('title')) { %> aria-invalid="true" aria-describedby="title-error"<% } %> />
+            <% if (errorFor('title')) { %>
+            <div class="invalid-feedback" id="title-error">
+              <%= errorFor('title').message %>
+            </div>
+            <% } %>
+          </div>
+
+          <div class="form-group">
+            <label for="content" class="form-label">Content *</label><br />
+            <textarea class="form-control <%= invalid('content') %>" id="content" name="content" rows="8" maxlength="10000" required style="max-width: 768px; width: 100%"<% if (errorFor('content')) { %> aria-invalid="true" aria-describedby="content-error"<% } %>><%= locals.formData?.content || '' %></textarea>
+            <% if (errorFor('content')) { %>
+            <div class="invalid-feedback" id="content-error">
+              <%= errorFor('content').message %>
+            </div>
+            <% } %>
+            <div class="form-help">
+              You can use basic HTML tags for formatting.
+            </div>
+          </div>
+
+          <div class="form-group">
+            <button type="submit" class="btn btn-primary">Add News</button>
+            <a href="/news" class="btn btn-outline">Cancel</a>
+          </div>
+        </form>
+      </section>
+    </div>
+  </main>
+  <%- include('../right-sidebar') %>
+  <%- include('../footer') %>
+</body>
+
+</html>

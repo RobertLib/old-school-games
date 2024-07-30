@@ -1,0 +1,98 @@
+<%
+  // The genres and years below are written in by hand, and each is a listing
+  // that answers 404 when the catalogue holds nothing for it — the same dead
+  // end the sidebar's genre list and the A–Z filter used to offer from every
+  // page. So each is drawn only when the counts say its page exists: the same
+  // nonEmptyGenres and nonEmptyYears the rest of the chrome reads (see
+  // NonEmptyListings in middlewares/sidebar-data.ts), with null — not known —
+  // meaning every one of them, as before.
+  //
+  // The labels stay written out rather than going through genreLabel: this
+  // partial renders at the foot of every page, including ones a test renders
+  // with nothing but the locals the footer itself has always needed.
+  const footerGenresWithGames = locals.nonEmptyGenres || null;
+  const footerYearsWithGames = locals.nonEmptyYears || null;
+  const footerHasGenre = (genre) =>
+    !footerGenresWithGames || footerGenresWithGames.has(genre);
+  const footerGenres = [
+    ["ADVENTURE", "Adventure"],
+    ["ACTION", "Action"],
+    ["STRATEGY", "Strategy"],
+    ["PUZZLE", "Puzzle"],
+    ["RPG", "RPG"],
+  ].filter(([genre]) => footerHasGenre(genre));
+  const footerYears = [1990, 1991, 1992, 1993, 1994, 1995].filter(
+    (year) => !footerYearsWithGames || footerYearsWithGames.has(year),
+  );
+%>
+<footer class="footer">
+  <div class="footer-content">
+    <div style="margin-bottom: 8px">
+      <strong>Quick Links:</strong>
+      <a href="/" class="footer-link">All Games</a> |
+      <a href="/developers" class="footer-link">Developers</a> |
+      <a href="/publishers" class="footer-link">Publishers</a> |
+      <a href="/years" class="footer-link">Browse by Year</a> |
+      <a href="/comments" class="footer-link">Latest Comments</a>
+    </div>
+    <%# A row whose every link is left out goes with them, heading and all, and
+        the separators are written between the links that remain rather than
+        after each one, so a gap leaves no "|" hanging at either end. %>
+    <% if (footerGenres.length > 0) { %>
+    <div style="margin-bottom: 8px">
+      <strong>Genres:</strong>
+      <% footerGenres.forEach(([genre, label], index) => { %>
+      <% if (index > 0) { %>|<% } %>
+      <a href="/<%= genre.toLowerCase() %>" class="footer-link"><%= label %></a>
+      <% }) %>
+    </div>
+    <% } %>
+    <% if (footerYears.length > 0) { %>
+    <div style="margin-bottom: 8px">
+      <strong>Years:</strong>
+      <% footerYears.forEach((year, index) => { %>
+      <% if (index > 0) { %>|<% } %>
+      <a href="/year/<%= year %>" class="footer-link"><%= year %></a>
+      <% }) %>
+    </div>
+    <% } %>
+    <div style="margin-bottom: 8px">
+      <strong>Follow new games:</strong>
+      <a href="/feed.xml" class="footer-link">New games RSS</a> |
+      <a href="/news/feed.xml" class="footer-link">News RSS</a>
+    </div>
+    <div>
+      <a href="/about" class="footer-link">About</a> |
+      <a href="/privacy-policy" class="footer-link">Privacy Policy</a> |
+      <a href="/dmca" class="footer-link">DMCA</a> |
+      <a href="mailto:contact@oldschoolgames.eu" class="footer-link">Contact</a>&nbsp;&mdash;&nbsp;&copy;&nbsp;2024&ndash;2026&nbsp;OldSchoolGames.eu
+    </div>
+  </div>
+
+  <%# Norton Commander Function Key Bar %>
+  <div class="nc-funcbar">
+    <a href="/how-to-play" class="nc-funcbar-item"><span class="nc-fkey">F1</span>Help</a>
+    <a href="/" class="nc-funcbar-item"><span class="nc-fkey">F2</span>Home</a>
+    <%# The two genre keys go the same way as the genre row above. A missing
+        key leaves a gap in the numbering, which this bar already has — there
+        is no F6. %>
+    <% if (footerHasGenre("ACTION")) { %>
+    <a href="/action" class="nc-funcbar-item"><span class="nc-fkey">F3</span>Action</a>
+    <% } %>
+    <% if (footerHasGenre("ADVENTURE")) { %>
+    <a href="/adventure" class="nc-funcbar-item"><span class="nc-fkey">F4</span>Adven</a>
+    <% } %>
+    <a href="/news" class="nc-funcbar-item"><span class="nc-fkey">F5</span>News</a>
+    <a href="/game-lists" class="nc-funcbar-item"><span class="nc-fkey">F7</span>Lists</a>
+    <a href="/random" rel="nofollow" class="nc-funcbar-item"><span class="nc-fkey">F8</span>Random</a>
+    <a href="/profile" class="nc-funcbar-item"><span class="nc-fkey">F9</span>Profile</a>
+    <% if (req.session?.user) { %>
+    <form action="/logout" method="POST" class="nc-funcbar-form">
+      <input type="hidden" name="_csrf" value="<%= locals.csrfToken %>" />
+      <button type="submit" class="nc-funcbar-item"><span class="nc-fkey">F10</span>Logout</button>
+    </form>
+    <% } else { %>
+    <a href="/login" class="nc-funcbar-item"><span class="nc-fkey">F10</span>Login</a>
+    <% } %>
+  </div>
+</footer>

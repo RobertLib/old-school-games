@@ -1,0 +1,52 @@
+<%
+  // og:image, and the two properties that describe it.
+  //
+  // A partial rather than a line in each of the twenty-three views that need
+  // one, because the three tags have to be decided together. `locals.image` is
+  // a game's own cover, served from the media bucket, and nothing here knows
+  // how many pixels it is; the site's fallback is a file in public/ whose size
+  // is a constant. So the width/height pair can be stated for one and not for
+  // the other, and a guessed pair is worse than an absent one — a scraper that
+  // believes it lays out the wrong box. The same reasoning views/head.ejs
+  // gives for twitter:image.
+  //
+  // They also have to be *after* the og:image they describe: Open Graph reads
+  // a structured property as belonging to the last root property named, so
+  // these cannot live in head.ejs, which is included above this point.
+  //
+  // Absolute, whatever the route handed over. A game's cover may be stored as
+  // a path on this site (validations/games.ts allows one), which is right for
+  // the <img> on the page and useless here: a scraper does not resolve a
+  // relative og:image, so such a game was shared with no picture at all. The
+  // route cannot resolve it for us — the gallery passes the same value to its
+  // <img>, where an absolute address would point a development build at the
+  // live site.
+  const ogImage = locals.image ? absoluteUrl(locals.image) : siteImage;
+%>
+<meta property="og:image" content="<%= ogImage %>" />
+<%
+  // What the picture is of, for a reader who cannot see it.
+  //
+  // views/head.ejs has emitted twitter:image:alt on every page for a while
+  // and reasons out there why: a card with an image and nothing describing it
+  // is what a screen reader announces as an unlabelled attachment. The Open
+  // Graph half of that pair was written in exactly one view —
+  // views/games/game-detail.ejs — so a link to any of the other twenty-two
+  // pages was shared to Facebook, LinkedIn, Slack and Discord with an
+  // undescribed picture.
+  //
+  // Same value as the Twitter tag, deliberately: the page title is what the
+  // image shows, whether it is a game's cover art or the site's own banner
+  // with the name on it. Two tags describing one image should not disagree,
+  // and this is the partial that already exists to keep them from it.
+  //
+  // It can only read the title it is given. A view that declares its own as
+  // a template const has to pass it here as well as to head.ejs — the error
+  // views, /profile and /login do — or this falls back to siteTitle while
+  // twitter:image:alt, which was handed the title, names the page.
+%>
+<meta property="og:image:alt" content="<%= locals.title || siteTitle %>" />
+<% if (!locals.image) { %>
+<meta property="og:image:width" content="<%= siteImageWidth %>" />
+<meta property="og:image:height" content="<%= siteImageHeight %>" />
+<% } %>

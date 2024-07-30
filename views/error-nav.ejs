@@ -1,0 +1,63 @@
+<%
+  // The way out of an error page.
+  //
+  // All four of these used to end at one bare sentence in an otherwise empty
+  // <main> — no heading, and not a single link in the content area. The chrome
+  // was doing the whole job: the sidebars and the footer were the only reason
+  // a visitor who landed on a dead address had anywhere to go at all, and on a
+  // narrow viewport both sidebars are pushed below the page content.
+  //
+  // Nothing indexes a non-200, so this is not here to rank. It is here for the
+  // person who arrived from a stale link, a mistyped address or a game that
+  // has since been taken down — the same visitor Search Console counts as a
+  // crawl error and every analytics report counts as a bounce.
+  //
+  // Links rather than a search box: this site's search only matches the
+  // catalogue, so someone who has just been told a page does not exist is
+  // better served by a category than by a second chance to type it.
+  //
+  // Defaulted like every other local these views read — the error handler at
+  // the foot of app.ts can be reached before sidebarData has run, or with its
+  // query already failed, in which case the genre row is simply left out.
+  //
+  // And only genres with a game behind them, before the eight are taken. The
+  // first eight of the enum included whichever of them the catalogue held
+  // nothing for, and each of those answers 404 — a page telling a visitor it
+  // could not find what they asked for, offering them another page that does
+  // not exist. Filtered as views/left-sidebar.ejs filters its own list, and
+  // with the same null meaning "not known, so offer them all".
+  const errorNavWithGames = locals.nonEmptyGenres || null;
+  const errorNavGenres = (locals.gameGenres || [])
+    .filter((genre) => !errorNavWithGames || errorNavWithGames.has(genre))
+    .slice(0, 8);
+%>
+<nav aria-label="Where to go next" style="
+    margin: 20px 0;
+    padding: 15px;
+    background: var(--panel-tint);
+    border: 1px solid rgb(var(--border-rgb));
+    border-radius: var(--border-radius);
+  ">
+  <h2 class="text-lg" style="margin: 0 0 12px">Where to next?</h2>
+  <div style="display: flex; flex-wrap: wrap; gap: 10px">
+    <a class="btn btn-sm btn-outline" href="/">All games</a>
+    <a class="btn btn-sm btn-outline" href="/game-lists">Game lists</a>
+    <a class="btn btn-sm btn-outline" href="/most-played">Most played</a>
+    <a class="btn btn-sm btn-outline" href="/news">News</a>
+    <a class="btn btn-sm btn-outline" href="/how-to-play">How to play</a>
+    <%# nofollow, matching the same link in views/left-sidebar.ejs: /random
+        answers every request with a redirect to a different game, and
+        robots.txt disallows it for that reason. %>
+    <a class="btn btn-sm btn-outline" href="/random" rel="nofollow">Random game</a>
+  </div>
+  <% if (errorNavGenres.length > 0) { %>
+  <p class="text-sm" style="margin: 15px 0 8px; color: rgb(var(--muted-rgb))">
+    Or pick a genre:
+  </p>
+  <div style="display: flex; flex-wrap: wrap; gap: 12px">
+    <% errorNavGenres.forEach((genre) => { %>
+    <a class="color-primary underline" href="/<%= genre.toLowerCase() %>"><%= genreLabel(genre) %></a>
+    <% }) %>
+  </div>
+  <% } %>
+</nav>

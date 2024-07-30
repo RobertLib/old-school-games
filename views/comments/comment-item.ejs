@@ -1,0 +1,57 @@
+<%
+  // locals.req rather than req: this partial is also rendered standalone for
+  // the JSON batch endpoint, where a bare reference would throw.
+  const isAdminUser = locals.req?.session?.user?.role === "ADMIN";
+%>
+<article class="comment <%= locals.isReply ? 'comment-reply' : '' %>" id="comment-<%= comment.id %>">
+  <header class="comment-header">
+    <h3 class="comment-nick text-md"><%= comment.nick || "anonymous" %></h3>
+    <small><time datetime="<%= new Date(comment.createdAt).toISOString() %>" data-date="<%= new Date(comment.createdAt).toISOString() %>"><%= new Date(comment.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) %></time></small>
+  </header>
+  <div class="comment-content"><%= comment.content %></div>
+  <div class="comment-actions">
+    <% if (!locals.isReply) { %>
+    <button class="comment-reply-btn" data-comment-id="<%= comment.id %>" data-nick="<%= comment.nick || 'anonymous' %>" type="button">
+      Reply
+    </button>
+    <% } %>
+    <% if (isAdminUser) { %>
+    <form action="/comments/<%= comment.id %>/delete" method="POST" data-confirm="Delete this comment<%= locals.isReply ? '' : ' and its replies' %>?">
+      <input type="hidden" name="_csrf" value="<%= locals.csrfToken %>" />
+      <input type="hidden" name="from" value="game" />
+      <button class="comment-delete-btn" type="submit">Delete</button>
+    </form>
+    <%# Every comment from the same source, for a flood. It opens the review
+        page in routes/comments.ts rather than deleting anything, which is
+        why it needs no data-confirm; the page is the confirmation. Only
+        where there is a source to group by — see Comment.hasSource. %>
+    <% if (comment.hasSource) { %>
+    <form action="/comments/<%= comment.id %>/source" method="POST">
+      <input type="hidden" name="_csrf" value="<%= locals.csrfToken %>" />
+      <button class="comment-delete-btn" type="submit">All from this source&hellip;</button>
+    </form>
+    <% } %>
+    <% } %>
+  </div>
+  <div class="comment-replies" id="replies-<%= comment.id %>">
+    <%# Said rather than left out silently. A thread sends at most
+        REPLIES_PER_ROOT of its replies (see models/comment.ts), and a reader
+        who can count the ones on screen deserves to know the rest exist.
+        Only ever non-zero on a root: a reply carries no replies of its own
+        here, they are all flattened onto the thread.
+
+        Above the replies, because the ones left out are the oldest: the cap
+        keeps a thread's newest. It used to keep the first fifty, so this
+        said "older" about replies that were really the newest ones, sat
+        below the replies it was supposedly older than, and a reply posted to
+        a full thread vanished on reload. %>
+    <% if (comment.hiddenReplies > 0) { %>
+    <p class="comment-replies-hidden">
+      <%= comment.hiddenReplies %> older <%= comment.hiddenReplies === 1 ? "reply is" : "replies are" %> not shown.
+    </p>
+    <% } %>
+    <% (comment.replies || []).forEach((reply) => { %>
+    <%- include('comment-item', { comment: reply, isReply: true }) %>
+    <% }); %>
+  </div>
+</article>

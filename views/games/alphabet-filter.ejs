@@ -1,0 +1,40 @@
+<%
+  // The pages of the A–Z browse, in order, and which of them hold a game —
+  // twenty-six letters and the one "0–9" page for every slug that begins with
+  // a digit (see utils/letter-buckets.ts). middlewares/sidebar-data.ts builds
+  // the row from the same cached count as the rest of the chrome, and links
+  // every page when that count could not be had. An empty list when the
+  // middleware has not run at all, like every other chrome local.
+  //
+  // This row used to be the alphabet written out here, all twenty-six linked
+  // whatever the catalogue held, while "/letter/<x>" answers 404 for a letter
+  // no game is filed under — so every listing page on the site offered links
+  // to pages that did not exist, and had nowhere at all for "1942".
+  const letterBuckets = locals.letterBuckets || [];
+  const currentBucket = (req.params.letter || '').toLowerCase();
+%>
+<nav class="alphabet-filter">
+  <span>Browse by letter:</span>
+  <div class="alphabet-links">
+    <% letterBuckets.forEach(({ bucket, label, linked }) => { %>
+    <% const active = currentBucket === bucket; %>
+    <%# The page the reader is on is a link whatever the cached count says: it
+        has just answered 200, and the count can be a few minutes behind. %>
+    <% if (linked || active) { %>
+    <a href="/letter/<%= bucket %>" class="<%= active ? 'active' : '' %>">
+      <%= label %>
+    </a>
+    <% } else { %>
+    <%# Kept in the row rather than dropped, so the filter does not change
+        shape with the catalogue: an <a> with no href, which HTML defines as a
+        placeholder for a link that is not relevant. It is not focusable, a
+        crawler has nothing to follow and a screen reader reads it as text,
+        while the .alphabet-links a rules still give it the same box as its
+        neighbours. Dimmed, and the arrow cursor, so it does not look like
+        something to press. %>
+    <a class="alphabet-empty" style="opacity: 0.4; cursor: default"><%= label %></a>
+    <% } %>
+    <% }); %>
+    <a href="/" class="<%= !req.params.letter ? 'active' : '' %>">All</a>
+  </div>
+</nav>

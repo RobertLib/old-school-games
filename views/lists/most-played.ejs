@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <%- include('../head') %>
+  <meta name="description" content="<%= description %>" />
+  <title><%= title %></title>
+  <%# Open Graph %>
+  <meta property="og:title" content="<%= title %>" />
+  <meta property="og:description" content="<%= description %>" />
+  <meta property="og:url" content="<%= canonicalUrl %>" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="<%= siteName %>" />
+  <%- include('../og-image') %>
+  <script defer src="<%= asset('/js/rating-stars.js') %>"></script>
+  <%
+    // Only on a page that asks to be indexed. views/head.ejs already gates the
+    // robots tag, the canonical and the breadcrumb schema on this one answer;
+    // a node describing the page in detail belongs on the same side of it.
+    // Nothing here was ever wrong — it was sent to consumers that had just
+    // been told the page is not for them. See utils/indexability.ts.
+  %>
+  <% if (!isNoindex(req, locals)) { %>
+  <script type="application/ld+json"><%- JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    name: "100 Most Played Classic MS-DOS Games",
+    description,
+    url: canonicalUrl,
+    numberOfItems: games.length,
+    // Every game on the page, not the first ten of them.
+    //
+    // These two fields used to contradict each other: numberOfItems said 100
+    // and the array beside it held 10, so the node announced a hundred-item
+    // ranking and then described a tenth of it. schema.org does allow the
+    // count to cover a list a description only samples — that is what its note
+    // about multi-page pagination is for — but nothing here is paginated.
+    // These lists are a fixed hundred games on one page (see LIST_SIZE in
+    // routes/lists.ts), so the page has every item to hand and there is no
+    // reason to describe ninety of them as missing. Which is also the whole
+    // point of the page: "the hundred best" is a ranking, and a ranking cut
+    // off at ten is a different claim.
+    //
+    // The bytes are real — a hundred entries of name, genre and URL — and they
+    // are the most repetitive JSON on the site, so compression takes most of
+    // it back. The page already ships a hundred game cards and their artwork.
+    itemListElement: games.map((game, index) => ({
+      "@type": "ListItem",
+      position: index + 1,
+      item: {
+        "@type": "VideoGame",
+        name: game.title,
+        genre: game.genre,
+        gamePlatform: "MS-DOS",
+        url: `${siteUrl}/${game.slug}`,
+      },
+    })),
+  }).replace(/</g, "\\u003c") %></script>
+  <% } %>
+</head>
+
+<body class="layout">
+  <%- include('../navbar') %>
+  <%- include('../left-sidebar') %>
+  <main id="main" tabindex="-1">
+    <div class="container">
+      <%- include('../flash') %>
+
+      <%# Breadcrumb %>
+      <%- include('../breadcrumb') %>
+
+      <section>
+        <h1 class="text-xl" style="margin: 0 0 12px">100 Most Played Classic MS-DOS Games</h1>
+
+        <div style="margin-bottom: 1.5em; padding: 1em; background: var(--panel-tint); border-left: 3px solid rgb(var(--primary-rgb)); border-radius: var(--border-radius);">
+          <p style="margin: 0; line-height: 1.7; color: rgb(var(--color-rgb))">Which classic DOS games do players keep coming back to? This ranking is based on actual play data from OldSchoolGames.eu — the games listed here are the ones our community has played the most. Whether it's nostalgia-fueled replays or first-time discoveries, these titles have proven their staying power. All games run directly in your browser, no downloads required.</p>
+        </div>
+
+        <% if (games.length) { %>
+        <ol class="game-list" style="list-style: none; padding: 0;">
+          <% games.forEach((game, index) => { %>
+          <li style="position: relative;">
+            <div style="position: absolute; top: 0.6em; left: 0.6em; font-size: 1.4em; font-weight: bold; color: rgb(var(--primary-rgb)); opacity: 0.6; line-height: 1; min-width: 2ch; text-align: right;">#<%= index + 1 %></div>
+            <%# The same class views/games/game-item.ejs uses for the same
+                badge, rather than a second copy of the measurement: this card
+                is a fork of that partial (it shows a play count, which the
+                partial has no reason to carry) and the room made for the badge
+                was written out twice, so moving the badge would have moved
+                only one of them. The rule is .game-item-ranked in
+                public/css/style.css. %>
+            <article class="game-item card game-item-ranked">
+              <div>
+                <a class="color-primary font-bold" href="/<%= game.slug %>">
+                  <h2 class="text-lg" style="margin: 0"><%= game.title %></h2>
+                </a>
+                <div class="clearfix">
+                  <% if (game.cover) { %>
+                  <a class="game-item-initial" href="/<%= game.slug %>">
+                    <img alt="<%= game.title %> – MS-DOS cover art" height="127" loading="lazy" src="<%= game.cover %>" width="100" />
+                  </a>
+                  <% } %>
+                  <div><%= game.summary %></div>
+                </div>
+                <div class="text-sm">
+                  <strong>Genre</strong>:
+                  <% if (game.genre) { %>
+                  <a class="underline color-primary" href="/<%= game.genre.toLowerCase() %>"><%= game.genre %></a>
+                  <% } else { %>
+                  -
+                  <% } %><br />
+                  <strong>Release</strong>:
+                  <% if (game.release) { %>
+                  <a class="underline color-primary" href="/year/<%= game.release %>"><%= game.release %></a>
+                  <% } else { %>
+                  -
+                  <% } %><br />
+                  <strong>Developer</strong>:
+                  <% if (game.developer) { %>
+                  <a class="underline" href="/developer/<%= encodeURIComponent(game.developer) %>"><%= game.developer %></a>
+                  <% } else { %>
+                  -
+                  <% } %><br />
+                  <strong>Plays</strong>: <%= game.playCount.toLocaleString() %>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: baseline; width: 100%">
+                  <%# data-title names the game in the stars' labels — one card
+                      per game, and "Rate 3 out of 5" alone was the same five
+                      buttons on each. See labelStars in
+                      public/js/rating-stars.js. %>
+                  <rating-stars gameId="<%= game.id %>" rating="<%= game.averageRating %>" ratingCount="<%= game.ratingCount || 0 %>" data-title="<%= game.title %>">
+                  </rating-stars>
+                  <%# data-title is what favorites.js rewrites the label from when the
+                      state flips — it has no other way to learn the game's name once the
+                      page is rendered. %>
+                  <%# No aria-pressed in the markup. The server cannot know the answer —
+                      favourites live in the visitor's localStorage — so it wrote "false"
+                      on every heart, which is a claim and not an absence of one: with the
+                      script blocked or still loading, a screen reader was told this game
+                      is not a favourite when it may well be. public/js/favorites.js sets
+                      the attribute on every .favorite-btn as it initialises (see
+                      setFavoriteButtonState), which is the only place that knows, and an
+                      untoggled button with no aria-pressed is announced as an ordinary
+                      button — which is exactly what it is until the script arrives. %>
+                  <button aria-label="Add <%= game.title %> to favorites" class="favorite-btn" data-game-id="<%= game.id %>" data-title="<%= game.title %>" title="Favorite" type="button">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="16" height="16">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              <% if (req.session?.user?.role === "ADMIN") { %>
+              <div class="flex" style="gap: 5px; justify-content: end; width: 100%; margin-top: 5px">
+                <a class="btn btn-outline btn-sm" href="/games/<%= game.id %>/edit">Edit</a>
+              </div>
+              <% } %>
+            </article>
+          </li>
+          <% }); %>
+        </ol>
+        <% } else { %>
+        <p>No games found</p>
+        <% } %>
+
+        <%# Link back to all lists %>
+        <div style="margin-top: 1.5em; text-align: center;">
+          <a href="/game-lists" class="btn btn-outline">Browse all game lists &rarr;</a>
+        </div>
+      </section>
+    </div>
+  </main>
+  <%- include('../right-sidebar') %>
+  <%- include('../footer') %>
+</body>
+
+</html>

@@ -1,0 +1,146 @@
+<%
+  // On a rejected save the form is refilled from what was posted, not from
+  // what the database still holds — otherwise a validation error handed the
+  // admin back the old values and threw their edit away.
+  const data = locals.formData || game || {};
+  const errorFor = (field) => locals.errors?.find((error) => error.field === field);
+  const invalid = (field) => (errorFor(field) ? " is-invalid" : "");
+  // formData gives one string per input, a stored game gives its TEXT[]; both
+  // index the same way. A single filled input arrives as a bare string.
+  const images = Array.isArray(data.images) ? data.images : data.images ? [data.images] : [];
+  // One input per image up to the last one filled in, one spare after it, and
+  // never fewer than the four this form always had. It drew exactly four, and
+  // validateGame stores the posted array as it arrives — so saving any edit
+  // of a game with more than four images, even one that changed nothing,
+  // deleted the fifth onwards. Counted from the last *filled* slot, not from
+  // the length: the spare is posted back blank and stored as a trailing "",
+  // and counting that would add another empty input on every save.
+  const imageSlots = Math.max(4, images.findLastIndex(Boolean) + 2);
+%>
+<%# Every message below carries id="<field>-error" and every control it
+    belongs to points at it with aria-describedby, plus aria-invalid="true".
+    Colour and a sibling <span> are what a sighted visitor reads; a screen
+    reader was told only "Title, edit text" and got no hint that the field had
+    been refused or why — the message was adjacent markup with nothing tying
+    it to the control. Both attributes are written only when there is an error
+    to describe: aria-invalid="false" on every field on first load is a claim
+    of its own, and aria-describedby pointing at an id that is not in the
+    document is simply ignored, which is the failure that looks like it works.
+    tests/views/form-error-rendering.test.ts holds this for all three forms. %>
+<% if (locals.errors?.length) { %>
+<div class="alert alert-danger" role="alert" style="margin-bottom: 15px">
+  <strong>The game was not saved.</strong> Please correct the fields marked below.
+</div>
+<% } %>
+<form action="/games/<%= game?.id %>" method="POST">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+  <p>
+    <label class="form-label" for="title">Title *</label><br />
+    <input class="form-control<%= invalid('title') %>" id="title" maxlength="255" name="title" required style="max-width: 480px; width: 100%" type="text" value="<%= data.title || '' %>"<% if (errorFor('title')) { %> aria-invalid="true" aria-describedby="title-error"<% } %> />
+    <% if (errorFor('title')) { %>
+    <span class="invalid-feedback" id="title-error"><%= errorFor('title').message %></span>
+    <% } %>
+  </p>
+  <p>
+    <label class="form-label" for="description">Description</label><br />
+    <%# validateGame refuses a description past DESCRIPTION_MAX_LENGTH, and
+        this field had no way to show it: the admin got the red banner at the
+        top of the form saying to correct the fields marked below, and not one
+        field was marked. The same was true of "stream". %>
+    <textarea class="form-control<%= invalid('description') %>" id="description" name="description" rows="12" style="max-width: 810px; width: 100%"<% if (errorFor('description')) { %> aria-invalid="true" aria-describedby="description-error"<% } %>><%= data.description || '' %></textarea>
+    <% if (errorFor('description')) { %>
+    <span class="invalid-feedback" id="description-error"><%= errorFor('description').message %></span>
+    <% } %>
+  </p>
+  <p>
+    <label class="form-label" for="genre">Genre *</label><br />
+    <select class="form-control<%= invalid('genre') %>" id="genre" name="genre" required<% if (errorFor('genre')) { %> aria-invalid="true" aria-describedby="genre-error"<% } %>>
+      <option value="">&nbsp;</option>
+      <% gameGenres.map(genre => { %>
+      <% const selected = data.genre === genre ? "selected" : ""; %>
+      <option <%= selected %> value="<%= genre %>"><%= genre %></option>
+      <% }); %>
+    </select>
+    <% if (errorFor('genre')) { %>
+    <span class="invalid-feedback" id="genre-error"><%= errorFor('genre').message %></span>
+    <% } %>
+  </p>
+  <p>
+    <label class="form-label" for="release">Release</label><br />
+    <input class="form-control<%= invalid('release') %>" id="release" name="release" type="number" value="<%= data.release ?? '' %>"<% if (errorFor('release')) { %> aria-invalid="true" aria-describedby="release-error"<% } %> />
+    <% if (errorFor('release')) { %>
+    <span class="invalid-feedback" id="release-error"><%= errorFor('release').message %></span>
+    <% } %>
+  </p>
+  <p>
+    <label class="form-label" for="developer">Developer</label><br />
+    <input class="form-control<%= invalid('developer') %>" id="developer" maxlength="255" name="developer" style="max-width: 480px; width: 100%" type="text" value="<%= data.developer || '' %>"<% if (errorFor('developer')) { %> aria-invalid="true" aria-describedby="developer-error"<% } %> />
+    <% if (errorFor('developer')) { %>
+    <span class="invalid-feedback" id="developer-error"><%= errorFor('developer').message %></span>
+    <% } %>
+  </p>
+  <p>
+    <label class="form-label" for="publisher">Publisher</label><br />
+    <input class="form-control<%= invalid('publisher') %>" id="publisher" maxlength="255" name="publisher" style="max-width: 480px; width: 100%" type="text" value="<%= data.publisher || '' %>"<% if (errorFor('publisher')) { %> aria-invalid="true" aria-describedby="publisher-error"<% } %> />
+    <% if (errorFor('publisher')) { %>
+    <span class="invalid-feedback" id="publisher-error"><%= errorFor('publisher').message %></span>
+    <% } %>
+  </p>
+  <%# A fieldset, not a second <label for="image-cover">: two labels on one
+      input made a screen reader announce the cover field as "Images Cover"
+      and lose the group heading altogether. %>
+  <fieldset class="form-fieldset">
+    <legend class="form-label">Images</legend>
+    <%# One message for every image input, because validateGame reports
+        "images" as a single field — so they all point at the same id rather
+        than each repeating the text. %>
+    <%# type="text" with inputmode="url", here and on the manual below, as the
+        stream field has always been. type="url" accepts only an absolute URL,
+        while validateGame deliberately accepts a path on this site as well
+        (see validations/games.ts) — so a game whose cover was stored as
+        "/images/doom.png" failed the browser's own check and its edit form
+        could not be submitted at all, for any change. inputmode keeps the URL
+        keyboard on a phone; the validator is the check that decides. %>
+    <% if (errorFor('images')) { %>
+    <span class="invalid-feedback" id="images-error" style="display: block"><%= errorFor('images').message %></span>
+    <% } %>
+    <%# The first slot is the cover and keeps the id it always had; the rest
+        are numbered from 1, so the labels read Cover, Image 1, Image 2 … as
+        they did when there were four. See imageSlots above. %>
+    <ul style="margin-top: 5px">
+      <% for (let slot = 0; slot < imageSlots; slot++) { %>
+      <% const imageId = slot === 0 ? 'image-cover' : `image-${slot}`; %>
+      <li>
+        <p>
+          <label class="form-label" for="<%= imageId %>"><%= slot === 0 ? 'Cover' : `Image ${slot}` %></label><br />
+          <input class="form-control<%= invalid('images') %>" id="<%= imageId %>" name="images" style="max-width: 768px; width: 100%" type="text" inputmode="url" value="<%= images[slot] || '' %>"<% if (errorFor('images')) { %> aria-invalid="true" aria-describedby="images-error"<% } %> />
+        </p>
+      </li>
+      <% } %>
+    </ul>
+  </fieldset>
+  <p>
+    <label class="form-label" for="stream">Stream</label><br />
+    <%# Refused by validateGame when it is not http(s) or a path on this site,
+        for the reason the validator gives: it becomes the player's src. The
+        refusal had nowhere to appear — see the note on "description" above. %>
+    <input class="form-control<%= invalid('stream') %>" id="stream" name="stream" style="max-width: 768px; width: 100%" type="text" value="<%= data.stream || '' %>"<% if (errorFor('stream')) { %> aria-invalid="true" aria-describedby="stream-error"<% } %> />
+    <% if (errorFor('stream')) { %>
+    <span class="invalid-feedback" id="stream-error"><%= errorFor('stream').message %></span>
+    <% } %>
+  </p>
+  <p>
+    <label class="form-label" for="manual">Manual</label><br />
+    <input class="form-control<%= invalid('manual') %>" id="manual" name="manual" style="max-width: 768px; width: 100%" type="text" inputmode="url" value="<%= data.manual || '' %>"<% if (errorFor('manual')) { %> aria-invalid="true" aria-describedby="manual-error"<% } %> />
+    <% if (errorFor('manual')) { %>
+    <span class="invalid-feedback" id="manual-error"><%= errorFor('manual').message %></span>
+    <% } %>
+  </p>
+  <p style="margin-top: 20px">
+    <button class="btn" type="submit">
+      <%= game ? "Update" : "Create" %> Game
+    </button>
+    |
+    <a href="/">Back</a>
+  </p>
+</form>

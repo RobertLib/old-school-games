@@ -1,0 +1,18 @@
+-- The one foreign key into "games" with no index behind it.
+--
+-- "comments" ("idx_comments_gameId", 0014), "ratings" ("idx_ratings_game_voter",
+-- 0020), "plays" and "game_slugs" ("idx_game_slugs_gameId", 0021) all have one
+-- on the referencing column. "game_of_the_week" has only
+-- "idx_game_of_the_week_dates" on ("startDate", "endDate"), which leads with
+-- the wrong column.
+--
+-- Two things pay for that. First, the ON DELETE CASCADE: Postgres has to find
+-- the referencing rows before it can remove them, so deleting a game
+-- sequentially scans this table — and it is the one table here that only ever
+-- grows, a row a week for as long as the site runs, never pruned. An admin
+-- deleting a game does it inside the same request that clears the caches.
+--
+-- Second, selectNewGameOfTheWeek (models/game-of-the-week.ts) LEFT JOINs the
+-- last sixty days of picks against the whole catalogue to exclude games shown
+-- recently; the join key is "gameId" and there was nothing to join on.
+CREATE INDEX "idx_game_of_the_week_gameId" ON "game_of_the_week" ("gameId");
