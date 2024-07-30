@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <%- include('../head') %>
+  <% const title = 'Game Publishers - Browse by Publishing Companies | OldSchoolGames' %>
+  <% const description = 'Explore classic MS-DOS games by publisher. Find games from your favorite publishing companies from the retro era.' %>
+  <title><%= title %></title>
+  <meta name="description" content="<%= description %>" />
+  <meta property="og:title" content="<%= title %>" />
+  <meta property="og:description" content="<%= description %>" />
+  <meta property="og:url" content="https://oldschoolgames.eu/publishers" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="OldSchoolGames" />
+  <meta property="og:image" content="https://oldschoolgames.eu/images/navbar.webp" />
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "CollectionPage",
+      "name": "Game Publishers",
+      "description": "Browse classic MS-DOS games by publisher",
+      "url": "https://oldschoolgames.eu/publishers",
+      "mainEntity": {
+        "@type": "ItemList",
+        "itemListElement": [
+          <% publishers.forEach((publisher, index) => { %>
+          {
+            "@type": "ListItem",
+            "position": <%= index + 1 %>,
+            "item": {
+              "@type": "Organization",
+              "name": "<%= publisher %>",
+              "url": "https://oldschoolgames.eu/publisher/<%= encodeURIComponent(publisher) %>"
+            }
+          }<%= index < publishers.length - 1 ? ',' : '' %>
+          <% }); %>
+        ]
+      }
+    }
+  </script>
+</head>
+
+<body class="layout">
+  <%- include('../navbar') %>
+  <%- include('../left-sidebar') %>
+  <main>
+    <div class="container">
+      <%- include('../flash') %>
+      <section>
+        <h1 class="text-lg">Game Publishers</h1>
+        <p>Browse games by publisher:</p>
+
+        <hr />
+
+        <div class="company-list">
+          <% if (publishers.length) { %>
+          <ul>
+            <% publishers.forEach(publisher => { %>
+            <li>
+              <a href="/publisher/<%= encodeURIComponent(publisher) %>"><%= publisher %></a>
+            </li>
+            <% }); %>
+          </ul>
+          <% } else { %>
+          <p>No publishers found</p>
+          <% } %>
+        </div>
+      </section>
+    </div>
+  </main>
+  <%- include('../right-sidebar') %>
+  <%- include('../footer') %>
+</body>
+
+</html>
