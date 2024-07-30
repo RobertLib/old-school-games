@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <%# Declared above the include, not below it: head.ejs writes the Twitter
+     card from these two and a const declared after it is not in scope there.
+     See the twitter:title comment in views/head.ejs. %>
+  <% const title = '400 - Bad Request - OldSchoolGames' %>
+  <% const description = 'That request could not be processed. Go back and try again, or explore our collection of classic MS-DOS games.' %>
+  <%- include('head', { title, description }) %>
+  <title><%= title %></title>
+  <meta name="description" content="<%= description %>" />
+  <meta property="og:title" content="<%= title %>" />
+  <meta property="og:description" content="<%= description %>" />
+  <meta property="og:url" content="<%= siteUrl %>/400" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="<%= siteName %>" />
+  <%- include('og-image') %>
+</head>
+
+<body class="layout">
+  <%- include('navbar') %>
+  <%- include('left-sidebar') %>
+  <main>
+    <div class="container">
+      <h1 class="text-xl" style="margin: 0 0 10px">400 &mdash; Bad request</h1>
+      <p style="margin: 0 0 5px">
+        That request could not be processed &mdash; it may have been malformed,
+        or too large to send. Go back and try again.
+      </p>
+      <%- include('error-nav') %>
+    </div>
+  </main>
+  <%- include('right-sidebar') %>
+  <%- include('footer') %>
+</body>
+
+</html>

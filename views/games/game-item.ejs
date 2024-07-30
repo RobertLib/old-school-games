@@ -1,0 +1,110 @@
+<%
+  // Room for the rank badge a ranked list absolutely-positions over the card's
+  // top-left corner — see views/lists/list.ejs. Off by default, because every
+  // other caller renders these as a plain grid with nothing in that corner.
+  // A local rather than a class so the badge and the room made for it are
+  // decided in one place. views/lists/most-played.ejs ranks its entries the
+  // same way but off a copy of this whole card, taken so it could show a play
+  // count — a field this partial has no reason to carry. Worth folding back
+  // together the day that stops being the only difference.
+%>
+<article class="game-item card"<%- locals.rankPadding ? ' style="padding-left: 3.2em"' : "" %>>
+  <div>
+    <a class="color-primary font-bold" href="/<%= game.slug %>">
+      <h3 class="text-lg" style="margin: 0"><%= game.title %></h3>
+    </a>
+    <div class="clearfix">
+      <% if (game.cover) { %>
+      <%
+        // The cards at the top of a listing are in the viewport before a
+        // visitor scrolls anywhere, and this is the main content of every
+        // listing page on the site — so one of these covers is usually the
+        // page's LCP element. Deferring it is exactly what `loading="lazy"`
+        // is not for: the browser will not even start the request until it
+        // has laid the page out, which pushes the measurement it is judged on
+        // back by a round trip for nothing.
+        //
+        // Only the first few, and the rest stay lazy: a full page is 25 cards
+        // and eager-loading all of them would put 25 covers in front of the
+        // stylesheet and the fonts. `index` is undefined when this partial is
+        // rendered outside the list (views/games/similar-games.ejs renders its
+        // own markup, but nothing stops another caller), and an absent index
+        // is treated as "not first" so the safe branch is the default.
+        const eager = typeof locals.index === "number" && locals.index < 4;
+      %>
+      <%
+        // The alt says what the picture is, not merely which game it belongs
+        // to. It used to be the bare title, which was the weaker answer twice
+        // over.
+        //
+        // For image search, an alt is the main text Google has to go on for a
+        // file whose own name is a bucket id — and routes/sitemap.ts submits
+        // every one of these through <image:loc>, so this is the caption on
+        // the entire visual half of the catalogue. "Doom" describes a game;
+        // "Doom – MS-DOS cover art" describes the image, which is the thing
+        // being indexed.
+        //
+        // For a screen reader it is the link text. This <a> wraps nothing but
+        // the image, and the <a> directly above it wraps the title and points
+        // at the same address — so the card offered two adjacent links reading
+        // "Doom", "Doom". Naming this one for what it shows tells them apart.
+        //
+        // Same sentence on every cover on the site (the carousel, Game of the
+        // Week, most-played, similar games, the detail page and the gallery),
+        // for the reason views/og-image.ejs gives about its own pair: one
+        // picture should not be described two ways.
+      %>
+      <a class="game-item-initial" href="/<%= game.slug %>">
+        <img alt="<%= game.title %> – MS-DOS cover art" height="127" loading="<%= eager ? 'eager' : 'lazy' %>" fetchpriority="<%= locals.index === 0 ? 'high' : 'auto' %>" src="<%= game.cover %>" width="100" />
+      </a>
+      <% } %>
+      <div><%= game.summary %></div>
+    </div>
+    <div class="text-sm">
+      <strong>Genre</strong>:
+      <% if (game.genre) { %>
+      <a class="underline color-primary" href="/<%= game.genre.toLowerCase() %>"><%= game.genre %></a>
+      <% } else { %>
+      -
+      <% } %><br />
+      <strong>Release</strong>:
+      <% if (game.release) { %>
+      <a class="underline color-primary" href="/year/<%= game.release %>"><%= game.release %></a>
+      <% } else { %>
+      -
+      <% } %><br />
+      <strong>Developer</strong>:
+      <% if (game.developer) { %>
+      <a class="underline" href="/developer/<%= encodeURIComponent(game.developer) %>"><%= game.developer %></a>
+      <% } else { %>
+      -
+      <% } %><br />
+      <strong>Publisher</strong>:
+      <% if (game.publisher) { %>
+      <a class="underline" href="/publisher/<%= encodeURIComponent(game.publisher) %>"><%= game.publisher %></a>
+      <% } else { %>
+      -
+      <% } %>
+    </div>
+    <div style="display: flex; justify-content: space-between; align-items: baseline; width: 100%">
+      <rating-stars gameId="<%= game.id %>" rating="<%= game.averageRating %>" ratingCount="<%= game.ratingCount || 0 %>">
+      </rating-stars>
+      <button aria-label="Add <%= game.title %> to favorites" class="favorite-btn" data-game-id="<%= game.id %>" title="Favorite" type="button">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="16" height="16">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
+        </svg>
+      </button>
+    </div>
+  </div>
+  <% if (req.session?.user?.role === "ADMIN") { %>
+  <div class="flex" style="gap: 5px; justify-content: end; width: 100%; margin-top: 5px">
+    <a class="btn btn-outline btn-sm" href="/games/<%= game.id %>/edit">Edit</a>
+    <form action="/games/<%= game.id %>/delete" method="POST" data-confirm="Are you sure?">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+      <button class="btn btn-outline btn-sm" type="submit">
+        Delete
+      </button>
+    </form>
+  </div>
+  <% } %>
+</article>

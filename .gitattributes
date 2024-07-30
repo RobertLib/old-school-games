@@ -1,0 +1,5 @@
+# The migration runner records a sha256 of each file's bytes and refuses to
+# run when an applied file's checksum differs (utils/migrations.ts). A checkout
+# with core.autocrlf=true would rewrite every line ending and fail that check
+# on every file, so the SQL is pinned to LF regardless of platform.
+*.sql text eol=lf

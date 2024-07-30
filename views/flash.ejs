@@ -1,0 +1,18 @@
+<%#
+  One alert per message, styled by type.
+
+  req.flash() answers { type: [message, message] }, and this used to print the
+  array itself — two messages of one type came out joined by a comma. It also
+  wrote the raw type ("error", "success") into the class, while the stylesheet
+  only knows "alert-danger" and "alert-warning", so every flash rendered in
+  the neutral base style and "Game not found." looked exactly like "Game
+  created successfully."
+%>
+<% if (req.session?.user) { %>
+<% const ALERT_CLASS = { error: 'alert-danger', warning: 'alert-warning', success: 'alert-success', info: 'alert-info' }; %>
+<% Object.entries(req.flash()).forEach(([type, messages]) => { %>
+<% [].concat(messages).forEach((message) => { %>
+<div class="alert <%= ALERT_CLASS[type] || 'alert-info' %>" role="status"><%= message %></div>
+<% }); %>
+<% }); %>
+<% } %>

@@ -1,0 +1,62 @@
+<%
+  // `total` is optional: pages that don't count their rows fall back to the
+  // old "is this page full?" heuristic for the Next link.
+  const totalItems = typeof locals.total === "number" ? locals.total : null;
+  const totalPages =
+    totalItems !== null ? Math.max(1, Math.ceil(totalItems / limit)) : null;
+  const hasNext =
+    totalPages !== null ? page < totalPages : games.length === limit;
+  const hasPrev = page > 1;
+  const firstItem = games.length ? (page - 1) * limit + 1 : 0;
+  const lastItem = (page - 1) * limit + games.length;
+
+  const pageHref = (target) =>
+    "?" + new URLSearchParams({ ...req.query, page: target }).toString();
+
+  const WINDOW = 2;
+  const windowStart = totalPages ? Math.max(1, page - WINDOW) : page;
+  const windowEnd = totalPages ? Math.min(totalPages, page + WINDOW) : page;
+%>
+<nav class="pagination" aria-label="Pagination">
+  <div class="pagination-summary">
+    <% if (totalItems !== null && games.length) { %>
+    Showing <strong><%= firstItem %>&ndash;<%= lastItem %></strong>
+    of <strong><%= totalItems.toLocaleString("en-US") %></strong>
+    game<%= totalItems === 1 ? "" : "s" %>
+    <% } else if (totalItems !== null) { %>
+    <strong>0</strong> games
+    <% } else { %>
+    Page <%= page %>
+    <% } %>
+  </div>
+
+  <div class="pagination-controls">
+    <% if (hasPrev) { %>
+    <a class="btn btn-sm" href="<%= pageHref(1) %>" rel="first" aria-label="First page">&lt;&lt;</a>
+    <a class="btn btn-sm" href="<%= pageHref(page - 1) %>" rel="prev">&lt; Prev</a>
+    <% } %>
+
+    <% if (totalPages !== null) { %>
+    <% if (windowStart > 1) { %>
+    <span class="pagination-gap">…</span>
+    <% } %>
+    <% for (let p = windowStart; p <= windowEnd; p++) { %>
+    <% if (p === page) { %>
+    <span class="btn btn-sm pagination-current" aria-current="page"><%= p %></span>
+    <% } else { %>
+    <a class="btn btn-sm" href="<%= pageHref(p) %>"><%= p %></a>
+    <% } %>
+    <% } %>
+    <% if (windowEnd < totalPages) { %>
+    <span class="pagination-gap">…</span>
+    <% } %>
+    <% } %>
+
+    <% if (hasNext) { %>
+    <a class="btn btn-sm" href="<%= pageHref(page + 1) %>" rel="next">Next &gt;</a>
+    <% if (totalPages !== null) { %>
+    <a class="btn btn-sm" href="<%= pageHref(totalPages) %>" rel="last" aria-label="Last page">&gt;&gt;</a>
+    <% } %>
+    <% } %>
+  </div>
+</nav>

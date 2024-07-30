@@ -1,0 +1,48 @@
+# fly.toml app configuration file generated for old-school-games on 2024-08-11T07:31:57+02:00
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = 'old-school-games'
+
+[build]
+  [build.args]
+    # Node 24 is the current LTS. This used to pin 23, which reached end of
+    # life and stopped receiving security fixes.
+    NODE_VERSION = "24"
+
+# Migrations used to be applied by hand: nothing in the deploy ran them, so a
+# release could reach production against a schema it did not expect. The
+# release command runs before the new machines take traffic and aborts the
+# deploy if it fails.
+[deploy]
+  release_command = "node migrate.ts"
+
+[env]
+  NODE_ENV = "production"
+
+[http_service]
+  internal_port = 3000
+  force_https = true
+  auto_stop_machines = 'stop'
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ['app']
+
+# An HTTP check rather than the default TCP one, which only establishes that
+# something still holds the port — a process whose event loop has wedged, or
+# whose express instance has thrown its listener away, passes that and answers
+# nothing. /healthz is answered above the session, the rate limiter and the
+# canonical-host redirect, so a check costs no queries; it reports the
+# database without failing on it, for the reasons written down at the route.
+[[http_service.checks]]
+  interval = "30s"
+  timeout = "5s"
+  grace_period = "10s"
+  method = "GET"
+  path = "/healthz"
+
+[[vm]]
+  memory = '1gb'
+  cpu_kind = 'shared'
+  cpus = 1

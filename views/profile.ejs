@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <%# Declared above the include, not below it: head.ejs writes the Twitter
+     card from these two and a const declared after it is not in scope there.
+     See the twitter:title comment in views/head.ejs. %>
+  <% const title = 'My profile - OldSchoolGames' %>
+  <% const description = 'Manage your personal gaming profile on OldSchoolGames. View and organize your favorite retro games, track recently played titles and build your collection.' %>
+  <%- include('head', { title, description }) %>
+  <title><%= title %></title>
+  <meta name="description" content="<%= description %>" />
+  <meta property="og:title" content="<%= title %>" />
+  <meta property="og:description" content="<%= description %>" />
+  <meta property="og:url" content="<%= siteUrl %>/profile" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="<%= siteName %>" />
+  <%- include('og-image') %>
+</head>
+
+<body class="layout">
+  <%- include('navbar') %>
+  <%- include('left-sidebar') %>
+  <main>
+    <div class="container">
+      <%- include('flash') %>
+      <section>
+        <h1 class="text-lg">My profile</h1>
+        <p>Your favourite and recently played games, stored in this browser only &mdash; no account needed.</p>
+
+        <div id="collection-stats"></div>
+
+        <h2 class="text-md" style="margin-top: 30px; margin-bottom: 17px;">Favourite games</h2>
+        <div id="favorite-games-container">
+          <p>Loading your favourite games...</p>
+        </div>
+
+        <h2 class="text-md" style="margin-top: 30px; margin-bottom: 17px;">Recently played games</h2>
+        <div id="recently-played-games-container">
+          <p>Loading your recently played games...</p>
+        </div>
+
+        <h2 class="text-md" style="margin-top: 30px; margin-bottom: 10px;">Move your collection</h2>
+        <p class="text-sm">
+          This list lives in this browser. Clearing site data or switching to
+          another device loses it &mdash; export it to a file and import it
+          wherever you play next.
+        </p>
+        <div class="collection-transfer">
+          <button class="btn btn-sm btn-outline" id="export-collection" type="button">
+            Export collection
+          </button>
+          <label class="btn btn-sm btn-outline" for="import-collection">
+            Import collection
+          </label>
+          <input accept="application/json,.json" hidden id="import-collection" type="file" />
+        </div>
+        <p aria-live="polite" class="collection-transfer-status" id="collection-transfer-status"></p>
+      </section>
+    </div>
+  </main>
+  <%- include('right-sidebar') %>
+  <%- include('footer') %>
+</body>
+
+</html>

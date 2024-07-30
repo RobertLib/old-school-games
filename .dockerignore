@@ -131,3 +131,13 @@ dist
 .yarn/build-state.yml
 .yarn/install-state.gz
 .pnp.*
+
+# This file started as a copy of .gitignore, which meant everything git tracks
+# was shipped into the runtime image — including .git itself. None of the
+# following is reachable from `node index.ts`: the history is 2.6 MB of it,
+# and the suite cannot run in an image installed with --omit=dev anyway.
+.git
+.github
+tests
+tsconfig.tests.json
+vitest.config.ts

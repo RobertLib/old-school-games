@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <%# Declared above the include, not below it: head.ejs writes the Twitter
+     card from these two and a const declared after it is not in scope there.
+     See the twitter:title comment in views/head.ejs. %>
+  <% const title = '404 - Page Not Found - OldSchoolGames' %>
+  <% const description = 'The page you are looking for was not found. Explore hundreds of classic MS-DOS games from the 80s and 90s instead!' %>
+  <%- include('head', { title, description }) %>
+  <title><%= title %></title>
+  <meta name="description" content="<%= description %>" />
+  <meta property="og:title" content="<%= title %>" />
+  <meta property="og:description" content="<%= description %>" />
+  <meta property="og:url" content="<%= siteUrl %>/404" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="<%= siteName %>" />
+  <%- include('og-image') %>
+</head>
+
+<body class="layout">
+  <%- include('navbar') %>
+  <%- include('left-sidebar') %>
+  <main>
+    <div class="container">
+      <h1 class="text-xl" style="margin: 0 0 10px">404 &mdash; Page not found</h1>
+      <p style="margin: 0 0 5px">
+        There is nothing at this address. The page may have been moved or
+        removed, or the link that brought you here may be mistyped.
+      </p>
+      <%- include('error-nav') %>
+    </div>
+  </main>
+  <%- include('right-sidebar') %>
+  <%- include('footer') %>
+</body>
+
+</html>
