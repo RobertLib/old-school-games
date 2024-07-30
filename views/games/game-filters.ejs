@@ -1,0 +1,53 @@
+<div class="game-filters">
+  <h2 class="text-lg" style="margin: 0">
+    <% if (locals.letter) { %>
+    Games starting with '<%= letter.toUpperCase() %>'
+    <% } else if (locals.genre) { %>
+    Games in the "<%= genre %>" genre
+    <% } else if (locals.developer) { %>
+    Games by developer "<%= developer %>"
+    <% } else if (locals.publisher) { %>
+    Games by publisher "<%= publisher %>"
+    <% } else if (locals.year) { %>
+    Games from <%= year %>
+    <% } else { %>
+    Games of all genres
+    <% } %>
+    <small>
+      <% if (req.query.orderBy === "title") { %>
+      (alphabetical)
+      <% } else if (req.query.orderBy === "createdAt") { %>
+      (recently added)
+      <% } else if (req.query.orderBy === "release") { %>
+      (by release years)
+      <% } else if (req.query.orderBy === "rating") { %>
+      (by rating)
+      <% } %>
+    </small>
+  </h2>
+  <ul class="sorting-options">
+    <li>
+      <a class="<%= req.query.orderBy === 'title' ? 'active' : '' %>" href="?orderBy=title&orderDir=ASC">A-Z</a>
+    </li>
+    <li>
+      <a class="<%= req.query.orderBy === 'createdAt' ? 'active' : '' %>" href="?orderBy=createdAt&orderDir=DESC">New</a>
+    </li>
+    <li>
+      <a class="<%= req.query.orderBy === 'release' ? 'active' : '' %>" href="?orderBy=release&orderDir=ASC">Year</a>
+    </li>
+    <li>
+      <a class="<%= req.query.orderBy === 'rating' ? 'active' : '' %>" href="?orderBy=rating&orderDir=DESC">Rating</a>
+    </li>
+    <li class="separator">|</li>
+    <li>
+      <a aria-label="Order by ASC" class="inline-block hover-scale <%= req.query.orderDir === 'ASC' || (!req.query.orderDir && (locals.letter || locals.year || locals.developer || locals.publisher)) ? 'active' : '' %>" href="?<%= new URLSearchParams({ ...req.query, orderDir: 'ASC' }).toString() %>" title="Order by ASC" style="margin: -2px -3px">
+        ▲
+      </a>
+    </li>
+    <li>
+      <a aria-label="Order by DESC" class="inline-block hover-scale <%= req.query.orderDir === 'DESC' || (!req.query.orderDir && !(locals.letter || locals.year || locals.developer || locals.publisher)) ? 'active' : '' %>" href="?<%= new URLSearchParams({ ...req.query, orderDir: 'DESC' }).toString() %>" title="Order by DESC" style="margin: -2px -3px">
+        ▼
+      </a>
+    </li>
+  </ul>
+</div>

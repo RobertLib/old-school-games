@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <%- include('../head') %>
+  <title><%= title %></title>
+  <meta name="description" content="<%= description %>" />
+  <meta property="og:title" content="<%= title %>" />
+  <meta property="og:description" content="<%= description %>" />
+  <meta property="og:url" content="https://oldschoolgames.eu/years" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="OldSchoolGames" />
+  <meta property="og:image" content="https://oldschoolgames.eu/images/navbar.webp" />
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "CollectionPage",
+      "name": "Game Years",
+      "description": "Browse classic MS-DOS games by release year",
+      "url": "https://oldschoolgames.eu/years",
+      "mainEntity": {
+        "@type": "ItemList",
+        "itemListElement": [
+          <% years.forEach((year, index) => { %>
+          {
+            "@type": "ListItem",
+            "position": <%= index + 1 %>,
+            "item": {
+              "@type": "Thing",
+              "name": "<%= year %>",
+              "url": "https://oldschoolgames.eu/year/<%= year %>"
+            }
+          }<%= index < years.length - 1 ? ',' : '' %>
+          <% }); %>
+        ]
+      }
+    }
+  </script>
+</head>
+
+<body class="layout">
+  <%- include('../navbar') %>
+  <%- include('../left-sidebar') %>
+  <main>
+    <div class="container">
+      <%- include('../flash') %>
+      <section>
+        <h1 class="text-lg">Game Years</h1>
+        <p>Browse games by release year:</p>
+
+        <!-- Quick Navigation -->
+        <div style="margin: 20px 0; padding: 15px; background: rgba(var(--border-rgb), 0.2); border: 1px solid rgb(var(--border-rgb)); border-radius: var(--border-radius);">
+          <h3 style="margin: 0 0 10px; color: rgb(var(--primary-rgb)); text-shadow: var(--text-shadow);">Quick Navigation:</h3>
+          <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+            <a href="/developers" class="btn btn-sm btn-outline">Browse Developers</a>
+            <a href="/publishers" class="btn btn-sm btn-outline">Browse Publishers</a>
+            <a href="/" class="btn btn-sm btn-outline">All Games</a>
+          </div>
+        </div>
+
+        <hr />
+
+        <div class="company-list">
+          <% if (years.length) { %>
+          <ul>
+            <% years.forEach(year => { %>
+            <li>
+              <a href="/year/<%= year %>"><%= year %></a>
+            </li>
+            <% }); %>
+          </ul>
+          <% } else { %>
+          <p>No years found</p>
+          <% } %>
+        </div>
+      </section>
+    </div>
+  </main>
+  <%- include('../right-sidebar') %>
+  <%- include('../footer') %>
+</body>
+
+</html>
