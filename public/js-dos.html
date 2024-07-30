@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex, nofollow" />
+    <!-- js-dos style sheet -->
+    <link rel="stylesheet" href="https://v8.js-dos.com/latest/js-dos.css" />
+    <!-- js-dos -->
+    <script src="https://v8.js-dos.com/latest/js-dos.js"></script>
+    <script>
+      let dosInstance = null;
+
+      window.addEventListener("DOMContentLoaded", () => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const stream = urlParams.get("stream");
+
+        if (stream) {
+          const match = stream.match(/\/assets\/([^\/]+)/);
+          if (match && match[1]) {
+            let gameName = match[1];
+            gameName = gameName.replace(/\.jsdos$/, "");
+            const canonicalLink = document.createElement("link");
+            canonicalLink.rel = "canonical";
+            canonicalLink.href = `https://oldschoolgames.eu/${gameName}`;
+            document.head.appendChild(canonicalLink);
+          }
+        }
+      });
+
+      window.addEventListener("message", function (event) {
+        if (event.data.action === "clickFullscreen" && dosInstance) {
+          dosInstance.setFullScreen(!document.fullscreenElement);
+        }
+      });
+
+      document.addEventListener(
+        "keydown",
+        function (event) {
+          if (event.altKey && event.key === "Enter") {
+            event.preventDefault();
+            event.stopPropagation();
+            event.stopImmediatePropagation();
+
+            if (dosInstance) {
+              dosInstance.setFullScreen(!document.fullscreenElement);
+            }
+          }
+        },
+        true,
+      );
+    </script>
+    <style>
+      #dos .pointer-events-none {
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="dos" style="width: 100vw; height: 100vh"></div>
+    <script>
+      const urlParams = new URLSearchParams(window.location.search);
+      const stream = urlParams.get("stream");
+
+      dosInstance = Dos(document.getElementById("dos"), {
+        autoStart: true,
+        mouseCapture: true,
+        mouseSensitivity: 0.4,
+        theme: "dark",
+        url: stream,
+      });
+    </script>
+  </body>
+</html>
