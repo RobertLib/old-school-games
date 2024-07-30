@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /profile
+Disallow: *?orderBy=*
+Disallow: *?orderDir=*
+Disallow: *?page=*
+
+Sitemap: https://oldschoolgames.eu/sitemap.xml
