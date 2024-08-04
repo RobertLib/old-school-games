@@ -1,9 +1,11 @@
 <li>
   <a href="/games/<%= game.id %>"><%= game.title %></a>
+  <% if (session.user?.role === "ADMIN") { %>
   <a href="/games/<%= game.id %>/edit">Edit</a>
   <form action="/games/<%= game.id %>/delete" method="POST">
     <button onclick="return confirm('Are you sure?')" type="submit">
       Delete
     </button>
   </form>
+  <% } %>
 </li>

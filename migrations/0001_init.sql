@@ -1,3 +1,5 @@
+CREATE EXTENSION IF NOT EXISTS unaccent;
+
 CREATE TABLE "session" (
   "sid" VARCHAR NOT NULL COLLATE "default",
   "sess" JSON NOT NULL,
@@ -8,8 +10,6 @@ WITH (OIDS=FALSE);
 ALTER TABLE "session" ADD CONSTRAINT "session_pkey" PRIMARY KEY ("sid") NOT DEFERRABLE INITIALLY IMMEDIATE;
 
 CREATE INDEX "IDX_session_expire" ON "session" ("expire");
-
-CREATE EXTENSION unaccent;
 
 CREATE TYPE USER_ROLE AS ENUM ('USER', 'ADMIN');
 

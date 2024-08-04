@@ -2,11 +2,16 @@ require("dotenv").config();
 
 const express = require("express");
 const path = require("path");
+const compression = require("compression");
+const cookieParser = require("cookie-parser");
 const session = require("express-session");
 const pgSession = require("connect-pg-simple")(session);
 const pool = require("./db");
+const flash = require("connect-flash");
 
 const app = express();
+
+app.use(compression());
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -14,6 +19,8 @@ app.use(express.static(path.join(__dirname, "public")));
 
 app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views"));
+
+app.use(cookieParser());
 
 const sessionOptions = {
   store: new pgSession({ pool }),
@@ -33,14 +40,18 @@ if (app.get("env") === "production") {
 
 app.use(session(sessionOptions));
 
+app.use(flash());
+
 app.use((req, res, next) => {
   console.log(`Request: ${req.method} ${req.url}`);
   next();
 });
 
+const authRoutes = require("./routes/auth");
 const gamesRoutes = require("./routes/games");
 const commentsRoutes = require("./routes/comments");
 
+app.use("/", authRoutes);
 app.use("/games", gamesRoutes);
 app.use("/comments", commentsRoutes);
 
@@ -50,7 +61,11 @@ app.get("/", async (req, res, next) => {
   try {
     const games = await Game.all();
 
-    res.render("index", { games });
+    res.render("index", {
+      games,
+      message: req.flash("info"),
+      session: req.session,
+    });
   } catch (error) {
     next(error);
   }

@@ -21,7 +21,7 @@ class Game extends Model {
       id,
     ]);
 
-    return new Game(rows[0]);
+    return rows[0] ? new Game(rows[0]) : null;
   }
 
   static async create({ title, description, stream }) {

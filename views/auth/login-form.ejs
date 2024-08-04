@@ -1,0 +1,28 @@
+<form action="/login" method="POST">
+  <% if (locals.error) { %>
+  <p><%= error %></p>
+  <% } %>
+  <p>
+    <label for="email">Email *</label><br />
+    <input
+      autocomplete="email"
+      id="email"
+      maxlength="255"
+      name="email"
+      required
+      type="text"
+    />
+  </p>
+  <p>
+    <label for="password">Password *</label><br />
+    <input
+      autocomplete="current-password"
+      id="password"
+      maxlength="255"
+      name="password"
+      required
+      type="password"
+    />
+  </p>
+  <button type="submit">Login</button> | <a href="/">Back</a>
+</form>

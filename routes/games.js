@@ -1,17 +1,21 @@
 const express = require("express");
 const router = express.Router();
+const { isAuth } = require("../middlewares/is-auth");
+const { isAdmin } = require("../middlewares/is-admin");
 const Game = require("../models/game");
 const Comment = require("../models/comment");
 
-router.get("/new", (req, res) => {
-  res.render("games/new-game");
+router.get("/new", isAuth, isAdmin, (req, res) => {
+  res.render("games/new-game", { session: req.session });
 });
 
-router.post("/", async (req, res, next) => {
+router.post("/", isAuth, isAdmin, async (req, res, next) => {
   try {
     const { title, description, stream } = req.body;
 
     await Game.create({ title, description, stream });
+
+    req.flash("info", "Game created successfully.");
 
     res.redirect("/");
   } catch (error) {
@@ -19,14 +23,14 @@ router.post("/", async (req, res, next) => {
   }
 });
 
-router.get("/:id/edit", async (req, res, next) => {
+router.get("/:id/edit", isAuth, isAdmin, async (req, res, next) => {
   try {
     const { id } = req.params;
 
     const game = await Game.findById(id);
 
     if (game) {
-      res.render("games/edit-game", { game });
+      res.render("games/edit-game", { game, session: req.session });
     } else {
       res.status(404).send("Game not found");
     }
@@ -35,7 +39,7 @@ router.get("/:id/edit", async (req, res, next) => {
   }
 });
 
-router.post("/:id", async (req, res, next) => {
+router.post("/:id", isAuth, isAdmin, async (req, res, next) => {
   try {
     const { id } = req.params;
     const { title, description, stream } = req.body;
@@ -43,6 +47,8 @@ router.post("/:id", async (req, res, next) => {
     const game = await Game.update(id, { title, description, stream });
 
     if (game) {
+      req.flash("info", "Game updated successfully.");
+
       res.redirect("/");
     } else {
       res.status(404).send("Game not found");
@@ -52,11 +58,13 @@ router.post("/:id", async (req, res, next) => {
   }
 });
 
-router.post("/:id/delete", async (req, res, next) => {
+router.post("/:id/delete", isAuth, isAdmin, async (req, res, next) => {
   try {
     const { id } = req.params;
 
     await Game.delete(id);
+
+    req.flash("info", "Game deleted successfully.");
 
     res.redirect("/");
   } catch (error) {
@@ -68,7 +76,11 @@ router.get("/", async (req, res, next) => {
   try {
     const games = await Game.all();
 
-    res.render("index", { games });
+    res.render("index", {
+      games,
+      message: req.flash("info"),
+      session: req.session,
+    });
   } catch (error) {
     next(error);
   }
@@ -82,7 +94,7 @@ router.get("/:id", async (req, res, next) => {
     const comments = await Comment.findByGameId(id);
 
     if (game) {
-      res.render("games/game-detail", { game, comments });
+      res.render("games/game-detail", { game, comments, session: req.session });
     } else {
       res.status(404).send("Game not found");
     }

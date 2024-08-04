@@ -1,0 +1,8 @@
+<nav>
+  <ul>
+    <li><a href="/">Home</a></li>
+    <% if (session.user) { %>
+    <li><a href="/logout">Logout</a></li>
+    <% } %>
+  </ul>
+</nav>

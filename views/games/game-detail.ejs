@@ -5,8 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>OldSchoolGames</title>
     <link rel="stylesheet" href="/css/style.css" />
+    <meta name="description" content="OldSchoolGames" />
+    <meta name="keywords" content="games, retro, oldschool" />
   </head>
   <body>
+    <%- include('../navbar', { session }) %>
     <main>
       <h1><%= game.title %></h1>
       <p><%= game.description %></p>
