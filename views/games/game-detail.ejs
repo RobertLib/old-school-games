@@ -19,11 +19,20 @@
         <% }); %>
       </p>
       <p><%- game.stream %></p>
+      <p><button id="fullscreen-btn" type="button">Fullscreen</button></p>
       <a href="/">Back to games</a>
       <h2>Comments</h2>
       <%- include('../comments/comment-list', { comments }) %>
       <h2>New Comment</h2>
       <%- include('../comments/comment-form', { game }) %>
     </main>
+    <script>
+      const fullscreenBtn = document.getElementById("fullscreen-btn");
+      fullscreenBtn.addEventListener("click", () => {
+        const iframe = document.querySelector("iframe");
+        iframe.requestFullscreen();
+        iframe.focus();
+      });
+    </script>
   </body>
 </html>
