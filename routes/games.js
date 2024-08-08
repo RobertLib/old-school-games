@@ -11,9 +11,9 @@ router.get("/new", isAuth, isAdmin, (req, res) => {
 
 router.post("/", isAuth, isAdmin, async (req, res, next) => {
   try {
-    const { title, description, stream } = req.body;
+    const { title, description, images, stream } = req.body;
 
-    await Game.create({ title, description, stream });
+    await Game.create({ title, description, images, stream });
 
     req.flash("info", "Game created successfully.");
 
@@ -42,9 +42,9 @@ router.get("/:id/edit", isAuth, isAdmin, async (req, res, next) => {
 router.post("/:id", isAuth, isAdmin, async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { title, description, stream } = req.body;
+    const { title, description, images, stream } = req.body;
 
-    const game = await Game.update(id, { title, description, stream });
+    const game = await Game.update(id, { title, description, images, stream });
 
     if (game) {
       req.flash("info", "Game updated successfully.");

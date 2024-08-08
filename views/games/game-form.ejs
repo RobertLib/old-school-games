@@ -15,6 +15,20 @@
     <textarea id="description" name="description" rows="10"><%= game?.description %></textarea>
   </p>
   <p>
+    <label for="images">Images</label><br />
+    <ol>
+      <li>
+        <input id="images" name="images" type="url" value="<%= game?.images[0] %>" />
+      </li>
+      <li>
+        <input name="images" type="url" value="<%= game?.images[1] %>" />
+      </li>
+      <li>
+        <input name="images" type="url" value="<%= game?.images[2] %>" />
+      </li>
+    </ol>
+  </p>
+  <p>
     <label for="stream">Stream</label><br />
     <input id="stream" name="stream" type="text" value="<%= game?.stream %>" />
   </p>

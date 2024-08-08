@@ -13,6 +13,11 @@
     <main>
       <h1><%= game.title %></h1>
       <p><%= game.description %></p>
+      <p>
+        <% game.images.forEach((image) => { %>
+        <img src="<%= image %>" alt="<%= game.title %>" width="320" />
+        <% }); %>
+      </p>
       <p><%- game.stream %></p>
       <a href="/">Back to games</a>
       <h2>Comments</h2>
