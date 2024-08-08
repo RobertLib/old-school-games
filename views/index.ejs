@@ -12,8 +12,10 @@
     <%- include('navbar', { session }) %>
     <main>
       <h1>OldSchoolGames</h1>
+      <% if (!session.user) { %>
       <a href="/login">Login</a>
       <a href="/register">Register</a>
+      <% } %>
       <hr />
       <% if (session.user?.role === "ADMIN") { %>
       <a href="/games/new">Add a new game</a>

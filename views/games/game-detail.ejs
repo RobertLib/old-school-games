@@ -14,8 +14,10 @@
       <h1><%= game.title %></h1>
       <p><%= game.description %></p>
       <p>
-        <% game.images.forEach((image) => { %>
-        <img src="<%= image %>" alt="<%= game.title %>" width="320" />
+        <% game.images.filter(Boolean).forEach((image) => { %>
+        <a href="<%= image %>" target="_blank">
+          <img src="<%= image %>" alt="<%= game.title %>" width="320" />
+        </a>
         <% }); %>
       </p>
       <p><%- game.stream %></p>
