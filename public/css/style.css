@@ -1,3 +1,122 @@
-body {
+:root {
+  /* Colors */
+  --background-body-rgb: 248 249 250;
+  --background-rgb: 255 255 255;
+  --color-rgb: 33 37 41;
+  --primary-rgb: 9 105 218;
+
+  accent-color: rgb(var(--primary-rgb));
+  background-color: rgb(var(--background-body-rgb));
+  color: rgb(var(--color-rgb));
   font-family: Arial, sans-serif;
+  font-synthesis: none;
+  letter-spacing: 0.01em;
+  line-height: 1.2;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* Colors */
+    --background-body-rgb: 21 32 43;
+    --background-rgb: 33 37 41;
+    --color-rgb: 248 249 250;
+    --primary-rgb: 169 205 253;
+  }
+}
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  a {
+    color: rgb(var(--primary-rgb));
+    text-decoration: none;
+
+    &:hover {
+      color: rgb(var(--primary-rgb) / 0.9);
+      text-decoration: underline;
+    }
+  }
+
+  body {
+    margin: 0;
+  }
+
+  main {
+    grid-area: main;
+    padding: 15px;
+  }
+}
+
+@layer layout {
+  .layout {
+    display: grid;
+    grid-template-areas:
+      "navbar navbar"
+      "sidebar main";
+    grid-template-columns: 180px auto;
+  }
+
+  .navbar {
+    backdrop-filter: blur(20px);
+    display: flex;
+    grid-area: navbar;
+    justify-content: space-between;
+    padding: 15px;
+    position: sticky;
+    top: 0;
+  }
+
+  .navbar-actions {
+    display: flex;
+    gap: 10px;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .sidebar {
+    grid-area: sidebar;
+    line-height: 1.6;
+  }
+}
+
+@layer utilities {
+  .font-bold {
+    font-weight: bold;
+  }
+
+  .text-right {
+    text-align: right;
+  }
+}
+
+@layer games {
+  .game-item {
+    display: grid;
+    gap: 10px;
+    grid-template-columns: auto 1fr;
+  }
+
+  .game-item-actions {
+    display: flex;
+    gap: 10px;
+  }
+
+  .game-item-content {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .game-list {
+    display: grid;
+    gap: 10px;
+    list-style: none;
+    padding: 0;
+  }
 }

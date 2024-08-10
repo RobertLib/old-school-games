@@ -8,11 +8,14 @@
     <meta name="description" content="OldSchoolGames" />
     <meta name="keywords" content="games, retro, oldschool" />
   </head>
-  <body>
+  <body class="layout">
     <%- include('../navbar', { session }) %>
+    <%- include('../sidebar', { genres }) %>
     <main>
+      <a href="/">&lt; Back</a>
       <h1><%= game.title %></h1>
       <p><%= game.description %></p>
+      <p>Genre: <%= game.genre %></p>
       <p>
         <% game.images.filter(Boolean).forEach((image) => { %>
         <a href="<%= image %>" target="_blank">
@@ -22,7 +25,6 @@
       </p>
       <p><%- game.stream %></p>
       <p><button id="fullscreen-btn" type="button">Fullscreen</button></p>
-      <a href="/">Back to games</a>
       <h2>Comments</h2>
       <%- include('../comments/comment-list', { comments }) %>
       <h2>New Comment</h2>

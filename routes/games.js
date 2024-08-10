@@ -6,14 +6,18 @@ const Game = require("../models/game");
 const Comment = require("../models/comment");
 
 router.get("/new", isAuth, isAdmin, (req, res) => {
-  res.render("games/new-game", { session: req.session });
+  res.render("games/new-game", {
+    game: null,
+    genres: Game.GENRES,
+    session: req.session,
+  });
 });
 
 router.post("/", isAuth, isAdmin, async (req, res, next) => {
   try {
-    const { title, description, images, stream } = req.body;
+    const { title, description, genre, images, stream } = req.body;
 
-    await Game.create({ title, description, images, stream });
+    await Game.create({ title, description, genre, images, stream });
 
     req.flash("info", "Game created successfully.");
 
@@ -30,7 +34,11 @@ router.get("/:id/edit", isAuth, isAdmin, async (req, res, next) => {
     const game = await Game.findById(id);
 
     if (game) {
-      res.render("games/edit-game", { game, session: req.session });
+      res.render("games/edit-game", {
+        game,
+        genres: Game.GENRES,
+        session: req.session,
+      });
     } else {
       res.status(404).send("Game not found");
     }
@@ -42,9 +50,15 @@ router.get("/:id/edit", isAuth, isAdmin, async (req, res, next) => {
 router.post("/:id", isAuth, isAdmin, async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { title, description, images, stream } = req.body;
+    const { title, description, genre, images, stream } = req.body;
 
-    const game = await Game.update(id, { title, description, images, stream });
+    const game = await Game.update(id, {
+      title,
+      description,
+      genre,
+      images,
+      stream,
+    });
 
     if (game) {
       req.flash("info", "Game updated successfully.");
@@ -74,10 +88,13 @@ router.post("/:id/delete", isAuth, isAdmin, async (req, res, next) => {
 
 router.get("/", async (req, res, next) => {
   try {
-    const games = await Game.all();
+    const { genre } = req.query;
+
+    const games = await Game.findByGenre(genre);
 
     res.render("index", {
       games,
+      genres: Game.GENRES,
       message: req.flash("info"),
       session: req.session,
     });
@@ -94,7 +111,12 @@ router.get("/:id", async (req, res, next) => {
     const comments = await Comment.findByGameId(id);
 
     if (game) {
-      res.render("games/game-detail", { game, comments, session: req.session });
+      res.render("games/game-detail", {
+        game,
+        genres: Game.GENRES,
+        comments,
+        session: req.session,
+      });
     } else {
       res.status(404).send("Game not found");
     }

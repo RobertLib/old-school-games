@@ -15,6 +15,15 @@
     <textarea id="description" name="description" rows="10"><%= game?.description %></textarea>
   </p>
   <p>
+    <label for="genre">Genre *</label><br />
+    <select id="genre" name="genre" required>
+      <option value=""></option>
+      <% genres.map(genre => { %>
+      <option <%= game?.genre === genre ? "selected" : "" %> value=<%= genre %>><%= genre %></option>
+      <% }); %>
+    </select>
+  </p>
+  <p>
     <label for="images">Images</label><br />
     <ol>
       <li>
@@ -33,5 +42,5 @@
     <input id="stream" name="stream" type="text" value="<%= game?.stream %>" />
   </p>
   <button type="submit"><%= game ? "Update" : "Create" %> Game</button> |
-  <a href="/">Back to games</a>
+  <a href="/">Back</a>
 </form>

@@ -1,5 +1,5 @@
 <% if (games.length) { %>
-<ul>
+<ul class="game-list">
   <% games.forEach((game) => { %>
   <%- include('game-item', { game, session }) %>
   <% }); %>

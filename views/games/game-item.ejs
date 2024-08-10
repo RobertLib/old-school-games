@@ -1,11 +1,19 @@
-<li>
-  <a href="/games/<%= game.id %>"><%= game.title %></a>
-  <% if (session.user?.role === "ADMIN") { %>
-  <a href="/games/<%= game.id %>/edit">Edit</a>
-  <form action="/games/<%= game.id %>/delete" method="POST">
-    <button onclick="return confirm('Are you sure?')" type="submit">
-      Delete
-    </button>
-  </form>
-  <% } %>
+<li class="game-item">
+  <a href="/games/<%= game.id %>">
+    <img src="<%= game.images[0] %>" alt="<%= game.title %>" width="100" />
+  </a>
+  <div class="game-item-content">
+    <a class="font-bold" href="/games/<%= game.id %>"><%= game.title %></a>
+    <p style="margin: 0"><%= game.description?.slice(0, 100) %>...</p>
+    <% if (session.user?.role === "ADMIN") { %>
+    <div class="game-item-actions">
+      <a href="/games/<%= game.id %>/edit">Edit</a>
+      <form action="/games/<%= game.id %>/delete" method="POST">
+        <button onclick="return confirm('Are you sure?')" type="submit">
+          Delete
+        </button>
+      </form>
+    </div>
+    <% } %>
+  </div>
 </li>

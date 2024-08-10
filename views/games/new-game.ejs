@@ -8,11 +8,12 @@
     <meta name="description" content="OldSchoolGames" />
     <meta name="keywords" content="games, retro, oldschool" />
   </head>
-  <body>
+  <body class="layout">
     <%- include('../navbar', { session }) %>
+    <%- include('../sidebar', { genres }) %>
     <main>
       <h1>New Game</h1>
-      <%- include('game-form', { game: null }) %>
+      <%- include('game-form', { game, genres }) %>
     </main>
   </body>
 </html>

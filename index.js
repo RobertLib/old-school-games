@@ -59,10 +59,13 @@ const Game = require("./models/game");
 
 app.get("/", async (req, res, next) => {
   try {
-    const games = await Game.all();
+    const { genre } = req.query;
+
+    const games = await Game.findByGenre(genre);
 
     res.render("index", {
       games,
+      genres: Game.GENRES,
       message: req.flash("info"),
       session: req.session,
     });

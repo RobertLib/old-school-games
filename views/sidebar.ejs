@@ -1,0 +1,14 @@
+<nav class="sidebar">
+  <ul>
+    <li>
+      <a href="/">All Genres</a>
+    </li>
+    <% genres.map(genre => { %>
+    <li>
+      <a href="/?genre=<%= genre %>">
+        <%= genre.charAt(0) %><%= genre.slice(1).toLowerCase() %>
+      </a>
+    </li>
+    <% }); %>
+  </ul>
+</nav>
