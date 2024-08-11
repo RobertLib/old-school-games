@@ -94,6 +94,7 @@ router.get("/", async (req, res, next) => {
 
     res.render("index", {
       games,
+      genre,
       genres: Game.GENRES,
       message: req.flash("info"),
       session: req.session,

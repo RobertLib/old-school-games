@@ -9,8 +9,8 @@
     <meta name="keywords" content="games, retro, oldschool" />
   </head>
   <body class="layout">
-    <%- include('../navbar', { session }) %>
-    <%- include('../sidebar', { genres }) %>
+    <%- include('../navbar') %>
+    <%- include('../sidebar') %>
     <main>
       <a href="/">&lt; Back</a>
       <h1><%= game.title %></h1>
@@ -26,9 +26,9 @@
       <p><%- game.stream %></p>
       <p><button id="fullscreen-btn" type="button">Fullscreen</button></p>
       <h2>Comments</h2>
-      <%- include('../comments/comment-list', { comments }) %>
+      <%- include('../comments/comment-list') %>
       <h2>New Comment</h2>
-      <%- include('../comments/comment-form', { game }) %>
+      <%- include('../comments/comment-form') %>
     </main>
     <script>
       const fullscreenBtn = document.getElementById("fullscreen-btn");

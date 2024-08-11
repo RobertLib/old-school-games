@@ -9,8 +9,8 @@
     <meta name="keywords" content="games, retro, oldschool" />
   </head>
   <body class="layout">
-    <%- include('navbar', { session }) %>
-    <%- include('sidebar', { genres }) %>
+    <%- include('navbar') %>
+    <%- include('sidebar') %>
     <main>
       <% if (session.user?.role === "ADMIN") { %>
       <div class="text-right">
@@ -20,7 +20,7 @@
       <% if (message) { %>
       <p><%= message %></p>
       <% } %>
-      <%- include('games/game-list', { games, session }) %>
+      <%- include('games/game-list') %>
     </main>
   </body>
 </html>
