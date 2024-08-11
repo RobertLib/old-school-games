@@ -55,7 +55,7 @@ router.get("/logout", (req, res) => {
   });
 });
 
-router.get("/register", (req, res) => {
+/* router.get("/register", (req, res) => {
   res.render("auth/register", {
     genres: Game.GENRES,
     session: req.session,
@@ -104,6 +104,6 @@ router.post("/register", async (req, res, next) => {
 
     next(error);
   }
-});
+}); */
 
 module.exports = router;
