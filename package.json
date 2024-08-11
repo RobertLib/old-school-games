@@ -23,5 +23,8 @@
     "express": "^4.19.2",
     "express-session": "^1.18.0",
     "pg": "^8.12.0"
+  },
+  "devDependencies": {
+    "@flydotio/dockerfile": "^0.5.8"
   }
 }
