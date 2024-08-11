@@ -29,7 +29,7 @@ class Game extends Model {
   }
 
   static async all() {
-    const { rows } = await db.query('SELECT * FROM "games"');
+    const { rows } = await db.query('SELECT * FROM "games" ORDER BY "title"');
 
     return rows.map((row) => new Game(row));
   }
@@ -40,7 +40,7 @@ class Game extends Model {
     }
 
     const { rows } = await db.query(
-      'SELECT * FROM "games" WHERE "genre" = $1',
+      'SELECT * FROM "games" WHERE "genre" = $1 ORDER BY "title"',
       [genre]
     );
 
