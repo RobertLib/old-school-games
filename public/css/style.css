@@ -81,7 +81,7 @@
 
   .sidebar {
     grid-area: sidebar;
-    line-height: 1.6;
+    line-height: 1.55;
   }
 }
 
@@ -110,7 +110,7 @@
   .game-item-content {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 7px;
   }
 
   .game-list {

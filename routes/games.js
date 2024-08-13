@@ -75,7 +75,7 @@ router.get("/", async (req, res, next) => {
 
     const games = await Game.findByGenre(genre);
 
-    res.render("index", { games, genre, message: req.flash("info") });
+    res.render("index", { games, message: req.flash("info") });
   } catch (error) {
     next(error);
   }

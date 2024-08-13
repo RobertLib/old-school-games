@@ -44,6 +44,8 @@ app.use(flash());
 
 app.use(async (req, res, next) => {
   try {
+    res.locals.query = req.query;
+    res.locals.params = req.params;
     res.locals.session = req.session;
     res.locals.gameGenres = await Game.getGenres();
 
@@ -74,7 +76,7 @@ app.get("/", async (req, res, next) => {
 
     const games = await Game.findByGenre(genre);
 
-    res.render("index", { games, genre, message: req.flash("info") });
+    res.render("index", { games, message: req.flash("info") });
   } catch (error) {
     next(error);
   }
