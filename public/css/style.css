@@ -110,12 +110,13 @@
   .game-item-content {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 5px;
+    line-height: 1.5;
   }
 
   .game-list {
     display: grid;
-    gap: 10px;
+    gap: 15px;
     list-style: none;
     padding: 0;
   }

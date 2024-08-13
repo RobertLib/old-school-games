@@ -1,9 +1,9 @@
 class Model {
-  constructor({ id }) {
-    this.id = id;
-    this.createdAt = new Date();
-    this.updatedAt = new Date();
-    this.deletedAt = null;
+  constructor(data) {
+    this.id = data.id;
+    this.createdAt = data.createdAt;
+    this.updatedAt = data.updatedAt;
+    this.deletedAt = data.deletedAt;
   }
 }
 

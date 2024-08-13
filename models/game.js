@@ -1,6 +1,39 @@
 const Model = require("./model");
 const db = require("../db");
 
+const properties = {
+  title: "string",
+  description: "string",
+  genre: "string",
+  year: "number",
+  images: "string[]",
+  stream: "string",
+};
+
+function serialize(data) {
+  const obj = {};
+
+  Object.entries(properties).forEach(([prop, type]) => {
+    if (type === "number" && data[prop] === "") {
+      obj[prop] = null;
+    } else {
+      obj[prop] = data[prop];
+    }
+  });
+
+  return {
+    data: obj,
+    fields: Object.keys(obj),
+    values: Object.values(obj),
+  };
+}
+
+function validate(data) {
+  if (!data.title || !data.genre) {
+    throw new Error("Title and genre are required.");
+  }
+}
+
 class Game extends Model {
   static GENRES = [
     "ACTION",
@@ -18,14 +51,15 @@ class Game extends Model {
     "OTHER",
   ];
 
-  constructor({ id, title, description, genre, images, stream }) {
-    super({ id });
+  constructor(data) {
+    super(data);
 
-    this.title = title;
-    this.description = description;
-    this.genre = genre;
-    this.images = images;
-    this.stream = stream;
+    this.title = data.title;
+    this.description = data.description;
+    this.genre = data.genre;
+    this.year = data.year;
+    this.images = data.images;
+    this.stream = data.stream;
   }
 
   static async all() {
@@ -55,19 +89,38 @@ class Game extends Model {
     return rows[0] ? new Game(rows[0]) : null;
   }
 
-  static async create({ title, description, genre, images, stream }) {
+  static async create(data) {
+    const { data: gameData, fields, values } = serialize(data);
+
+    validate(gameData);
+
+    const quotedFields = fields.map((field) => `"${field}"`).join(", ");
+    const placeholders = fields.map((_, index) => `$${index + 1}`).join(", ");
+
     const { rows } = await db.query(
-      'INSERT INTO "games" ("title", "description", "genre", "images", "stream") VALUES ($1, $2, $3, $4, $5) RETURNING "id"',
-      [title, description, genre, images, stream]
+      `INSERT INTO "games" (${quotedFields}) VALUES (${placeholders}) RETURNING "id"`,
+      values
     );
 
     return rows[0];
   }
 
-  static async update(id, { title, description, genre, images, stream }) {
+  static async update(id, data) {
+    const { data: gameData, fields, values } = serialize(data);
+
+    validate(gameData);
+
+    gameData.updatedAt = new Date();
+
+    const set = fields
+      .map((field, index) => `"${field}" = $${index + 1}`)
+      .join(", ");
+
+    values.push(id);
+
     const { rows } = await db.query(
-      'UPDATE "games" SET "title" = $1, "description" = $2, "genre" = $3, "images" = $4, "stream" = $5 WHERE "id" = $6 RETURNING "id"',
-      [title, description, genre, images, stream, id]
+      `UPDATE "games" SET ${set} WHERE "id" = $${values.length} RETURNING "id"`,
+      values
     );
 
     return rows[0];

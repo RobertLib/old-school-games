@@ -11,6 +11,7 @@
       <h1><%= game.title %></h1>
       <p><%= game.description %></p>
       <p>Genre: <%= game.genre %></p>
+      <p>Release: <%= game.year %></p>
       <p>
         <% game.images.filter(Boolean).forEach((image) => { %>
         <a href="<%= image %>" target="_blank">

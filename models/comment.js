@@ -2,11 +2,11 @@ const Model = require("./model");
 const db = require("../db");
 
 class Comment extends Model {
-  constructor({ id, content, gameId }) {
-    super({ id });
+  constructor(data) {
+    super(data);
 
-    this.content = content;
-    this.gameId = gameId;
+    this.content = data.content;
+    this.gameId = data.gameId;
   }
 
   static async findByGameId(gameId) {

@@ -4,9 +4,7 @@ const Comment = require("../models/comment");
 
 router.post("/", async (req, res, next) => {
   try {
-    const { content, gameId } = req.body;
-
-    const comment = await Comment.create({ content, gameId });
+    const comment = await Comment.create(req.body);
 
     res.render("comments/comment-item", { comment });
   } catch (error) {
