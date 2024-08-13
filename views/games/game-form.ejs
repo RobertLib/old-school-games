@@ -11,7 +11,7 @@
     <label for="genre">Genre *</label><br />
     <select id="genre" name="genre" required>
       <option value=""></option>
-      <% genres.map(genre => { %>
+      <% gameGenres.map(genre => { %>
       <option <%= game?.genre === genre ? "selected" : "" %> value=<%= genre %>><%= genre %></option>
       <% }); %>
     </select>

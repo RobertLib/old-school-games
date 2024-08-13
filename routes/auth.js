@@ -5,10 +5,7 @@ const Game = require("../models/game");
 const User = require("../models/user");
 
 router.get("/login", (req, res) => {
-  res.render("auth/login", {
-    genres: Game.GENRES,
-    session: req.session,
-  });
+  res.render("auth/login");
 });
 
 router.post("/login", async (req, res, next) => {
@@ -56,10 +53,7 @@ router.get("/logout", (req, res) => {
 });
 
 /* router.get("/register", (req, res) => {
-  res.render("auth/register", {
-    genres: Game.GENRES,
-    session: req.session,
-  });
+  res.render("auth/register");
 });
 
 router.post("/register", async (req, res, next) => {

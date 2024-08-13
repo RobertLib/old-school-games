@@ -42,6 +42,17 @@ app.use(session(sessionOptions));
 
 app.use(flash());
 
+app.use(async (req, res, next) => {
+  try {
+    res.locals.session = req.session;
+    res.locals.gameGenres = await Game.getGenres();
+
+    next();
+  } catch (error) {
+    next(error);
+  }
+});
+
 app.use((req, res, next) => {
   console.log(`Request: ${req.method} ${req.url}`);
   next();
@@ -63,13 +74,7 @@ app.get("/", async (req, res, next) => {
 
     const games = await Game.findByGenre(genre);
 
-    res.render("index", {
-      games,
-      genre,
-      genres: Game.GENRES,
-      message: req.flash("info"),
-      session: req.session,
-    });
+    res.render("index", { games, genre, message: req.flash("info") });
   } catch (error) {
     next(error);
   }

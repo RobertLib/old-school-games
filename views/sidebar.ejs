@@ -3,7 +3,7 @@
     <li>
       <a href="/">All Genres</a>
     </li>
-    <% genres.map(genre => { %>
+    <% gameGenres.map(genre => { %>
     <li>
       <a href="/?genre=<%= genre %>" style="<%= genre === locals.genre ? "text-decoration: underline" : "" %>">
         <%= genre.charAt(0) %><%= genre.slice(1).toLowerCase() %>

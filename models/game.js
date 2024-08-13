@@ -36,22 +36,6 @@ function validate(data) {
 }
 
 class Game extends Model {
-  static GENRES = [
-    "ACTION",
-    "ADVENTURE",
-    "RPG",
-    "STRATEGY",
-    "SIMULATION",
-    "SPORTS",
-    "PUZZLE",
-    "HORROR",
-    "PLATFORMER",
-    "RACING",
-    "FIGHTING",
-    "SHOOTER",
-    "OTHER",
-  ];
-
   constructor(data) {
     super(data);
 
@@ -64,6 +48,14 @@ class Game extends Model {
     this.stream = data.stream;
   }
 
+  static async getGenres() {
+    const { rows } = await db.query(
+      "SELECT enum_range(NULL::GAME_GENRE) AS genres"
+    );
+
+    return rows[0].genres.slice(1, -1).split(",");
+  }
+
   static async all() {
     const { rows } = await db.query('SELECT * FROM "games" ORDER BY "title"');
 
@@ -71,7 +63,9 @@ class Game extends Model {
   }
 
   static async findByGenre(genre) {
-    if (!Game.GENRES.includes(genre)) {
+    const genres = await Game.getGenres();
+
+    if (!genres.includes(genre)) {
       return await Game.all();
     }
 
