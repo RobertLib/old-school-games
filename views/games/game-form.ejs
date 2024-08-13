@@ -1,14 +1,7 @@
 <form action="/games/<%= game?.id %>" method="POST">
   <p>
     <label for="title">Title *</label><br />
-    <input
-      id="title"
-      maxlength="255"
-      name="title"
-      required
-      type="text"
-      value="<%= game?.title %>"
-    />
+    <input id="title" maxlength="255" name="title" required type="text" value="<%= game?.title %>" />
   </p>
   <p>
     <label for="description">Description</label><br />
@@ -26,6 +19,10 @@
   <p>
     <label for="year">Year</label><br />
     <input id="year" name="year" type="number" value="<%= game?.year %>" />
+  </p>
+  <p>
+    <label for="publisher">Publisher</label><br />
+    <input id="publisher" maxlength="255" name="publisher" type="text" value="<%= game?.publisher %>" />
   </p>
   <p>
     <label for="images">Images</label><br />

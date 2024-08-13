@@ -2,12 +2,12 @@ const Model = require("./model");
 const db = require("../db");
 
 class User extends Model {
-  constructor({ id, email, password, role }) {
-    super({ id });
+  constructor(data) {
+    super(data);
 
-    this.email = email;
-    this.password = password;
-    this.role = role;
+    this.email = data.email;
+    this.password = data.password;
+    this.role = data.role;
   }
 
   static async findByEmail(email) {

@@ -4,9 +4,10 @@
   </a>
   <div class="game-item-content">
     <a class="font-bold" href="/games/<%= game.id %>"><%= game.title %></a>
-    <%= game.description?.slice(0, 100) %>...<br />
+    <div><%= game.description?.slice(0, 100) %>...</div>
     Genre: <%= game.genre %><br />
     Release: <%= game.year %><br />
+    Publisher: <%= game.publisher %><br />
     <% if (session.user?.role === "ADMIN") { %>
     <div class="game-item-actions">
       <a href="/games/<%= game.id %>/edit">Edit</a>

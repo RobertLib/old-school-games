@@ -110,8 +110,7 @@
   .game-item-content {
     display: flex;
     flex-direction: column;
-    gap: 5px;
-    line-height: 1.5;
+    gap: 10px;
   }
 
   .game-list {
