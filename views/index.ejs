@@ -12,9 +12,9 @@
         <a href="/games/new">+ Add a new game</a>
       </div>
       <% } %>
-      <% if (message) { %>
-      <p><%= message %></p>
-      <% } %>
+      <% Object.entries(messages).forEach(([type, message]) => { %>
+      <p class="<%= type %>"><%= message %></p>
+      <% }); %>
       <%- include('games/game-list') %>
     </main>
   </body>
