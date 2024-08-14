@@ -20,7 +20,9 @@
         </a>
         <% }); %>
       </p>
-      <p><%- game.stream %></p>
+      <p>
+        <div class="game-detail-stream" id="stream"><%- game.stream %></div>
+      </p>
       <p><button id="fullscreen-btn" type="button">Fullscreen</button></p>
       <h2>Comments</h2>
       <%- include('../comments/comment-list') %>
@@ -30,9 +32,9 @@
     <script>
       const fullscreenBtn = document.getElementById("fullscreen-btn");
       fullscreenBtn.addEventListener("click", () => {
-        const iframe = document.querySelector("iframe");
-        iframe.requestFullscreen();
-        iframe.focus();
+        const stream = document.getElementById("stream");
+        stream.requestFullscreen();
+        stream.querySelector("iframe").focus();
       });
     </script>
   </body>

@@ -35,11 +35,11 @@
   a {
     color: rgb(var(--primary-rgb));
     text-decoration: none;
+  }
 
-    &:hover {
-      color: rgb(var(--primary-rgb) / 0.9);
-      text-decoration: underline;
-    }
+  a:hover {
+    color: rgb(var(--primary-rgb) / 0.9);
+    text-decoration: underline;
   }
 
   body {
@@ -96,6 +96,16 @@
 }
 
 @layer games {
+  .game-detail-stream:fullscreen {
+    align-items: center;
+    display: inline-flex;
+    justify-content: center;
+  }
+
+  .game-detail-stream:fullscreen iframe {
+    scale: 2;
+  }
+
   .game-item {
     display: grid;
     gap: 10px;
