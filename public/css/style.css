@@ -95,6 +95,14 @@
   }
 }
 
+@layer comments {
+  #comment-list {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+}
+
 @layer games {
   .game-detail-stream:fullscreen {
     align-items: center;

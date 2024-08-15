@@ -11,7 +11,7 @@ class Comment extends Model {
 
   static async findByGameId(gameId) {
     const { rows } = await db.query(
-      'SELECT * FROM "comments" WHERE "gameId" = $1',
+      'SELECT * FROM "comments" WHERE "gameId" = $1 ORDER BY "createdAt" ASC LIMIT 100',
       [gameId]
     );
 
