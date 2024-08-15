@@ -15,12 +15,18 @@
         </a>
         <%- game.description %>
       </p>
-      <hr />
-      Genre: <%= game.genre %><br />
-      Release: <%= game.release %><br />
-      Publisher: <%= game.publisher %><br />
-      <hr />
+      <div style="margin: 25px 0">
+        <hr />
+        Genre: <%= game.genre %><br />
+        Release: <%= game.release %><br />
+        Publisher: <%= game.publisher %><br />
+        <hr />
+      </div>
       <p>
+        <div class="game-detail-stream" id="stream"><%- game.stream %></div>
+        <button id="fullscreen-btn" type="button">Fullscreen</button>
+      </p>
+      <p style="margin-top: 25px">
         <% game.images.filter(Boolean).forEach((image, index) => { %>
           <% if (index !== 0) { %>
           <a href="<%= image %>" target="_blank">
@@ -29,10 +35,6 @@
           <% } %>
         <% }); %>
       </p>
-      <p>
-        <div class="game-detail-stream" id="stream"><%- game.stream %></div>
-      </p>
-      <p><button id="fullscreen-btn" type="button">Fullscreen</button></p>
       <h2>Comments</h2>
       <%- include('../comments/comment-list') %>
       <h2>New Comment</h2>

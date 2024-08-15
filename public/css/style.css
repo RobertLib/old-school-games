@@ -138,7 +138,7 @@
 
   .game-list {
     display: grid;
-    gap: 15px;
+    gap: 20px;
     list-style: none;
     padding: 0;
   }
