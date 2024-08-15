@@ -9,15 +9,24 @@
     <main>
       <a href="/">&lt; Back</a>
       <h1><%= game.title %></h1>
-      <p><%- game.description %></p>
+      <p>
+        <a class="game-detail-initial" href="<%= game.images[0] %>" target="_blank">
+          <img src="<%= game.images[0] %>" alt="initial" width="150" />
+        </a>
+        <%- game.description %>
+      </p>
+      <hr />
       Genre: <%= game.genre %><br />
       Release: <%= game.release %><br />
       Publisher: <%= game.publisher %><br />
+      <hr />
       <p>
-        <% game.images.filter(Boolean).forEach((image) => { %>
-        <a href="<%= image %>" target="_blank">
-          <img src="<%= image %>" alt="<%= game.title %>" width="320" />
-        </a>
+        <% game.images.filter(Boolean).forEach((image, index) => { %>
+          <% if (index !== 0) { %>
+          <a href="<%= image %>" target="_blank">
+            <img src="<%= image %>" alt="<%= game.title %>" width="320" />
+          </a>
+          <% } %>
         <% }); %>
       </p>
       <p>

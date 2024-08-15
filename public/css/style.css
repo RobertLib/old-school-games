@@ -104,6 +104,11 @@
 }
 
 @layer games {
+  .game-detail-initial {
+    float: left;
+    padding-right: 15px;
+  }
+
   .game-detail-stream:fullscreen {
     align-items: center;
     display: inline-flex;
