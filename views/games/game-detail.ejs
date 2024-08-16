@@ -15,7 +15,7 @@
         </a>
         <%- game.description %>
       </p>
-      <div style="margin: 25px 0">
+      <div class="text-sm" style="margin: 20px 0">
         <hr />
         Genre: <%= game.genre %><br />
         Release: <%= game.release %><br />
@@ -24,8 +24,8 @@
       </div>
       <p>
         <div class="game-detail-stream" id="stream"><%- game.stream %></div>
-        <button id="fullscreen-btn" type="button">Fullscreen</button>
       </p>
+      <p><button id="fullscreen-btn" type="button">Fullscreen</button></p>
       <p style="margin-top: 25px">
         <% game.images.filter(Boolean).forEach((image, index) => { %>
           <% if (index !== 0) { %>
