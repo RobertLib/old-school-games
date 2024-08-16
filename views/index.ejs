@@ -7,6 +7,17 @@
     <%- include('navbar') %>
     <%- include('sidebar') %>
     <main>
+      <p>
+        👋 Welcome to our portal dedicated to the golden age of gaming! Relive
+        the nostalgia and immerse yourself in the magic of classic games from
+        the MS-DOS era that shaped the world of gaming. Here, you can easily
+        play these timeless classics directly in your browser, without any
+        complicated setup. Just click and let yourself be transported back to a
+        time when games were crafted with heart and soul. Get ready for an
+        adventure filled with pixelated graphics, unforgettable music, and a
+        unique atmosphere. Welcome back to the past! 💾🕹️👾
+      </p>
+      <hr />
       <% if (session.user?.role === "ADMIN") { %>
       <div class="text-right">
         <a href="/games/new">+ Add a new game</a>
