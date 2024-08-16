@@ -18,12 +18,12 @@
         unique atmosphere. Welcome back to the past! 💾🕹️👾
       </p>
       <hr />
-      <% if (session.user?.role === "ADMIN") { %>
+      <% if (req.session.user?.role === "ADMIN") { %>
       <div class="text-right">
         <a href="/games/new">+ Add a new game</a>
       </div>
       <% } %>
-      <% Object.entries(messages).forEach(([type, message]) => { %>
+      <% Object.entries(req.flash()).forEach(([type, message]) => { %>
       <p class="<%= type %>"><%= message %></p>
       <% }); %>
       <%- include('games/game-list') %>

@@ -10,7 +10,7 @@
       Release: <%= game.release %><br />
       Publisher: <%= game.publisher %><br />
     </div>
-    <% if (session.user?.role === "ADMIN") { %>
+    <% if (req.session.user?.role === "ADMIN") { %>
     <div class="game-item-actions">
       <a href="/games/<%= game.id %>/edit">Edit</a>
       <form action="/games/<%= game.id %>/delete" method="POST">

@@ -3,7 +3,7 @@
     <h1 style="margin: 0">OldSchoolGames</h1>
   </a>
   <ul class="navbar-actions">
-    <% if (session.user) { %>
+    <% if (req.session.user) { %>
     <li>
       <a href="/logout">Logout</a>
     </li>

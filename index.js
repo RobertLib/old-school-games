@@ -11,6 +11,14 @@ const flash = require("connect-flash");
 
 const app = express();
 
+app.use((req, res, next) => {
+  if (req.headers.host === "old-school-games.fly.dev") {
+    return res.redirect(301, `https://oldschoolgames.eu${req.originalUrl}`);
+  }
+
+  next();
+});
+
 app.use(compression());
 
 app.use(express.json());
@@ -44,10 +52,7 @@ app.use(flash());
 
 app.use(async (req, res, next) => {
   try {
-    res.locals.query = req.query;
-    res.locals.params = req.params;
-    res.locals.session = req.session;
-    res.locals.messages = req.flash();
+    res.locals.req = req;
     res.locals.gameGenres = await Game.getGenres();
 
     next();
