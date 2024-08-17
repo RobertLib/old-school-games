@@ -9,6 +9,7 @@ const properties = {
   publisher: "string",
   images: "string[]",
   stream: "string",
+  manual: "string",
 };
 
 function serialize(data) {
@@ -46,6 +47,7 @@ class Game extends Model {
     this.publisher = data.publisher;
     this.images = data.images;
     this.stream = data.stream;
+    this.manual = data.manual;
   }
 
   static async getGenres() {

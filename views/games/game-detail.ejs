@@ -35,6 +35,11 @@
           <% } %>
         <% }); %>
       </p>
+      <% if (game.manual) { %>
+      <p>
+        <a href="<%= game.manual %>" target="_blank">Manual</a>
+      </p>
+      <% } %>
       <h2>Comments</h2>
       <%- include('../comments/comment-list') %>
       <h2>New Comment</h2>
