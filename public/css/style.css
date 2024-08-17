@@ -3,6 +3,7 @@
   --background-body-rgb: 248 249 250;
   --background-rgb: 255 255 255;
   --color-rgb: 33 37 41;
+  --border-rgb: 206 212 218;
   --primary-rgb: 9 105 218;
 
   accent-color: rgb(var(--primary-rgb));
@@ -23,6 +24,7 @@
     --background-body-rgb: 21 32 43;
     --background-rgb: 33 37 41;
     --color-rgb: 248 249 250;
+    --border-rgb: 52 58 64;
     --primary-rgb: 169 205 253;
   }
 }
@@ -129,13 +131,19 @@
     padding-right: 15px;
   }
 
-  .game-detail-stream:fullscreen {
-    align-items: center;
-    display: inline-flex;
-    justify-content: center;
-
+  .game-detail-stream {
     iframe {
-      scale: 2;
+      background-color: rgb(var(--border-rgb) / 0.3);
+    }
+
+    &:fullscreen {
+      align-items: center;
+      display: inline-flex;
+      justify-content: center;
+
+      iframe {
+        scale: 2;
+      }
     }
   }
 }
