@@ -21,8 +21,11 @@
     "dotenv": "^16.4.5",
     "ejs": "^3.1.10",
     "express": "^4.19.2",
+    "express-rate-limit": "^7.4.0",
     "express-session": "^1.18.0",
-    "pg": "^8.12.0"
+    "helmet": "^7.1.0",
+    "pg": "^8.12.0",
+    "winston": "^3.14.2"
   },
   "devDependencies": {
     "@flydotio/dockerfile": "^0.5.8"

@@ -2,6 +2,9 @@ require("dotenv").config();
 
 const express = require("express");
 const path = require("path");
+const winston = require("winston");
+const helmet = require("helmet");
+const rateLimit = require("express-rate-limit");
 const compression = require("compression");
 const cookieParser = require("cookie-parser");
 const session = require("express-session");
@@ -11,6 +14,16 @@ const flash = require("connect-flash");
 
 const app = express();
 
+const logger = winston.createLogger({
+  level: "info",
+  format: winston.format.json(),
+  defaultMeta: { service: "user-service" },
+  transports: [
+    new winston.transports.File({ filename: "error.log", level: "error" }),
+    new winston.transports.File({ filename: "combined.log" }),
+  ],
+});
+
 app.use((req, res, next) => {
   if (req.headers.host === "old-school-games.fly.dev") {
     return res.redirect(301, `https://oldschoolgames.eu${req.originalUrl}`);
@@ -18,6 +31,26 @@ app.use((req, res, next) => {
 
   next();
 });
+
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        "default-src": ["'self'"],
+        "script-src": ["'self'", "'unsafe-inline'"],
+        "img-src": ["'self'", "https://upload.wikimedia.org"],
+        "frame-src": ["https://archive.org"],
+      },
+    },
+  })
+);
+
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 300,
+});
+
+app.use(limiter);
 
 app.use(compression());
 
@@ -38,12 +71,13 @@ const sessionOptions = {
   cookie: {
     maxAge: 365 * 24 * 60 * 60 * 1000,
     sameSite: "strict",
+    httpOnly: true,
+    secure: app.get("env") === "production",
   },
 };
 
 if (app.get("env") === "production") {
   app.set("trust proxy", 1);
-  sessionOptions.cookie.secure = true;
 }
 
 app.use(session(sessionOptions));
@@ -62,7 +96,7 @@ app.use(async (req, res, next) => {
 });
 
 app.use((req, res, next) => {
-  console.log(`Request: ${req.method} ${req.url}`);
+  logger.info(`Request: ${req.method} ${req.url}`);
   next();
 });
 
@@ -93,7 +127,7 @@ app.use((req, res, next) => {
 });
 
 app.use((err, req, res, next) => {
-  console.error(err.stack);
+  logger.error(err.stack);
 
   res.status(500).send("Something broke!");
 });
@@ -101,5 +135,5 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+  logger.info(`Server is running on port ${PORT}`);
 });
