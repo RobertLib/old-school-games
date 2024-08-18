@@ -44,9 +44,24 @@ app.use(
     contentSecurityPolicy: {
       directives: {
         "default-src": ["'self'"],
-        "script-src": ["'self'", "'unsafe-inline'"],
+        "connect-src": [
+          "'self'",
+          "https://*.google-analytics.com",
+          "https://*.analytics.google.com",
+          "https://*.googletagmanager.com",
+        ],
+        "script-src": [
+          "'self'",
+          "'unsafe-inline'",
+          "https://*.googletagmanager.com",
+        ],
         "script-src-attr": ["'self'", "'unsafe-inline'"],
-        "img-src": ["'self'", "https://upload.wikimedia.org"],
+        "img-src": [
+          "'self'",
+          "https://upload.wikimedia.org",
+          "https://*.google-analytics.com",
+          "https://*.googletagmanager.com",
+        ],
         "frame-src": ["https://archive.org"],
       },
     },
