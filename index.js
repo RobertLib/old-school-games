@@ -104,7 +104,8 @@ app.use(async (req, res, next) => {
 });
 
 app.use((req, res, next) => {
-  logger.info(`Request: ${req.method} ${req.url}`);
+  const currentTime = new Date().toISOString();
+  logger.info(`[${currentTime}] Request: ${req.method} ${req.url}`);
   next();
 });
 
