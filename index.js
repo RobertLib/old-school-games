@@ -110,10 +110,12 @@ app.use((req, res, next) => {
 });
 
 const authRoutes = require("./routes/auth");
+const sitemapRoutes = require("./routes/sitemap");
 const gamesRoutes = require("./routes/games");
 const commentsRoutes = require("./routes/comments");
 
 app.use("/", authRoutes);
+app.use("/", sitemapRoutes);
 app.use("/games", gamesRoutes);
 app.use("/comments", commentsRoutes);
 

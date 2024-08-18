@@ -64,7 +64,7 @@ class Game extends Model {
       .replace(/^-|-$/g, "");
   }
 
-  static async all() {
+  static async findAll() {
     const { rows } = await db.query('SELECT * FROM "games" ORDER BY "title"');
 
     return rows.map((row) => new Game(row));
@@ -74,7 +74,7 @@ class Game extends Model {
     const genres = await Game.getGenres();
 
     if (!genres.includes(genre)) {
-      return await Game.all();
+      return await Game.findAll();
     }
 
     const { rows } = await db.query(
