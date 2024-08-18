@@ -11,7 +11,7 @@
       Publisher: <%= game.publisher %><br />
     </div>
     <% if (req.session.user?.role === "ADMIN") { %>
-    <div class="game-item-actions">
+    <div class="flex" style="gap: 10px">
       <a href="/games/<%= game.id %>/edit">Edit</a>
       <form action="/games/<%= game.id %>/delete" method="POST">
         <button onclick="return confirm('Are you sure?')" type="submit">

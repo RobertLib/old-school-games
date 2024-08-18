@@ -86,6 +86,10 @@
 }
 
 @layer utilities {
+  .flex {
+    display: flex;
+  }
+
   .font-bold {
     font-weight: bold;
   }
@@ -113,16 +117,16 @@
     gap: 7px;
   }
 
-  .game-item-actions {
-    display: flex;
-    gap: 10px;
-  }
-
   .game-list {
     display: grid;
     gap: 20px;
     list-style: none;
     padding: 0;
+  }
+
+  .game-detail-header {
+    display: flex;
+    justify-content: space-between;
   }
 
   .game-detail-initial {

@@ -45,6 +45,7 @@ app.use(
       directives: {
         "default-src": ["'self'"],
         "script-src": ["'self'", "'unsafe-inline'"],
+        "script-src-attr": ["'self'", "'unsafe-inline'"],
         "img-src": ["'self'", "https://upload.wikimedia.org"],
         "frame-src": ["https://archive.org"],
       },

@@ -7,7 +7,17 @@
     <%- include('../navbar') %>
     <%- include('../sidebar') %>
     <main>
-      <a href="/">&lt; Back</a>
+      <header class="game-detail-header">
+        <a href="/">&lt; Back</a>
+        <span class="flex" style="gap: 10px">
+          <a href="/games/<%= game.id %>/edit">Edit</a>
+          <form action="/games/<%= game.id %>/delete" method="POST">
+            <button onclick="return confirm('Are you sure?')" type="submit">
+              Delete
+            </button>
+          </form>
+        </span>
+      </header>
       <h1><%= game.title %></h1>
       <p>
         <a class="game-detail-initial" href="<%= game.images[0] %>" target="_blank">
