@@ -11,3 +11,32 @@
   name="keywords"
   content="retro games, classic games, MS-DOS games, vintage games, game streaming, play old games, online retro gaming, DOSBox, old PC games, 80s games, 90s games"
 />
+
+<meta
+  property="og:title"
+  content="<%= locals.title || 'OldSchoolGames - Retro MS-DOS Games' %>"
+/>
+<meta
+  property="og:description"
+  content="<%= locals.description || 'Explore and relive the golden era of MS-DOS games with OldSchoolGames. From classics to hidden gems, discover your favorite retro games.' %>"
+/>
+<meta property="og:image" content="<%= locals.image %>" />
+<meta
+  property="og:url"
+  content="<%= locals.url || req.protocol + '://' + req.get('host') + req.originalUrl %>"
+/>
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="OldSchoolGames" />
+
+<meta name="twitter:card" content="summary_large_image" />
+<meta
+  name="twitter:title"
+  content="<%= locals.title || 'OldSchoolGames - Retro MS-DOS Games' %>"
+/>
+<meta
+  name="twitter:description"
+  content="<%= locals.description || 'Explore and relive the golden era of MS-DOS games with OldSchoolGames. From classics to hidden gems, discover your favorite retro games.' %>"
+/>
+<meta name="twitter:image" content="<%= locals.image %>" />
+<meta name="twitter:site" content="@OldSchoolGames" />
+<meta name="twitter:creator" content="@OldSchoolGames" />

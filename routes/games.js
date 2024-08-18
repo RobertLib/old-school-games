@@ -89,7 +89,17 @@ router.get("/:id", async (req, res, next) => {
     const comments = await Comment.findByGameId(game.id);
 
     if (game) {
-      res.render("games/game-detail", { game, comments });
+      const title = `${game.title} - Play Retro MS-DOS Games on OldSchoolGames`;
+      const description = `Relive the excitement of ${game.title}, a classic MS-DOS game, available on OldSchoolGames.`;
+      const image = game.images[0];
+
+      res.render("games/game-detail", {
+        game,
+        comments,
+        title,
+        description,
+        image,
+      });
     } else {
       res.status(404).send("Game not found");
     }
