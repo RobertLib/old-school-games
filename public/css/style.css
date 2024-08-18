@@ -107,6 +107,7 @@
   }
 
   .game-item-content {
+    align-items: start;
     display: flex;
     flex-direction: column;
     gap: 7px;

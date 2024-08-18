@@ -85,8 +85,8 @@ router.get("/:id", async (req, res, next) => {
   try {
     const { id } = req.params;
 
-    const game = await Game.findById(id);
-    const comments = await Comment.findByGameId(id);
+    const game = await Game.findBySlug(id);
+    const comments = await Comment.findByGameId(game.id);
 
     if (game) {
       res.render("games/game-detail", { game, comments });

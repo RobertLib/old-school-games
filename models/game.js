@@ -3,6 +3,7 @@ const db = require("../db");
 
 const properties = {
   title: "string",
+  slug: "string",
   description: "string",
   genre: "string",
   release: "number",
@@ -23,11 +24,7 @@ function serialize(data) {
     }
   });
 
-  return {
-    data: obj,
-    fields: Object.keys(obj),
-    values: Object.values(obj),
-  };
+  return obj;
 }
 
 function validate(data) {
@@ -41,6 +38,7 @@ class Game extends Model {
     super(data);
 
     this.title = data.title;
+    this.slug = data.slug;
     this.description = data.description;
     this.genre = data.genre;
     this.release = data.release;
@@ -56,6 +54,14 @@ class Game extends Model {
     );
 
     return rows[0].genres.slice(1, -1).split(",");
+  }
+
+  static createSlug(title) {
+    return title
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, "-")
+      .replace(/-+/g, "-")
+      .replace(/^-|-$/g, "");
   }
 
   static async all() {
@@ -87,10 +93,23 @@ class Game extends Model {
     return rows[0] ? new Game(rows[0]) : null;
   }
 
+  static async findBySlug(slug) {
+    const { rows } = await db.query('SELECT * FROM "games" WHERE "slug" = $1', [
+      slug,
+    ]);
+
+    return rows[0] ? new Game(rows[0]) : null;
+  }
+
   static async create(data) {
-    const { data: gameData, fields, values } = serialize(data);
+    const gameData = serialize(data);
 
     validate(gameData);
+
+    gameData.slug = Game.createSlug(gameData.title);
+
+    const fields = Object.keys(gameData);
+    const values = Object.values(gameData);
 
     const quotedFields = fields.map((field) => `"${field}"`).join(", ");
     const placeholders = fields.map((_, index) => `$${index + 1}`).join(", ");
@@ -104,11 +123,15 @@ class Game extends Model {
   }
 
   static async update(id, data) {
-    const { data: gameData, fields, values } = serialize(data);
+    const gameData = serialize(data);
 
     validate(gameData);
 
+    gameData.slug = Game.createSlug(gameData.title);
     gameData.updatedAt = new Date();
+
+    const fields = Object.keys(gameData);
+    const values = Object.values(gameData);
 
     const set = fields
       .map((field, index) => `"${field}" = $${index + 1}`)
