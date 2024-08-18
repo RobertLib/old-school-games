@@ -9,6 +9,7 @@
     <main>
       <header class="game-detail-header">
         <a href="/">&lt; Back</a>
+        <% if (req.session.user?.role === "ADMIN") { %>
         <span class="flex" style="gap: 10px">
           <a href="/games/<%= game.id %>/edit">Edit</a>
           <form action="/games/<%= game.id %>/delete" method="POST">
@@ -17,6 +18,7 @@
             </button>
           </form>
         </span>
+        <% } %>
       </header>
       <h1><%= game.title %></h1>
       <p>
@@ -55,6 +57,7 @@
       <h2>New Comment</h2>
       <%- include('../comments/comment-form') %>
     </main>
+    <%- include('../footer') %>
     <script>
       const fullscreenBtn = document.getElementById("fullscreen-btn");
       fullscreenBtn.addEventListener("click", () => {
