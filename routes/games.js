@@ -27,11 +27,11 @@ router.get("/:id/edit", isAuth, isAdmin, async (req, res, next) => {
 
     const game = await Game.findById(id);
 
-    if (game) {
-      res.render("games/edit-game", { game });
-    } else {
-      res.status(404).send("Game not found");
+    if (!game) {
+      return next();
     }
+
+    res.render("games/edit-game", { game });
   } catch (error) {
     next(error);
   }
@@ -43,13 +43,13 @@ router.post("/:id", isAuth, isAdmin, async (req, res, next) => {
 
     const game = await Game.update(id, req.body);
 
-    if (game) {
-      req.flash("info", "Game updated successfully.");
-
-      res.redirect("/");
-    } else {
-      res.status(404).send("Game not found");
+    if (!game) {
+      return res.status(404).send("Game not found");
     }
+
+    req.flash("info", "Game updated successfully.");
+
+    res.redirect("/");
   } catch (error) {
     next(error);
   }
@@ -86,23 +86,24 @@ router.get("/:id", async (req, res, next) => {
     const { id } = req.params;
 
     const game = await Game.findBySlug(id);
+
+    if (!game) {
+      return next();
+    }
+
     const comments = await Comment.findByGameId(game.id);
 
-    if (game) {
-      const title = `${game.title} - Play Retro MS-DOS Games on OldSchoolGames`;
-      const description = `Relive the excitement of ${game.title}, a classic MS-DOS game, available on OldSchoolGames.`;
-      const image = game.images[0];
+    const title = `${game.title} - Play Retro MS-DOS Games on OldSchoolGames`;
+    const description = `Relive the excitement of ${game.title}, a classic MS-DOS game, available on OldSchoolGames.`;
+    const image = game.images[0];
 
-      res.render("games/game-detail", {
-        game,
-        comments,
-        title,
-        description,
-        image,
-      });
-    } else {
-      res.status(404).send("Game not found");
-    }
+    res.render("games/game-detail", {
+      game,
+      comments,
+      title,
+      description,
+      image,
+    });
   } catch (error) {
     next(error);
   }
