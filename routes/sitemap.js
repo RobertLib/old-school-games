@@ -4,11 +4,18 @@ const { SitemapStream, streamToPromise } = require("sitemap");
 const { createGzip } = require("zlib");
 const Game = require("../models/game");
 
-router.get("/sitemap.xml", async (req, res, next) => {
-  try {
-    res.header("Content-Type", "application/xml");
-    res.header("Content-Encoding", "gzip");
+let sitemap;
 
+router.get("/sitemap.xml", async (req, res) => {
+  res.header("Content-Type", "application/xml");
+  res.header("Content-Encoding", "gzip");
+
+  if (sitemap) {
+    res.send(sitemap);
+    return;
+  }
+
+  try {
     const smStream = new SitemapStream({
       hostname: "https://oldschoolgames.eu/",
     });
@@ -36,15 +43,16 @@ router.get("/sitemap.xml", async (req, res, next) => {
       });
     });
 
+    streamToPromise(pipeline).then((sm) => (sitemap = sm));
+
     smStream.end();
 
-    streamToPromise(pipeline)
-      .then((sm) => {
-        res.send(sm);
-      })
-      .catch(next);
+    pipeline.pipe(res).on("error", (error) => {
+      throw error;
+    });
   } catch (error) {
-    next(error);
+    console.error(error);
+    res.status(500).end();
   }
 });
 

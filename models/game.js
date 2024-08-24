@@ -7,6 +7,7 @@ const properties = {
   description: "string",
   genre: "string",
   release: "number",
+  developer: "string",
   publisher: "string",
   images: "string[]",
   stream: "string",
@@ -42,6 +43,7 @@ class Game extends Model {
     this.description = data.description;
     this.genre = data.genre;
     this.release = data.release;
+    this.developer = data.developer;
     this.publisher = data.publisher;
     this.images = data.images;
     this.stream = data.stream;
