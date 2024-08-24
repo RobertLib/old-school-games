@@ -16,6 +16,16 @@ router.get("/sitemap.xml", async (req, res, next) => {
 
     smStream.write({ url: "/", changefreq: "monthly", priority: 1.0 });
 
+    const gameGenres = await Game.getGenres();
+
+    gameGenres.forEach((genre) => {
+      smStream.write({
+        url: `/?genre=${genre}`,
+        changefreq: "monthly",
+        priority: 0.8,
+      });
+    });
+
     const games = await Game.findAll();
 
     games.forEach((game) => {
