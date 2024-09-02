@@ -1,7 +1,7 @@
-const Model = require("./model");
-const db = require("../db");
+import Model from "./model.js";
+import db from "../db.js";
 
-class Comment extends Model {
+export default class Comment extends Model {
   constructor(data) {
     super(data);
 
@@ -27,5 +27,3 @@ class Comment extends Model {
     return new Comment(rows[0]);
   }
 }
-
-module.exports = Comment;

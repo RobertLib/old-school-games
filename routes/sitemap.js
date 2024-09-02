@@ -1,8 +1,9 @@
-const express = require("express");
+import express from "express";
+import { SitemapStream, streamToPromise } from "sitemap";
+import { createGzip } from "zlib";
+import Game from "../models/game.js";
+
 const router = express.Router();
-const { SitemapStream, streamToPromise } = require("sitemap");
-const { createGzip } = require("zlib");
-const Game = require("../models/game");
 
 let sitemap;
 
@@ -27,7 +28,7 @@ router.get("/sitemap.xml", async (req, res) => {
 
     gameGenres.forEach((genre) => {
       smStream.write({
-        url: `/?genre=${genre}`,
+        url: `/${genre.toLowerCase()}`,
         changefreq: "monthly",
         priority: 0.8,
       });
@@ -37,7 +38,7 @@ router.get("/sitemap.xml", async (req, res) => {
 
     games.forEach((game) => {
       smStream.write({
-        url: `/games/${game.slug}`,
+        url: `/${game.slug}`,
         changefreq: "weekly",
         priority: 0.7,
       });
@@ -56,4 +57,4 @@ router.get("/sitemap.xml", async (req, res) => {
   }
 });
 
-module.exports = router;
+export default router;

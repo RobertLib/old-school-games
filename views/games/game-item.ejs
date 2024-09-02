@@ -1,9 +1,9 @@
 <li class="game-item">
-  <a href="/games/<%= game.slug %>">
+  <a href="/<%= game.slug %>">
     <img src="<%= game.images[0] %>" alt="<%= game.title %>" width="100" />
   </a>
   <div class="game-item-content">
-    <a class="font-bold" href="/games/<%= game.slug %>"><%= game.title %></a>
+    <a class="font-bold" href="/<%= game.slug %>"><%= game.title %></a>
     <div><%= game.description?.slice(0, 100) %>...</div>
     <div class="text-sm">
       Genre: <%= game.genre %><br />

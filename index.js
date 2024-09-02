@@ -1,18 +1,28 @@
-require("dotenv").config();
+import "dotenv/config";
+import express from "express";
+import { fileURLToPath } from "url";
+import path from "path";
+import winston from "winston";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
+import compression from "compression";
+import cookieParser from "cookie-parser";
+import session from "express-session";
+import connectPg from "connect-pg-simple";
+import pool from "./db.js";
+import flash from "connect-flash";
+import Game from "./models/game.js";
 
-const express = require("express");
-const path = require("path");
-const winston = require("winston");
-const helmet = require("helmet");
-const rateLimit = require("express-rate-limit");
-const compression = require("compression");
-const cookieParser = require("cookie-parser");
-const session = require("express-session");
-const pgSession = require("connect-pg-simple")(session);
-const pool = require("./db");
-const flash = require("connect-flash");
+import authRoutes from "./routes/auth.js";
+import sitemapRoutes from "./routes/sitemap.js";
+import homeRoutes from "./routes/home.js";
+import gamesRoutes from "./routes/games.js";
+import commentsRoutes from "./routes/comments.js";
 
 const app = express();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const logger = winston.createLogger({
   level: "info",
@@ -86,6 +96,8 @@ app.set("views", path.join(__dirname, "views"));
 
 app.use(cookieParser());
 
+const pgSession = connectPg(session);
+
 const sessionOptions = {
   store: new pgSession({ pool }),
   secret: process.env.SESSION_SECRET,
@@ -108,14 +120,10 @@ app.use(session(sessionOptions));
 app.use(flash());
 
 app.use(async (req, res, next) => {
-  try {
-    res.locals.req = req;
-    res.locals.gameGenres = await Game.getGenres();
+  res.locals.req = req;
+  res.locals.gameGenres = await Game.getGenres();
 
-    next();
-  } catch (error) {
-    next(error);
-  }
+  next();
 });
 
 app.use((req, res, next) => {
@@ -124,29 +132,11 @@ app.use((req, res, next) => {
   next();
 });
 
-const authRoutes = require("./routes/auth");
-const sitemapRoutes = require("./routes/sitemap");
-const gamesRoutes = require("./routes/games");
-const commentsRoutes = require("./routes/comments");
-
 app.use("/", authRoutes);
 app.use("/", sitemapRoutes);
+app.use("/", homeRoutes);
 app.use("/games", gamesRoutes);
 app.use("/comments", commentsRoutes);
-
-const Game = require("./models/game");
-
-app.get("/", async (req, res, next) => {
-  try {
-    const { genre } = req.query;
-
-    const games = await Game.findByGenre(genre);
-
-    res.render("index", { games });
-  } catch (error) {
-    next(error);
-  }
-});
 
 app.use((req, res, next) => {
   res.status(404).send("Page not found");

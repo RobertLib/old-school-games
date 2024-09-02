@@ -1,7 +1,7 @@
-const Model = require("./model");
-const db = require("../db");
+import Model from "./model.js";
+import db from "../db.js";
 
-class User extends Model {
+export default class User extends Model {
   constructor(data) {
     super(data);
 
@@ -28,5 +28,3 @@ class User extends Model {
     return rows[0];
   }
 }
-
-module.exports = User;

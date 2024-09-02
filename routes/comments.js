@@ -1,15 +1,12 @@
-const express = require("express");
+import express from "express";
+import Comment from "../models/comment.js";
+
 const router = express.Router();
-const Comment = require("../models/comment");
 
 router.post("/", async (req, res, next) => {
-  try {
-    const comment = await Comment.create(req.body);
+  const comment = await Comment.create(req.body);
 
-    res.render("comments/comment-item", { comment });
-  } catch (error) {
-    next(error);
-  }
+  res.render("comments/comment-item", { comment });
 });
 
-module.exports = router;
+export default router;

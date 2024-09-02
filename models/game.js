@@ -1,5 +1,5 @@
-const Model = require("./model");
-const db = require("../db");
+import Model from "./model.js";
+import db from "../db.js";
 
 const properties = {
   title: "string",
@@ -34,7 +34,7 @@ function validate(data) {
   }
 }
 
-class Game extends Model {
+export default class Game extends Model {
   constructor(data) {
     super(data);
 
@@ -73,15 +73,9 @@ class Game extends Model {
   }
 
   static async findByGenre(genre) {
-    const genres = await Game.getGenres();
-
-    if (!genres.includes(genre)) {
-      return await Game.findAll();
-    }
-
     const { rows } = await db.query(
       'SELECT * FROM "games" WHERE "genre" = $1 ORDER BY "title"',
-      [genre]
+      [genre.toUpperCase()]
     );
 
     return rows.map((row) => new Game(row));
@@ -153,5 +147,3 @@ class Game extends Model {
     await db.query('DELETE FROM "games" WHERE "id" = $1', [id]);
   }
 }
-
-module.exports = Game;

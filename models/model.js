@@ -1,4 +1,4 @@
-class Model {
+export default class Model {
   constructor(data) {
     this.id = data.id;
     this.createdAt = data.createdAt;
@@ -6,5 +6,3 @@ class Model {
     this.deletedAt = data.deletedAt;
   }
 }
-
-module.exports = Model;

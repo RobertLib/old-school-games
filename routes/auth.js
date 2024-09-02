@@ -1,48 +1,45 @@
-const express = require("express");
+import express from "express";
+import bcrypt from "bcrypt";
+import User from "../models/user.js";
+
 const router = express.Router();
-const bcrypt = require("bcrypt");
-const User = require("../models/user");
 
 router.get("/login", (req, res) => {
   res.render("auth/login");
 });
 
 router.post("/login", async (req, res, next) => {
-  try {
-    const { email, password } = req.body;
+  const { email, password } = req.body;
 
-    if (!email || !password) {
-      return res.render("auth/login", {
-        error: "All fields are required.",
-      });
-    }
-
-    const user = await User.findByEmail(email);
-
-    if (!user) {
-      return res.render("auth/login", {
-        error: "Invalid credentials.",
-      });
-    }
-
-    const valid = await bcrypt.compare(password, user.password);
-
-    if (!valid) {
-      return res.render("auth/login", {
-        error: "Invalid credentials.",
-      });
-    }
-
-    req.session.user = {
-      id: user.id,
-      email: user.email,
-      role: user.role,
-    };
-
-    res.redirect("/");
-  } catch (error) {
-    next(error);
+  if (!email || !password) {
+    return res.render("auth/login", {
+      error: "All fields are required.",
+    });
   }
+
+  const user = await User.findByEmail(email);
+
+  if (!user) {
+    return res.render("auth/login", {
+      error: "Invalid credentials.",
+    });
+  }
+
+  const valid = await bcrypt.compare(password, user.password);
+
+  if (!valid) {
+    return res.render("auth/login", {
+      error: "Invalid credentials.",
+    });
+  }
+
+  req.session.user = {
+    id: user.id,
+    email: user.email,
+    role: user.role,
+  };
+
+  res.redirect("/");
 });
 
 router.get("/logout", (req, res) => {
@@ -99,4 +96,4 @@ router.post("/register", async (req, res, next) => {
   }
 }); */
 
-module.exports = router;
+export default router;
