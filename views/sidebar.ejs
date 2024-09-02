@@ -5,7 +5,7 @@
     </li>
     <% gameGenres.map(genre => { %>
     <li>
-      <a href="/?genre=<%= genre %>" style="<%= genre === req.query.genre ? "text-decoration: underline" : "" %>">
+      <a href="/<%= genre.toLowerCase() %>" style="<%= genre.toLowerCase() === req.params.genre ? "text-decoration: underline" : "" %>">
         <%= genre.charAt(0) %><%= genre.slice(1).toLowerCase() %>
       </a>
     </li>

@@ -73,15 +73,9 @@ class Game extends Model {
   }
 
   static async findByGenre(genre) {
-    const genres = await Game.getGenres();
-
-    if (!genres.includes(genre)) {
-      return await Game.findAll();
-    }
-
     const { rows } = await db.query(
       'SELECT * FROM "games" WHERE "genre" = $1 ORDER BY "title"',
-      [genre]
+      [genre.toUpperCase()]
     );
 
     return rows.map((row) => new Game(row));

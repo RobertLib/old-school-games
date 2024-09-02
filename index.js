@@ -107,6 +107,8 @@ app.use(session(sessionOptions));
 
 app.use(flash());
 
+const Game = require("./models/game");
+
 app.use(async (req, res, next) => {
   try {
     res.locals.req = req;
@@ -126,27 +128,15 @@ app.use((req, res, next) => {
 
 const authRoutes = require("./routes/auth");
 const sitemapRoutes = require("./routes/sitemap");
+const homeRoutes = require("./routes/home");
 const gamesRoutes = require("./routes/games");
 const commentsRoutes = require("./routes/comments");
 
 app.use("/", authRoutes);
 app.use("/", sitemapRoutes);
+app.use("/", homeRoutes);
 app.use("/games", gamesRoutes);
 app.use("/comments", commentsRoutes);
-
-const Game = require("./models/game");
-
-app.get("/", async (req, res, next) => {
-  try {
-    const { genre } = req.query;
-
-    const games = await Game.findByGenre(genre);
-
-    res.render("index", { games });
-  } catch (error) {
-    next(error);
-  }
-});
 
 app.use((req, res, next) => {
   res.status(404).send("Page not found");
