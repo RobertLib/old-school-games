@@ -59,11 +59,16 @@ app.use(
           "https://*.google-analytics.com",
           "https://*.analytics.google.com",
           "https://*.googletagmanager.com",
+          "https://v8.js-dos.com",
+          "https://dl.dropboxusercontent.com",
         ],
         "script-src": [
           "'self'",
           "'unsafe-inline'",
+          "'unsafe-eval'",
           "https://*.googletagmanager.com",
+          "https://v8.js-dos.com",
+          "blob:",
         ],
         "script-src-attr": ["'self'", "'unsafe-inline'"],
         "img-src": [
@@ -72,7 +77,7 @@ app.use(
           "https://*.google-analytics.com",
           "https://*.googletagmanager.com",
         ],
-        "frame-src": ["https://archive.org"],
+        "frame-src": ["'self'"],
       },
     },
   })

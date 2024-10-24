@@ -140,22 +140,6 @@
     float: left;
     padding-right: 15px;
   }
-
-  .game-detail-stream {
-    iframe {
-      background-color: rgb(var(--border-rgb) / 0.3);
-    }
-
-    &:fullscreen {
-      align-items: center;
-      display: inline-flex;
-      justify-content: center;
-
-      iframe {
-        scale: 2;
-      }
-    }
-  }
 }
 
 @layer comments {
