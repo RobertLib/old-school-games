@@ -35,10 +35,13 @@
         Developer/Publisher: <%= [game.developer, game.publisher].filter(Boolean).join(", ") %><br />
         <hr />
       </div>
-      <p>
-        <div class="game-detail-stream" id="stream"><%- game.stream %></div>
-      </p>
-      <p><button id="fullscreen-btn" type="button">Fullscreen</button></p>
+      <% if (game.stream) { %>
+      <iframe
+        src="js-dos.html?stream=<%= game.stream %>"
+        frameborder="0"
+        style="width: 640px; height: 370px;"
+      ></iframe>
+      <% } %>
       <p style="margin-top: 25px">
         <% game.images.filter(Boolean).forEach((image, index) => { %>
           <% if (index !== 0) { %>
@@ -47,6 +50,9 @@
           </a>
           <% } %>
         <% }); %>
+      </p>
+      <p>
+        <button disabled type="button">Download</button>
       </p>
       <% if (game.manual) { %>
       <p>
@@ -59,13 +65,5 @@
       <%- include('../comments/comment-form') %>
     </main>
     <%- include('../footer') %>
-    <script>
-      const fullscreenBtn = document.getElementById("fullscreen-btn");
-      fullscreenBtn.addEventListener("click", () => {
-        const stream = document.getElementById("stream");
-        stream.requestFullscreen();
-        stream.querySelector("iframe").focus();
-      });
-    </script>
   </body>
 </html>

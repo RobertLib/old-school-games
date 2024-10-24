@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>js-dos</title>
+    <!-- js-dos style sheet -->
+    <link rel="stylesheet" href="https://v8.js-dos.com/latest/js-dos.css" />
+    <!-- js-dos -->
+    <script src="https://v8.js-dos.com/latest/js-dos.js"></script>
+  </head>
+  <body>
+    <div id="dos" style="width: 100vw; height: 100vh"></div>
+    <script>
+      const urlParams = new URLSearchParams(window.location.search);
+      const stream = urlParams.get("stream");
+      const isDarkMode = window.matchMedia(
+        "(prefers-color-scheme: dark)"
+      ).matches;
+
+      Dos(document.getElementById("dos"), {
+        autoStart: true,
+        mouseCapture: true,
+        mouseSensitivity: 0.2,
+        theme: isDarkMode ? "dark" : "light",
+        url: stream,
+      });
+    </script>
+  </body>
+</html>
