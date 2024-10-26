@@ -8,7 +8,7 @@
     <div class="text-sm">
       Genre: <%= game.genre %><br />
       Release: <%= game.release %><br />
-      Developer/Publisher: <%= [game.developer, game.publisher].filter(Boolean).join(", ") %><br />
+      Developer / Publisher: <%= [game.developer, game.publisher].filter(Boolean).join(", ") %><br />
     </div>
     <% if (req.session.user?.role === "ADMIN") { %>
     <div class="flex" style="gap: 10px">

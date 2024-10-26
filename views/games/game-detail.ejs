@@ -32,7 +32,7 @@
         <hr />
         Genre: <%= game.genre %><br />
         Release: <%= game.release %><br />
-        Developer/Publisher: <%= [game.developer, game.publisher].filter(Boolean).join(", ") %><br />
+        Developer / Publisher: <%= [game.developer, game.publisher].filter(Boolean).join(", ") %><br />
         <hr />
       </div>
       <% if (game.stream) { %>
