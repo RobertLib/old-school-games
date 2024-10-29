@@ -1,0 +1,10 @@
+<nav class="right-sidebar">
+  <ul>
+    <li>Recently added</li>
+    <% recentlyAddedGames.map(game => { %>
+    <li>
+      <a class="block text-truncate" href="/<%= game.slug %>"><%= game.title %></a>
+    </li>
+    <% }); %>
+  </ul>
+</nav>

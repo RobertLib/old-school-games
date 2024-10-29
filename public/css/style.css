@@ -56,10 +56,10 @@
   .layout {
     display: grid;
     grid-template-areas:
-      "navbar navbar"
-      "sidebar main"
-      "footer footer";
-    grid-template-columns: 180px auto;
+      "navbar navbar navbar"
+      "left-sidebar main right-sidebar"
+      "footer footer footer";
+    grid-template-columns: 180px auto 180px;
   }
 
   .navbar {
@@ -80,9 +80,25 @@
     padding: 0;
   }
 
-  .sidebar {
-    grid-area: sidebar;
+  .left-sidebar,
+  .right-sidebar {
+    align-self: start;
     line-height: 1.55;
+    position: sticky;
+    top: 59px;
+  }
+
+  .left-sidebar {
+    grid-area: left-sidebar;
+  }
+
+  .right-sidebar {
+    grid-area: right-sidebar;
+
+    > ul {
+      list-style: none;
+      padding: 0 15px;
+    }
   }
 
   .footer {
@@ -93,6 +109,10 @@
 }
 
 @layer utilities {
+  .block {
+    display: block;
+  }
+
   .flex {
     display: flex;
   }
@@ -107,6 +127,12 @@
 
   .text-sm {
     font-size: 0.93rem;
+  }
+
+  .text-truncate {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 }
 

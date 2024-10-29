@@ -1,11 +1,14 @@
 import express from "express";
 import bcrypt from "bcrypt";
+import Game from "../models/game.js";
 import User from "../models/user.js";
 
 const router = express.Router();
 
-router.get("/login", (req, res) => {
-  res.render("auth/login");
+router.get("/login", async (req, res) => {
+  const recentlyAddedGames = await Game.findRecentlyAdded();
+
+  res.render("auth/login", { recentlyAddedGames });
 });
 
 router.post("/login", async (req, res, next) => {
@@ -48,8 +51,10 @@ router.get("/logout", (req, res) => {
   });
 });
 
-/* router.get("/register", (req, res) => {
-  res.render("auth/register");
+/* router.get("/register", async (req, res) => {
+  const recentlyAddedGames = await Game.findRecentlyAdded();
+
+  res.render("auth/register", { recentlyAddedGames });
 });
 
 router.post("/register", async (req, res, next) => {

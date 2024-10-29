@@ -81,6 +81,14 @@ export default class Game extends Model {
     return rows.map((row) => new Game(row));
   }
 
+  static async findRecentlyAdded() {
+    const { rows } = await db.query(
+      'SELECT * FROM "games" ORDER BY "createdAt" DESC LIMIT 5'
+    );
+
+    return rows.map((row) => new Game(row));
+  }
+
   static async findById(id) {
     const { rows } = await db.query('SELECT * FROM "games" WHERE "id" = $1', [
       id,

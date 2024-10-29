@@ -24,7 +24,7 @@
     "express-rate-limit": "^7.4.1",
     "express-session": "^1.18.1",
     "helmet": "^8.0.0",
-    "pg": "^8.13.0",
+    "pg": "^8.13.1",
     "sitemap": "^8.0.0",
     "winston": "^3.15.0"
   },

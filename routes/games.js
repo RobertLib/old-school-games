@@ -5,8 +5,10 @@ import Game from "../models/game.js";
 
 const router = express.Router();
 
-router.get("/new", isAuth, isAdmin, (req, res) => {
-  res.render("games/new-game", { game: null });
+router.get("/new", isAuth, isAdmin, async (req, res) => {
+  const recentlyAddedGames = await Game.findRecentlyAdded();
+
+  res.render("games/new-game", { game: null, recentlyAddedGames });
 });
 
 router.post("/", isAuth, isAdmin, async (req, res, next) => {
@@ -26,7 +28,9 @@ router.get("/:id/edit", isAuth, isAdmin, async (req, res, next) => {
     return next();
   }
 
-  res.render("games/edit-game", { game });
+  const recentlyAddedGames = await Game.findRecentlyAdded();
+
+  res.render("games/edit-game", { game, recentlyAddedGames });
 });
 
 router.post("/:id", isAuth, isAdmin, async (req, res, next) => {
