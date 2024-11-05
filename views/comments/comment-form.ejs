@@ -1,8 +1,18 @@
 <form id="comment-form">
   <input name="gameId" type="hidden" value="<%= game.id %>" />
   <p>
+    <label for="nick">Nick</label><br />
+    <input id="nick" maxlength="255" name="nick" type="text" />
+  </p>
+  <p>
     <label for="content">Content *</label><br />
-    <textarea id="content" name="content" required rows="10"></textarea>
+    <textarea
+      id="content"
+      maxlength="1000"
+      name="content"
+      required
+      rows="10"
+    ></textarea>
   </p>
   <button type="submit">Create Comment</button>
 </form>
@@ -13,6 +23,7 @@
     .addEventListener("submit", function (event) {
       event.preventDefault();
 
+      const nick = event.target.nick.value;
       const content = event.target.content.value;
       const gameId = event.target.gameId.value;
 
@@ -21,7 +32,7 @@
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ content, gameId }),
+        body: JSON.stringify({ nick, content, gameId }),
       })
         .then((response) => response.text())
         .then((data) => {

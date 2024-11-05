@@ -5,6 +5,7 @@ export default class Comment extends Model {
   constructor(data) {
     super(data);
 
+    this.nick = data.nick;
     this.content = data.content;
     this.gameId = data.gameId;
   }
@@ -18,10 +19,10 @@ export default class Comment extends Model {
     return rows.map((row) => new Comment(row));
   }
 
-  static async create({ content, gameId }) {
+  static async create({ nick, content, gameId }) {
     const { rows } = await db.query(
-      'INSERT INTO "comments" ("content", "gameId") VALUES ($1, $2) RETURNING *',
-      [content, gameId]
+      'INSERT INTO "comments" ("nick", "content", "gameId") VALUES ($1, $2, $3) RETURNING *',
+      [nick, content, gameId]
     );
 
     return new Comment(rows[0]);
