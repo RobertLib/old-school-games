@@ -37,9 +37,9 @@
       </div>
       <% if (game.stream) { %>
       <iframe
+        class="game-detail-stream"
         src="js-dos.html?stream=<%= game.stream %>"
         frameborder="0"
-        style="width: 640px; height: 370px;"
       ></iframe>
       <% } %>
       <p style="margin-top: 25px">
@@ -51,7 +51,7 @@
           <% } %>
         <% }); %>
       </p>
-      <div class="flex">
+      <div class="flex" style="gap: 10px">
         <div class="flex-1">
           <p>
             <button disabled type="button">Download</button>
