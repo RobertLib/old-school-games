@@ -8,7 +8,7 @@ router.get("/", async (req, res, next) => {
   const page = parseInt(req.query.page) || 1;
   const limit = 25;
 
-  const games = await Game.findPaginated(page, limit);
+  const games = await Game.find({ page, limit });
   const recentlyAddedGames = await Game.findRecentlyAdded();
 
   res.render("index", { games, limit, page, recentlyAddedGames });
@@ -26,7 +26,7 @@ router.get("/:genre", async (req, res, next) => {
     return next();
   }
 
-  const games = await Game.findByGenrePaginated(genre, page, limit);
+  const games = await Game.find({ genre, page, limit });
   const recentlyAddedGames = await Game.findRecentlyAdded();
 
   res.render("index", { games, limit, page, recentlyAddedGames });

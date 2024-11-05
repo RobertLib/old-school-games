@@ -34,7 +34,7 @@ router.get("/sitemap.xml", async (req, res) => {
       });
     });
 
-    const games = await Game.findAll();
+    const games = await Game.find();
 
     games.forEach((game) => {
       smStream.write({

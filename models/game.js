@@ -66,40 +66,45 @@ export default class Game extends Model {
       .replace(/^-|-$/g, "");
   }
 
-  static async findAll() {
-    const { rows } = await db.query('SELECT * FROM "games" ORDER BY "title"');
+  static async find({
+    genre,
+    limit,
+    orderBy = "title",
+    orderDir = "ASC",
+    page,
+  } = {}) {
+    let query = 'SELECT * FROM "games"';
+    const values = [];
 
-    return rows.map((row) => new Game(row));
-  }
+    if (genre) {
+      query += ` WHERE "genre" = $${values.length + 1}`;
+      values.push(genre.toUpperCase());
+    }
 
-  static async findPaginated(page, limit) {
-    const offset = (page - 1) * limit;
+    query += ` ORDER BY "${orderBy}" ${orderDir}`;
 
-    const { rows } = await db.query(
-      'SELECT * FROM "games" ORDER BY "title" LIMIT $1 OFFSET $2',
-      [limit, offset]
-    );
+    if (limit) {
+      query += ` LIMIT $${values.length + 1}`;
+      values.push(limit);
 
-    return rows.map((row) => new Game(row));
-  }
+      if (page) {
+        const offset = (page - 1) * limit;
+        query += ` OFFSET $${values.length + 1}`;
+        values.push(offset);
+      }
+    }
 
-  static async findByGenrePaginated(genre, page, limit) {
-    const offset = (page - 1) * limit;
-
-    const { rows } = await db.query(
-      'SELECT * FROM "games" WHERE "genre" = $1 ORDER BY "title" LIMIT $2 OFFSET $3',
-      [genre.toUpperCase(), limit, offset]
-    );
+    const { rows } = await db.query(query, values);
 
     return rows.map((row) => new Game(row));
   }
 
   static async findRecentlyAdded() {
-    const { rows } = await db.query(
-      'SELECT * FROM "games" ORDER BY "createdAt" DESC LIMIT 5'
-    );
-
-    return rows.map((row) => new Game(row));
+    return await Game.find({
+      limit: 5,
+      orderBy: "createdAt",
+      orderDir: "DESC",
+    });
   }
 
   static async findById(id) {
