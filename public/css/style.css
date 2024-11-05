@@ -11,7 +11,7 @@
   font-family: Arial, sans-serif;
   font-synthesis: none;
   letter-spacing: 0.01em;
-  line-height: 1.2;
+  line-height: 1.25;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -60,6 +60,8 @@
       "left-sidebar main right-sidebar"
       "footer footer footer";
     grid-template-columns: 180px auto 180px;
+    margin: 0 auto;
+    max-width: 1536px;
   }
 
   .navbar {
