@@ -51,14 +51,27 @@
           <% } %>
         <% }); %>
       </p>
-      <p>
-        <button disabled type="button">Download</button>
-      </p>
-      <% if (game.manual) { %>
-      <p>
-        <a href="<%= game.manual %>" target="_blank">Manual</a>
-      </p>
-      <% } %>
+      <div class="flex">
+        <div class="flex-1">
+          <p>
+            <button disabled type="button">Download</button>
+          </p>
+          <% if (game.manual) { %>
+          <p>
+            <a href="<%= game.manual %>" target="_blank">Manual</a>
+          </p>
+          <% } %>
+        </div>
+        <p>
+          Share on social media:
+          <a href="https://www.facebook.com/sharer/sharer.php?u=<%= encodeURIComponent(locals.url || req.protocol + '://' + req.get('host') + req.originalUrl) %>" target="_blank">
+            Facebook
+          </a> |
+          <a href="https://twitter.com/intent/tweet?url=<%= encodeURIComponent(locals.url || req.protocol + '://' + req.get('host') + req.originalUrl) %>&text=<%= encodeURIComponent(game.title) %>" target="_blank">
+            Twitter
+          </a>
+        </p>
+      </div>
       <h2>Comments</h2>
       <%- include('../comments/comment-list') %>
       <h2>New Comment</h2>
