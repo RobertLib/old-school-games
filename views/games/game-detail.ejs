@@ -8,7 +8,7 @@
     <%- include('../left-sidebar') %>
     <main>
       <header class="game-detail-header">
-        <a href="/">&lt; Back</a>
+        <a href="javascript:history.back()">&lt; Back</a>
         <% if (req.session.user?.role === "ADMIN") { %>
         <span class="flex" style="gap: 10px">
           <a href="/games/<%= game.id %>/edit">Edit</a>
