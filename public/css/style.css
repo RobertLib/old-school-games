@@ -121,6 +121,10 @@
     font-weight: bold;
   }
 
+  .justify-between {
+    justify-content: space-between;
+  }
+
   .text-right {
     text-align: right;
   }

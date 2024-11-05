@@ -7,3 +7,15 @@
 <% } else { %>
 <p>No games found</p>
 <% } %>
+
+<div class="flex justify-between">
+  <span>Page <%= page %></span>
+  <span>
+    <% if (page > 1) { %>
+    <a href="?page=1">&lt;&lt; First</a>
+    <a href="?page=<%= page - 1 %>">&lt; Previous</a>
+    <% } %> <% if (games.length === limit) { %>
+    <a href="?page=<%= page + 1 %>">Next &gt;</a>
+    <% } %>
+  </span>
+</div>

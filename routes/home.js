@@ -5,14 +5,20 @@ import Comment from "../models/comment.js";
 const router = express.Router();
 
 router.get("/", async (req, res, next) => {
-  const games = await Game.findAll();
+  const page = parseInt(req.query.page) || 1;
+  const limit = 25;
+
+  const games = await Game.findPaginated(page, limit);
   const recentlyAddedGames = await Game.findRecentlyAdded();
 
-  res.render("index", { games, recentlyAddedGames });
+  res.render("index", { games, limit, page, recentlyAddedGames });
 });
 
 router.get("/:genre", async (req, res, next) => {
   const { genre } = req.params;
+
+  const page = parseInt(req.query.page) || 1;
+  const limit = 25;
 
   const genres = await Game.getGenres();
 
@@ -20,10 +26,10 @@ router.get("/:genre", async (req, res, next) => {
     return next();
   }
 
-  const games = await Game.findByGenre(genre);
+  const games = await Game.findByGenrePaginated(genre, page, limit);
   const recentlyAddedGames = await Game.findRecentlyAdded();
 
-  res.render("index", { games, recentlyAddedGames });
+  res.render("index", { games, limit, page, recentlyAddedGames });
 });
 
 router.get("/:id", async (req, res, next) => {

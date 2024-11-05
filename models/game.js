@@ -72,10 +72,23 @@ export default class Game extends Model {
     return rows.map((row) => new Game(row));
   }
 
-  static async findByGenre(genre) {
+  static async findPaginated(page, limit) {
+    const offset = (page - 1) * limit;
+
     const { rows } = await db.query(
-      'SELECT * FROM "games" WHERE "genre" = $1 ORDER BY "title"',
-      [genre.toUpperCase()]
+      'SELECT * FROM "games" ORDER BY "title" LIMIT $1 OFFSET $2',
+      [limit, offset]
+    );
+
+    return rows.map((row) => new Game(row));
+  }
+
+  static async findByGenrePaginated(genre, page, limit) {
+    const offset = (page - 1) * limit;
+
+    const { rows } = await db.query(
+      'SELECT * FROM "games" WHERE "genre" = $1 ORDER BY "title" LIMIT $2 OFFSET $3',
+      [genre.toUpperCase(), limit, offset]
     );
 
     return rows.map((row) => new Game(row));
