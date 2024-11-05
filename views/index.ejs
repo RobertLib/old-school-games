@@ -26,6 +26,9 @@
       <% Object.entries(req.flash()).forEach(([type, message]) => { %>
       <p class="<%= type %>"><%= message %></p>
       <% }); %>
+      <% if (locals.genre) { %>
+      <h2>Games in the "<%= genre %>" genre</h2>
+      <% } %>
       <%- include('games/game-list') %>
     </main>
     <%- include('right-sidebar') %>

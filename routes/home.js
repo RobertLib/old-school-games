@@ -29,7 +29,7 @@ router.get("/:genre", async (req, res, next) => {
   const games = await Game.find({ genre, page, limit });
   const recentlyAddedGames = await Game.findRecentlyAdded();
 
-  res.render("index", { games, limit, page, recentlyAddedGames });
+  res.render("index", { games, genre, limit, page, recentlyAddedGames });
 });
 
 router.get("/:id", async (req, res, next) => {
