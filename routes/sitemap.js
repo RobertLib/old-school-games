@@ -34,6 +34,14 @@ router.get("/sitemap.xml", async (req, res) => {
       });
     });
 
+    gameGenres.forEach((genre) => {
+      smStream.write({
+        url: `/?genre=${genre}`,
+        changefreq: "monthly",
+        priority: 0.8,
+      });
+    });
+
     const games = await Game.find();
 
     games.forEach((game) => {

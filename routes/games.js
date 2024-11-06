@@ -57,4 +57,8 @@ router.post("/:id/delete", isAuth, isAdmin, async (req, res, next) => {
   res.redirect("/");
 });
 
+router.get("/:id", async (req, res, next) => {
+  res.redirect(`/${req.params.id}`);
+});
+
 export default router;

@@ -5,6 +5,12 @@ import Comment from "../models/comment.js";
 const router = express.Router();
 
 router.get("/", async (req, res, next) => {
+  const { genre } = req.query;
+
+  if (genre) {
+    return res.redirect(`/${genre.toLowerCase()}`);
+  }
+
   const page = parseInt(req.query.page) || 1;
   const limit = 25;
 
@@ -35,7 +41,7 @@ router.get("/:genre", async (req, res, next) => {
 router.get("/:id", async (req, res, next) => {
   const { id } = req.params;
 
-  const game = await Game.findBySlug(id);
+  const game = await (isNaN(id) ? Game.findBySlug(id) : Game.findById(id));
 
   if (!game) {
     return next();
