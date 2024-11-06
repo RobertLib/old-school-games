@@ -96,7 +96,7 @@ export default class Game extends Model {
       }
 
       query += ` "title" ILIKE $${values.length + 1}`;
-      values.push(`%${search}%`);
+      values.push(`%${search.trim()}%`);
     }
 
     query += ` ORDER BY "${orderBy}" ${orderDir}`;
