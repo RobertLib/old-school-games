@@ -5,6 +5,8 @@
   --border-rgb: 206 212 218;
   --primary-rgb: 9 105 218;
 
+  --navbar-height: 60px;
+
   accent-color: rgb(var(--primary-rgb));
   background-color: rgb(var(--background-body-rgb));
   color: rgb(var(--color-rgb));
@@ -77,6 +79,7 @@
     backdrop-filter: blur(20px);
     display: flex;
     grid-area: navbar;
+    height: var(--navbar-height);
     justify-content: space-between;
     padding: 15px;
     position: sticky;
@@ -95,8 +98,10 @@
   .right-sidebar {
     align-self: start;
     line-height: 1.55;
+    max-height: calc(100vh - var(--navbar-height));
+    overflow: auto;
     position: sticky;
-    top: 59px;
+    top: var(--navbar-height);
   }
 
   .left-sidebar {
