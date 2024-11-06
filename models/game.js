@@ -51,11 +51,17 @@ export default class Game extends Model {
   }
 
   static async getGenres() {
+    if (this.cachedGenres) {
+      return this.cachedGenres;
+    }
+
     const { rows } = await db.query(
       "SELECT enum_range(NULL::GAME_GENRE) AS genres"
     );
 
-    return rows[0].genres.slice(1, -1).split(",");
+    this.cachedGenres = rows[0].genres.slice(1, -1).split(",");
+
+    return this.cachedGenres;
   }
 
   static createSlug(title) {
