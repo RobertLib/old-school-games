@@ -89,12 +89,7 @@ export default class Game extends Model {
     }
 
     if (search) {
-      if (genre) {
-        query += " AND";
-      } else {
-        query += " WHERE";
-      }
-
+      query += query.includes("WHERE") ? " AND" : " WHERE";
       query += ` "title" ILIKE $${values.length + 1}`;
       values.push(`%${search.trim()}%`);
     }

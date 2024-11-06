@@ -10,10 +10,10 @@
       <header class="game-detail-header">
         <a href="javascript:history.back()">&lt; Back</a>
         <% if (req.session.user?.role === "ADMIN") { %>
-        <span class="flex" style="gap: 10px">
-          <a href="/games/<%= game.id %>/edit">Edit</a>
+        <span class="flex" style="gap: 5px">
+          <a class="btn btn-sm" href="/games/<%= game.id %>/edit">Edit</a>
           <form action="/games/<%= game.id %>/delete" method="POST">
-            <button onclick="return confirm('Are you sure?')" type="submit">
+            <button class="btn-sm" onclick="return confirm('Are you sure?')" type="submit">
               Delete
             </button>
           </form>
@@ -22,9 +22,7 @@
       </header>
       <h1><%= game.title %></h1>
       <p>
-        <a class="game-detail-initial" href="<%= game.images[0] %>" target="_blank">
-          <img src="<%= game.images[0] %>" alt="initial" width="150" />
-        </a>
+        <img class="game-detail-initial" src="<%= game.images[0] %>" alt="initial" width="150" />
         <%- game.description %>
       </p>
       <div style="clear: left"></div>

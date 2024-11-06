@@ -11,10 +11,10 @@
       Developer / Publisher: <%= [game.developer, game.publisher].filter(Boolean).join(", ") %><br />
     </div>
     <% if (req.session.user?.role === "ADMIN") { %>
-    <div class="flex" style="gap: 10px">
-      <a href="/games/<%= game.id %>/edit">Edit</a>
+    <div class="flex" style="gap: 5px">
+      <a class="btn btn-sm" href="/games/<%= game.id %>/edit">Edit</a>
       <form action="/games/<%= game.id %>/delete" method="POST">
-        <button onclick="return confirm('Are you sure?')" type="submit">
+        <button class="btn-sm" onclick="return confirm('Are you sure?')" type="submit">
           Delete
         </button>
       </form>
