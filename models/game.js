@@ -161,14 +161,14 @@ export default class Game extends Model {
     const fields = Object.keys(gameData);
     const values = Object.values(gameData);
 
-    const set = fields
+    const updateFields = fields
       .map((field, index) => `"${field}" = $${index + 1}`)
       .join(", ");
 
     values.push(id);
 
     const { rows } = await db.query(
-      `UPDATE "games" SET ${set} WHERE "id" = $${values.length} RETURNING "id"`,
+      `UPDATE "games" SET ${updateFields} WHERE "id" = $${values.length} RETURNING "id"`,
       values
     );
 
