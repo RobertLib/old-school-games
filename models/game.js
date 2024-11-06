@@ -78,6 +78,7 @@ export default class Game extends Model {
     orderBy = "title",
     orderDir = "ASC",
     page,
+    search,
   } = {}) {
     let query = 'SELECT * FROM "games"';
     const values = [];
@@ -85,6 +86,17 @@ export default class Game extends Model {
     if (genre) {
       query += ` WHERE "genre" = $${values.length + 1}`;
       values.push(genre.toUpperCase());
+    }
+
+    if (search) {
+      if (genre) {
+        query += " AND";
+      } else {
+        query += " WHERE";
+      }
+
+      query += ` "title" ILIKE $${values.length + 1}`;
+      values.push(`%${search}%`);
     }
 
     query += ` ORDER BY "${orderBy}" ${orderDir}`;

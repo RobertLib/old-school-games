@@ -3,6 +3,17 @@
     <h1 style="margin: 0">OldSchoolGames.eu</h1>
   </a>
   <ul class="navbar-actions">
+    <li class="hidden-mobile">
+      <form action="/">
+        <input
+          maxlength="100"
+          name="search"
+          placeholder="Search for games..."
+          type="search"
+        />
+        <button type="submit">Search</button>
+      </form>
+    </li>
     <% if (req.session.user) { %>
     <li>
       <a href="/logout">Logout</a>

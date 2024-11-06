@@ -5,16 +5,20 @@ import Comment from "../models/comment.js";
 const router = express.Router();
 
 router.get("/", async (req, res, next) => {
-  const { genre } = req.query;
+  const { genre, search } = req.query;
 
   if (genre) {
     return res.redirect(`/${genre.toLowerCase()}`);
   }
 
+  if (search && search.length > 100) {
+    return next();
+  }
+
   const page = parseInt(req.query.page) || 1;
   const limit = 25;
 
-  const games = await Game.find({ page, limit });
+  const games = await Game.find({ search, page, limit });
   const recentlyAddedGames = await Game.findRecentlyAdded();
 
   res.render("index", { games, limit, page, recentlyAddedGames });

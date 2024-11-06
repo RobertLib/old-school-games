@@ -76,8 +76,10 @@
   }
 
   .navbar {
+    align-items: center;
     backdrop-filter: blur(20px);
     display: flex;
+    gap: 10px;
     grid-area: navbar;
     height: var(--navbar-height);
     justify-content: space-between;
@@ -157,6 +159,12 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  @media (max-width: 768px) {
+    .hidden-mobile {
+      display: none;
+    }
   }
 }
 
