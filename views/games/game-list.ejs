@@ -1,9 +1,9 @@
 <% if (games.length) { %>
-<ul class="game-list">
+<div class="game-list">
   <% games.forEach((game) => { %>
   <%- include('game-item', { game }) %>
   <% }); %>
-</ul>
+</div>
 <% } else { %>
 <p>No games found</p>
 <% } %>

@@ -1,7 +1,14 @@
 <form action="/games/<%= game?.id %>" method="POST">
   <p>
     <label for="title">Title *</label><br />
-    <input id="title" maxlength="255" name="title" required type="text" value="<%= game?.title %>" />
+    <input
+      id="title"
+      maxlength="255"
+      name="title"
+      required
+      type="text"
+      value="<%= game?.title %>"
+    />
   </p>
   <p>
     <label for="description">Description</label><br />
@@ -10,41 +17,91 @@
   <p>
     <label for="genre">Genre *</label><br />
     <select id="genre" name="genre" required>
-      <option value=""></option>
+      <option value="">&nbsp;</option>
       <% gameGenres.map(genre => { %>
-      <option <%= game?.genre === genre ? "selected" : "" %> value=<%= genre %>><%= genre %></option>
+      <% locals.selected = game?.genre === genre ? "selected" : ""; %>
+      <option <%= locals.selected %> value="<%= genre %>"><%= genre %></option>
       <% }); %>
     </select>
   </p>
   <p>
     <label for="release">Release</label><br />
-    <input id="release" name="release" type="number" value="<%= game?.release %>" />
+    <input
+      id="release"
+      name="release"
+      type="number"
+      value="<%= game?.release %>"
+    />
   </p>
   <p>
     <label for="developer">Developer</label><br />
-    <input id="developer" maxlength="255" name="developer" type="text" value="<%= game?.developer %>" />
+    <input
+      id="developer"
+      maxlength="255"
+      name="developer"
+      type="text"
+      value="<%= game?.developer %>"
+    />
   </p>
   <p>
     <label for="publisher">Publisher</label><br />
-    <input id="publisher" maxlength="255" name="publisher" type="text" value="<%= game?.publisher %>" />
+    <input
+      id="publisher"
+      maxlength="255"
+      name="publisher"
+      type="text"
+      value="<%= game?.publisher %>"
+    />
   </p>
-  <p>
-    <label for="images">Images</label><br />
-    <ol>
+  <div>
+    <label for="image-cover">Images</label><br />
+    <ul style="margin-top: 5px">
       <li>
-        <input id="images" name="images" type="url" value="<%= game?.images[0] %>" />
+        <p>
+          <label for="image-cover">Cover</label><br />
+          <input
+            id="image-cover"
+            name="images"
+            type="url"
+            value="<%= game?.images[0] %>"
+          />
+        </p>
       </li>
       <li>
-        <input name="images" type="url" value="<%= game?.images[1] %>" />
+        <p>
+          <label for="image-1">Image 1</label><br />
+          <input
+            id="image-1"
+            name="images"
+            type="url"
+            value="<%= game?.images[1] %>"
+          />
+        </p>
       </li>
       <li>
-        <input name="images" type="url" value="<%= game?.images[2] %>" />
+        <p>
+          <label for="image-2">Image 2</label><br />
+          <input
+            id="image-2"
+            name="images"
+            type="url"
+            value="<%= game?.images[2] %>"
+          />
+        </p>
       </li>
       <li>
-        <input name="images" type="url" value="<%= game?.images[3] %>" />
+        <p>
+          <label for="image-3">Image 3</label><br />
+          <input
+            id="image-3"
+            name="images"
+            type="url"
+            value="<%= game?.images[3] %>"
+          />
+        </p>
       </li>
-    </ol>
-  </p>
+    </ul>
+  </div>
   <p>
     <label for="stream">Stream</label><br />
     <input id="stream" name="stream" type="text" value="<%= game?.stream %>" />

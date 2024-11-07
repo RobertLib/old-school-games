@@ -1,9 +1,9 @@
-<ul id="comment-list">
+<div id="comment-list">
   <% comments.forEach((comment) => { %>
   <%- include('comment-item', { comment }) %>
   <% }); %>
-</ul>
+</div>
 
 <% if (comments.length === 0) { %>
-  <p id="no-comments">No comments</p>
+<p id="no-comments">No comments</p>
 <% } %>

@@ -1,9 +1,16 @@
-<li class="game-item">
+<article class="game-item">
   <a href="/<%= game.slug %>">
-    <img src="<%= game.images[0] %>" alt="<%= game.title %>" width="100" />
+    <img
+      alt="<%= game.title %>"
+      loading="lazy"
+      src="<%= game.images[0] %>"
+      width="100"
+    />
   </a>
   <div class="game-item-content">
-    <a class="font-bold" href="/<%= game.slug %>"><%= game.title %></a>
+    <a class="font-bold" href="/<%= game.slug %>">
+      <h3 style="font-size: 16px; margin: 0"><%= game.title %></h3>
+    </a>
     <div><%= game.description?.slice(0, 100) %>...</div>
     <div class="text-sm">
       Genre: <%= game.genre %><br />
@@ -14,11 +21,15 @@
     <div class="flex" style="gap: 5px">
       <a class="btn btn-sm" href="/games/<%= game.id %>/edit">Edit</a>
       <form action="/games/<%= game.id %>/delete" method="POST">
-        <button class="btn-sm" onclick="return confirm('Are you sure?')" type="submit">
+        <button
+          class="btn-sm"
+          onclick="return confirm('Are you sure?')"
+          type="submit"
+        >
           Delete
         </button>
       </form>
     </div>
     <% } %>
   </div>
-</li>
+</article>

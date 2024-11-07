@@ -1,23 +1,31 @@
-<nav class="navbar">
-  <a href="/">
-    <h1 style="margin: 0">OldSchoolGames.eu</h1>
-  </a>
-  <ul class="navbar-actions">
-    <li class="hidden-mobile">
-      <form action="/">
-        <input
-          maxlength="100"
-          name="search"
-          placeholder="Search for games..."
-          type="search"
-        />
-        <button type="submit">Search</button>
-      </form>
-    </li>
-    <% if (req.session.user) { %>
-    <li>
-      <a href="/logout">Logout</a>
-    </li>
-    <% } %>
-  </ul>
-</nav>
+<header class="navbar">
+  <nav>
+    <a href="/">
+      <h1 class="nowrap" style="margin: 0">
+        <span style="margin-right: 10px">🕹️</span>OldSchoolGames.eu
+      </h1>
+    </a>
+    <blockquote class="hidden-mobile line-clamp text-center" style="margin: 0">
+      “Video games teach us to overcome obstacles, defeat the impossible, and
+      explore new worlds.” – <span class="nowrap">Nolan Bushnell</span>
+    </blockquote>
+    <ul class="navbar-actions">
+      <li class="hidden-mobile">
+        <form action="/" class="nowrap">
+          <input
+            maxlength="100"
+            name="search"
+            placeholder="Search for games..."
+            type="search"
+          />
+          <button type="submit">Search</button>
+        </form>
+      </li>
+      <% if (req.session.user) { %>
+      <li>
+        <a href="/logout">Logout</a>
+      </li>
+      <% } %>
+    </ul>
+  </nav>
+</header>

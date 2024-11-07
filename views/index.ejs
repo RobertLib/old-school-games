@@ -7,29 +7,32 @@
     <%- include('navbar') %>
     <%- include('left-sidebar') %>
     <main>
-      <p style="margin-top: 0">
-        👋 Welcome to our portal dedicated to the golden age of gaming! Relive
-        the nostalgia and immerse yourself in the magic of classic games from
-        the MS-DOS era that shaped the world of gaming. Here, you can easily
-        play these timeless classics directly in your browser, without any
-        complicated setup. Just click and let yourself be transported back to a
-        time when games were crafted with heart and soul. Get ready for an
-        adventure filled with pixelated graphics, unforgettable music, and a
-        unique atmosphere. Welcome back to the past! 💾🕹️👾
-      </p>
-      <hr />
-      <% if (req.session.user?.role === "ADMIN") { %>
-      <div class="text-right">
-        <a href="/games/new">+ Add a new game</a>
-      </div>
-      <% } %>
-      <% Object.entries(req.flash()).forEach(([type, message]) => { %>
-      <p class="<%= type %>"><%= message %></p>
-      <% }); %>
-      <% if (locals.genre) { %>
-      <h2>Games in the "<%= genre %>" genre</h2>
-      <% } %>
-      <%- include('games/game-list') %>
+      <section>
+        <h2 style="font-size: 19px; margin: 0 0 5px">Welcome,</h2>
+        <p style="margin-top: 0">
+          👋 to our portal dedicated to the golden age of gaming! Relive the
+          nostalgia and immerse yourself in the magic of classic games from the
+          MS-DOS era that shaped the world of gaming. Here, you can easily play
+          these timeless classics directly in your browser, without any
+          complicated setup. Just click and let yourself be transported back to
+          a time when games were crafted with heart and soul. Get ready for an
+          adventure filled with pixelated graphics, unforgettable music, and a
+          unique atmosphere. Welcome back to the past! 💾🕹️👾
+        </p>
+        <hr />
+        <% if (req.session.user?.role === "ADMIN") { %>
+        <div class="text-right">
+          <a class="btn" href="/games/new">+ Add a new game</a>
+        </div>
+        <% } %>
+        <% Object.entries(req.flash()).forEach(([type, message]) => { %>
+        <p class="<%= type %>"><%= message %></p>
+        <% }); %>
+        <% if (locals.genre) { %>
+        <h2>Games in the "<%= genre %>" genre</h2>
+        <% } %>
+        <%- include('games/game-list') %>
+      </section>
     </main>
     <%- include('right-sidebar') %>
     <%- include('footer') %>

@@ -19,9 +19,8 @@ router.get("/", async (req, res, next) => {
   const limit = 25;
 
   const games = await Game.find({ search, page, limit });
-  const recentlyAddedGames = await Game.findRecentlyAdded();
 
-  res.render("index", { games, limit, page, recentlyAddedGames });
+  res.render("index", { games, limit, page });
 });
 
 router.get("/:genre", async (req, res, next) => {
@@ -37,9 +36,8 @@ router.get("/:genre", async (req, res, next) => {
   }
 
   const games = await Game.find({ genre, page, limit });
-  const recentlyAddedGames = await Game.findRecentlyAdded();
 
-  res.render("index", { games, genre, limit, page, recentlyAddedGames });
+  res.render("index", { games, genre, limit, page });
 });
 
 router.get("/:id", async (req, res, next) => {
@@ -51,7 +49,6 @@ router.get("/:id", async (req, res, next) => {
     return next();
   }
 
-  const recentlyAddedGames = await Game.findRecentlyAdded();
   const comments = await Comment.findByGameId(game.id);
 
   const title = `${game.title} - Play Retro MS-DOS Games on OldSchoolGames`;
@@ -60,7 +57,6 @@ router.get("/:id", async (req, res, next) => {
 
   res.render("games/game-detail", {
     game,
-    recentlyAddedGames,
     comments,
     title,
     description,

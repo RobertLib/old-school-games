@@ -1,14 +1,15 @@
-<nav class="left-sidebar">
+<aside class="left-sidebar">
   <ul>
     <li>
       <a href="/">All Genres</a>
     </li>
     <% gameGenres.map(genre => { %>
     <li>
-      <a href="/<%= genre.toLowerCase() %>" style="<%= genre.toLowerCase() === req.params.genre ? "text-decoration: underline" : "" %>">
+      <% locals.class = genre.toLowerCase() === req.params.genre ? "class=active" : ""; %>
+      <a <%= locals.class %> href="/<%= genre.toLowerCase() %>">
         <%= genre.charAt(0) %><%= genre.slice(1).toLowerCase() %>
       </a>
     </li>
     <% }); %>
   </ul>
-</nav>
+</aside>

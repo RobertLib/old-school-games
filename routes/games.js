@@ -6,9 +6,7 @@ import Game from "../models/game.js";
 const router = express.Router();
 
 router.get("/new", isAuth, isAdmin, async (req, res) => {
-  const recentlyAddedGames = await Game.findRecentlyAdded();
-
-  res.render("games/new-game", { game: null, recentlyAddedGames });
+  res.render("games/new-game", { game: null });
 });
 
 router.post("/", isAuth, isAdmin, async (req, res, next) => {
@@ -28,9 +26,7 @@ router.get("/:id/edit", isAuth, isAdmin, async (req, res, next) => {
     return next();
   }
 
-  const recentlyAddedGames = await Game.findRecentlyAdded();
-
-  res.render("games/edit-game", { game, recentlyAddedGames });
+  res.render("games/edit-game", { game });
 });
 
 router.post("/:id", isAuth, isAdmin, async (req, res, next) => {

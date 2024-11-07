@@ -1,15 +1,20 @@
 <!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-915H2BJTTY"></script>
+<script
+  async
+  src="https://www.googletagmanager.com/gtag/js?id=G-915H2BJTTY"
+></script>
 <script>
   window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
+  function gtag() {
+    dataLayer.push(arguments);
+  }
+  gtag("js", new Date());
 
-  gtag('config', 'G-915H2BJTTY');
+  gtag("config", "G-915H2BJTTY");
 </script>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>OldSchoolGames</title>
+<title>OldSchoolGames.eu</title>
 <link rel="icon" type="image/x-icon" href="/favicon.png" />
 <link rel="stylesheet" href="/css/style.css" />
 <link rel="canonical" href="https://oldschoolgames.eu<%= req.originalUrl %>" />
@@ -21,7 +26,7 @@
   name="keywords"
   content="retro games, classic games, MS-DOS games, vintage games, game streaming, play old games, online retro gaming, DOSBox, old PC games, 80s games, 90s games"
 />
-
+<!-- Open Graph -->
 <meta
   property="og:title"
   content="<%= locals.title || 'OldSchoolGames - Retro MS-DOS Games' %>"
@@ -37,7 +42,7 @@
 />
 <meta property="og:type" content="website" />
 <meta property="og:site_name" content="OldSchoolGames" />
-
+<!-- Twitter card -->
 <meta name="twitter:card" content="summary_large_image" />
 <meta
   name="twitter:title"

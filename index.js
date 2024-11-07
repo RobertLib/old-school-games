@@ -133,6 +133,7 @@ app.use(flash());
 app.use(async (req, res, next) => {
   res.locals.req = req;
   res.locals.gameGenres = await Game.getGenres();
+  res.locals.recentlyAddedGames = await Game.findRecentlyAdded();
 
   next();
 });

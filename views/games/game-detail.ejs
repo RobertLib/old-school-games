@@ -7,48 +7,68 @@
     <%- include('../navbar') %>
     <%- include('../left-sidebar') %>
     <main>
-      <header class="game-detail-header">
-        <a href="javascript:history.back()">&lt; Back</a>
-        <% if (req.session.user?.role === "ADMIN") { %>
-        <span class="flex" style="gap: 5px">
-          <a class="btn btn-sm" href="/games/<%= game.id %>/edit">Edit</a>
-          <form action="/games/<%= game.id %>/delete" method="POST">
-            <button class="btn-sm" onclick="return confirm('Are you sure?')" type="submit">
-              Delete
-            </button>
-          </form>
-        </span>
-        <% } %>
-      </header>
-      <h1><%= game.title %></h1>
-      <p>
-        <img class="game-detail-initial" src="<%= game.images[0] %>" alt="initial" width="150" />
-        <%- game.description %>
-      </p>
-      <div style="clear: left"></div>
-      <div class="text-sm" style="margin-bottom: 20px">
-        <hr />
-        Genre: <%= game.genre %><br />
-        Release: <%= game.release %><br />
-        Developer / Publisher: <%= [game.developer, game.publisher].filter(Boolean).join(", ") %><br />
-        <hr />
-      </div>
+      <section>
+        <header class="game-detail-header">
+          <a href="javascript:history.back()">&lt; Back</a>
+          <% if (req.session.user?.role === "ADMIN") { %>
+          <div class="flex" style="gap: 5px">
+            <a class="btn btn-sm" href="/games/<%= game.id %>/edit">Edit</a>
+            <form action="/games/<%= game.id %>/delete" method="POST">
+              <button
+                class="btn-sm"
+                onclick="return confirm('Are you sure?')"
+                type="submit"
+              >
+                Delete
+              </button>
+            </form>
+          </div>
+          <% } %>
+        </header>
+        <header>
+          <h1 style="font-size: 2em; margin: 20px 0"><%= game.title %></h1>
+          <p>
+            <img
+              alt="initial"
+              class="game-detail-initial"
+              src="<%= game.images[0] %>"
+              width="150"
+            />
+            <%- game.description %>
+          </p>
+        </header>
+        <div style="clear: left"></div>
+        <div class="text-sm" style="margin-bottom: 20px">
+          <hr />
+          Genre: <%= game.genre %><br />
+          Release: <%= game.release %><br />
+          Developer / Publisher: <%= [game.developer,
+          game.publisher].filter(Boolean).join(", ") %><br />
+          <hr />
+        </div>
+      </section>
       <% if (game.stream) { %>
-      <iframe
-        class="game-detail-stream"
-        src="js-dos.html?stream=<%= game.stream %>"
-        frameborder="0"
-      ></iframe>
+      <section>
+        <h2 style="margin-bottom: 10px">Just play it!</h2>
+        <iframe
+          class="game-detail-stream"
+          src="js-dos.html?stream=<%= game.stream %>"
+          style="border: 0"
+          title="<%= game.title %>"
+        ></iframe>
+      </section>
       <% } %>
-      <p style="margin-top: 25px">
+      <div style="margin: 25px 0 15px">
         <% game.images.filter(Boolean).forEach((image, index) => { %>
           <% if (index !== 0) { %>
-          <a href="<%= image %>" target="_blank">
-            <img src="<%= image %>" alt="<%= game.title %>" width="320" />
-          </a>
+          <figure class="inline-block" style="margin: 0">
+            <a href="<%= image %>" target="_blank">
+              <img src="<%= image %>" alt="<%= game.title %>" width="320" />
+            </a>
+          </figure>
           <% } %>
         <% }); %>
-      </p>
+      </div>
       <div class="flex" style="gap: 10px">
         <div class="flex-1">
           <p>
@@ -60,20 +80,31 @@
           </p>
           <% } %>
         </div>
-        <p>
+        <nav style="margin: 15px 0">
           Share on social media:
-          <a href="https://www.facebook.com/sharer/sharer.php?u=<%= encodeURIComponent(locals.url || req.protocol + '://' + req.get('host') + req.originalUrl) %>" target="_blank">
+          <a
+            href="https://www.facebook.com/sharer/sharer.php?u=<%= encodeURIComponent(locals.url || req.protocol + '://' + req.get('host') + req.originalUrl) %>"
+            style="text-decoration: underline"
+            target="_blank"
+          >
             Facebook
-          </a> |
-          <a href="https://twitter.com/intent/tweet?url=<%= encodeURIComponent(locals.url || req.protocol + '://' + req.get('host') + req.originalUrl) %>&text=<%= encodeURIComponent(game.title) %>" target="_blank">
+          </a>
+          |
+          <a
+            href="https://twitter.com/intent/tweet?url=<%= encodeURIComponent(locals.url || req.protocol + '://' + req.get('host') + req.originalUrl) %>&text=<%= encodeURIComponent(game.title) %>"
+            style="text-decoration: underline"
+            target="_blank"
+          >
             Twitter
           </a>
-        </p>
+        </nav>
       </div>
-      <h2>Comments</h2>
-      <%- include('../comments/comment-list') %>
-      <h2>New Comment</h2>
-      <%- include('../comments/comment-form') %>
+      <section>
+        <h2>Comments</h2>
+        <%- include('../comments/comment-list') %>
+        <h2>New Comment</h2>
+        <%- include('../comments/comment-form') %>
+      </section>
     </main>
     <%- include('../right-sidebar') %>
     <%- include('../footer') %>
