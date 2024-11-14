@@ -21,16 +21,14 @@
         </p>
         <hr />
         <% if (req.session.user?.role === "ADMIN") { %>
-        <div class="text-right">
+        <div class="text-right" style="margin-bottom: 15px">
           <a class="btn" href="/games/new">+ Add a new game</a>
         </div>
         <% } %>
         <% Object.entries(req.flash()).forEach(([type, message]) => { %>
         <p class="<%= type %>"><%= message %></p>
         <% }); %>
-        <% if (locals.genre) { %>
-        <h2>Games in the "<%= genre %>" genre</h2>
-        <% } %>
+        <%- include('games/game-filters') %>
         <%- include('games/game-list') %>
       </section>
     </main>

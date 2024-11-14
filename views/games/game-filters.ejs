@@ -1,0 +1,29 @@
+<div class="game-filters">
+  <% if (locals.genre) { %>
+  <h2 style="margin-top: 0">Games in the "<%= genre %>" genre</h2>
+  <% } else { %>
+  <span></span>
+  <% } %>
+  <ul>
+    <li>
+      <a
+        aria-label="Order by ASC"
+        <%= !req.query.orderDir || req.query.orderDir === "ASC" ? "class=active" : "" %>
+        href="?<%= new URLSearchParams({ ...req.query, orderDir: "ASC" }).toString() %>"
+        title="Order by ASC"
+      >
+        ▲
+      </a>
+    </li>
+    <li>
+      <a
+        aria-label="Order by DESC"
+        <%= req.query.orderDir === "DESC" ? "class=active" : "" %>
+        href="?<%= new URLSearchParams({ ...req.query, orderDir: "DESC" }).toString() %>"
+        title="Order by DESC"
+      >
+        ▼
+      </a>
+    </li>
+  </ul>
+</div>
