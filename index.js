@@ -151,13 +151,13 @@ app.use("/games", gamesRoutes);
 app.use("/comments", commentsRoutes);
 
 app.use((req, res, next) => {
-  res.status(404).send("Page not found");
+  res.status(404).render("404");
 });
 
 app.use((err, req, res, next) => {
   logger.error(err.stack);
 
-  res.status(500).send("Something broke!");
+  res.status(500).render("500");
 });
 
 const PORT = process.env.PORT || 3000;

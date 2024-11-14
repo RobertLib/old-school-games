@@ -5,7 +5,7 @@ import Comment from "../models/comment.js";
 const router = express.Router();
 
 router.get("/", async (req, res, next) => {
-  const { genre, search } = req.query;
+  const { genre, search, orderBy, orderDir } = req.query;
 
   if (genre) {
     return res.redirect(`/${genre.toLowerCase()}`);
@@ -15,10 +15,18 @@ router.get("/", async (req, res, next) => {
     return next();
   }
 
+  if (orderBy && !["createdAt", "release"].includes(orderBy)) {
+    return next();
+  }
+
+  if (orderDir && !["ASC", "DESC"].includes(orderDir)) {
+    return next();
+  }
+
   const page = parseInt(req.query.page) || 1;
   const limit = 25;
 
-  const games = await Game.find({ search, page, limit });
+  const games = await Game.find({ search, page, limit, orderBy, orderDir });
 
   res.render("index", { games, limit, page });
 });

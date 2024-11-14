@@ -12,10 +12,16 @@
   <span>Page <%= page %></span>
   <span>
     <% if (page > 1) { %>
-    <a href="?page=1">&lt;&lt; First</a>
-    <a href="?page=<%= page - 1 %>">&lt; Previous</a>
+    <a href="?<%= new URLSearchParams({ ...req.query, page: 1 }).toString() %>">
+      &lt;&lt; First
+    </a>
+    <a href="?<%= new URLSearchParams({ ...req.query, page: page - 1 }).toString() %>">
+      &lt; Previous
+    </a>
     <% } %> <% if (games.length === limit) { %>
-    <a href="?page=<%= page + 1 %>">Next &gt;</a>
+    <a href="?<%= new URLSearchParams({ ...req.query, page: page + 1 }).toString() %>">
+      Next &gt;
+    </a>
     <% } %>
   </span>
 </div>
