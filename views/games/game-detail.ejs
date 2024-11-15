@@ -12,10 +12,10 @@
           <a href="javascript:history.back()">&lt; Back</a>
           <% if (req.session.user?.role === "ADMIN") { %>
           <div class="flex" style="gap: 5px">
-            <a class="btn btn-sm" href="/games/<%= game.id %>/edit">Edit</a>
+            <a class="btn btn-sm btn-warning" href="/games/<%= game.id %>/edit">Edit</a>
             <form action="/games/<%= game.id %>/delete" method="POST">
               <button
-                class="btn-sm"
+                class="btn-sm btn-danger"
                 onclick="return confirm('Are you sure?')"
                 type="submit"
               >

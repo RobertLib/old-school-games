@@ -4,6 +4,8 @@
   --color-rgb: 33 37 41;
   --border-rgb: 206 212 218;
   --primary-rgb: 9 105 218;
+  --warning-rgb: 255 159 67;
+  --danger-rgb: 220 53 69;
 
   --border-radius: 10px;
   --box-shadow: 0 1px 2px rgb(0 0 0 / 0.1);
@@ -81,10 +83,28 @@
       cursor: not-allowed;
       opacity: 0.5;
     }
+  }
 
-    &.btn-sm {
-      font-size: 0.875rem;
-      padding: 0.25rem 0.5rem;
+  .btn-sm {
+    font-size: 0.875rem;
+    padding: 0.25rem 0.5rem;
+  }
+
+  .btn-warning {
+    background-color: rgb(var(--warning-rgb) / 0.025);
+    border-color: rgb(var(--warning-rgb) / 0.25);
+
+    &:hover {
+      background-color: rgb(var(--warning-rgb) / 0.05);
+    }
+  }
+
+  .btn-danger {
+    background-color: rgb(var(--danger-rgb) / 0.025);
+    border-color: rgb(var(--danger-rgb) / 0.25);
+
+    &:hover {
+      background-color: rgb(var(--danger-rgb) / 0.05);
     }
   }
 
@@ -119,11 +139,28 @@
 }
 
 @layer components {
+  .alert {
+    background-color: rgb(var(--primary-rgb) / 0.025);
+    border: 1px solid rgb(var(--primary-rgb) / 0.25);
+    border-radius: var(--border-radius);
+    color: rgb(var(--primary-rgb));
+    margin-bottom: 15px;
+    padding: 15px;
+  }
+
   .dropdown {
+    display: inline-flex;
     position: relative;
 
     > span {
+      border-radius: var(--border-radius);
       color: rgb(var(--primary-rgb));
+      padding: 2px 10px;
+      transition: background-color 0.2s;
+
+      &:hover {
+        background-color: rgb(var(--primary-rgb) / 0.1);
+      }
 
       &::after {
         content: "▿";
@@ -135,13 +172,13 @@
       background-color: rgb(var(--background-rgb));
       border-radius: var(--border-radius);
       box-shadow: var(--box-shadow);
-      line-height: calc(var(--line-height) * 1.2);
+      line-height: calc(var(--line-height) * 1.25);
       list-style: none;
       margin: 0;
       opacity: 0;
       padding: 15px;
       position: absolute;
-      top: calc(100% + 8px);
+      top: 100%;
       transform: translateY(-10px);
       transition: opacity 0.3s ease, transform 0.3s ease;
       visibility: hidden;
@@ -151,6 +188,7 @@
         display: block;
         margin: 0 -10px;
         padding: 0 10px;
+        transition: background-color 0.2s;
         white-space: nowrap;
 
         &:hover {
@@ -160,12 +198,8 @@
     }
 
     &:hover {
-      > span {
-        padding-bottom: 10px;
-
-        &::after {
-          content: "▾";
-        }
+      > span::after {
+        content: "▾";
       }
 
       ul {
@@ -213,6 +247,7 @@
     height: var(--navbar-height);
     justify-content: space-evenly;
     margin: 0 -15px;
+    padding: 4px 0;
     position: sticky;
     top: 0;
     z-index: 1;
@@ -235,10 +270,32 @@
     padding: 0;
   }
 
+  .navbar-search {
+    white-space: nowrap;
+
+    input {
+      transition: width 0.3s ease-in-out;
+      width: 185px;
+
+      &:focus {
+        width: 250px;
+      }
+    }
+  }
+
   .navbar-navigation {
     display: flex;
-    gap: 15px;
-    padding: 0 15px;
+    padding: 0 5px;
+
+    > a {
+      border-radius: var(--border-radius);
+      padding: 2px 10px;
+      transition: background-color 0.2s;
+
+      &:hover {
+        background-color: rgb(var(--primary-rgb) / 0.1);
+      }
+    }
   }
 
   .left-sidebar,
@@ -247,7 +304,7 @@
     background-color: rgb(var(--background-rgb));
     border-radius: var(--border-radius);
     box-shadow: var(--box-shadow);
-    line-height: calc(var(--line-height) * 1.2);
+    line-height: calc(var(--line-height) * 1.25);
     max-height: calc(100vh - var(--navbar-height));
     overflow: auto;
     position: sticky;
@@ -262,10 +319,22 @@
         display: block;
         margin: 0 -10px;
         padding: 0 10px;
+        transform: translateX(0);
+        transition: background-color 0.2s, transform 0.2s;
 
-        &:hover,
+        &:hover {
+          background-color: rgb(var(--primary-rgb) / 0.08);
+          margin-right: -5px;
+          transform: translateX(5px);
+        }
+
         &.active {
           background-color: rgb(var(--primary-rgb) / 0.1);
+
+          &::before {
+            content: "▸";
+            margin-right: 2px;
+          }
         }
       }
     }
@@ -304,6 +373,14 @@
 
   .font-bold {
     font-weight: bold;
+  }
+
+  .hover-scale {
+    transition: transform 0.2s ease-in-out;
+
+    &:hover {
+      transform: scale(1.5);
+    }
   }
 
   .inline-block {
@@ -358,6 +435,7 @@
     align-items: baseline;
     display: flex;
     justify-content: space-between;
+    margin-bottom: 12px;
 
     ul {
       display: flex;

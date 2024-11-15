@@ -1,14 +1,22 @@
 <div class="game-filters">
-  <% if (locals.genre) { %>
-  <h2 style="margin-top: 0">Games in the "<%= genre %>" genre</h2>
-  <% } else { %>
-  <span></span>
-  <% } %>
+  <h2 style="font-size: 19px; margin: 0">
+    <% if (locals.genre) { %>
+    Games in the "<%= genre %>" genre
+    <% } else { %>
+      <% if (req.query.orderBy === "createdAt") { %>
+      Recently added games
+      <% } else if (req.query.orderBy === "release") { %>
+      Games by release year
+      <% } else { %>
+      Games of all genres
+      <% } %>
+    <% } %>
+  </h2>
   <ul>
     <li>
       <a
         aria-label="Order by ASC"
-        <%= !req.query.orderDir || req.query.orderDir === "ASC" ? "class=active" : "" %>
+        class="inline-block hover-scale <%= !req.query.orderDir || req.query.orderDir === "ASC" ? "active" : "" %>"
         href="?<%= new URLSearchParams({ ...req.query, orderDir: "ASC" }).toString() %>"
         title="Order by ASC"
       >
@@ -18,7 +26,7 @@
     <li>
       <a
         aria-label="Order by DESC"
-        <%= req.query.orderDir === "DESC" ? "class=active" : "" %>
+        class="inline-block hover-scale <%= req.query.orderDir === "DESC" ? "active" : "" %>"
         href="?<%= new URLSearchParams({ ...req.query, orderDir: "DESC" }).toString() %>"
         title="Order by DESC"
       >
