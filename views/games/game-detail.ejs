@@ -9,10 +9,14 @@
     <main>
       <section>
         <header class="game-detail-header">
-          <a href="javascript:history.back()">&lt; Back</a>
+          <a class="color-primary" href="javascript:history.back()">
+            &lt; Back
+          </a>
           <% if (req.session.user?.role === "ADMIN") { %>
           <div class="flex" style="gap: 5px">
-            <a class="btn btn-sm btn-warning" href="/games/<%= game.id %>/edit">Edit</a>
+            <a class="btn btn-sm btn-warning" href="/games/<%= game.id %>/edit">
+              Edit
+            </a>
             <form action="/games/<%= game.id %>/delete" method="POST">
               <button
                 class="btn-sm btn-danger"
@@ -26,7 +30,7 @@
           <% } %>
         </header>
         <header>
-          <h1 style="font-size: 2em; margin: 20px 0"><%= game.title %></h1>
+          <h1 class="text-xl" style="margin: 20px 0"><%= game.title %></h1>
           <p>
             <img
               alt="initial"
@@ -76,23 +80,25 @@
           </p>
           <% if (game.manual) { %>
           <p>
-            <a href="<%= game.manual %>" target="_blank">Manual</a>
+            <a class="color-primary" href="<%= game.manual %>" target="_blank">
+              Manual
+            </a>
           </p>
           <% } %>
         </div>
         <nav style="margin: 15px 0">
           Share on social media:
           <a
+            class="color-primary underline"
             href="https://www.facebook.com/sharer/sharer.php?u=<%= encodeURIComponent(locals.url || req.protocol + '://' + req.get('host') + req.originalUrl) %>"
-            style="text-decoration: underline"
             target="_blank"
           >
             Facebook
           </a>
           |
           <a
+            class="color-primary underline"
             href="https://twitter.com/intent/tweet?url=<%= encodeURIComponent(locals.url || req.protocol + '://' + req.get('host') + req.originalUrl) %>&text=<%= encodeURIComponent(game.title) %>"
-            style="text-decoration: underline"
             target="_blank"
           >
             Twitter
