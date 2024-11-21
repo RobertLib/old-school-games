@@ -312,6 +312,14 @@
     position: sticky;
     top: var(--navbar-height);
 
+    header {
+      border-bottom: 1px solid rgb(var(--border-rgb) / 0.75);
+      font-size: 13px;
+      font-weight: bold;
+      padding: 10px 15px;
+      text-transform: uppercase;
+    }
+
     ul {
       list-style: none;
       padding: 0 15px;
