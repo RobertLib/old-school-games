@@ -8,26 +8,29 @@
 <p>No games found</p>
 <% } %>
 
-<div class="flex justify-between">
+<div class="align-center flex justify-between">
   <span>Page <%= page %></span>
   <span>
     <% if (page > 1) { %>
     <a
-      class="color-primary"
+      class="btn btn-sm"
       href="?<%= new URLSearchParams({ ...req.query, page: 1 }).toString() %>"
+      rel="first"
     >
       &lt;&lt; First
     </a>
     <a
-      class="color-primary"
+      class="btn btn-sm"
       href="?<%= new URLSearchParams({ ...req.query, page: page - 1 }).toString() %>"
+      rel="prev"
     >
       &lt; Previous
     </a>
     <% } %> <% if (games.length === limit) { %>
     <a
-      class="color-primary"
+      class="btn btn-sm"
       href="?<%= new URLSearchParams({ ...req.query, page: page + 1 }).toString() %>"
+      rel="next"
     >
       Next &gt;
     </a>

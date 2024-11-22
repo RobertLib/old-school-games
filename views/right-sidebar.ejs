@@ -1,15 +1,15 @@
 <aside class="right-sidebar">
   <header>Recently added</header>
-  <ul>
+  <ul class="nav nav-column">
     <% recentlyAddedGames.map(game => { %>
     <li>
-      <a class="block text-truncate" href="/<%= game.slug %>">
+      <a class="nav-link text-truncate" href="/<%= game.slug %>">
         <%= game.title %>
       </a>
     </li>
     <% }); %>
     <li>
-      <a href="/?orderBy=createdAt&orderDir=DESC">All...</a>
+      <a class="nav-link" href="/?orderBy=createdAt&orderDir=DESC">All...</a>
     </li>
   </ul>
 </aside>

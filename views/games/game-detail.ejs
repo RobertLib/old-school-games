@@ -9,17 +9,32 @@
     <main>
       <section>
         <header class="game-detail-header">
-          <a class="color-primary" href="javascript:history.back()">
-            &lt; Back
+          <a
+            class="align-center color-primary inline-flex"
+            href="javascript:history.back()"
+            style="gap: 7px"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 448 512"
+              fill="currentColor"
+              width="15"
+              height="17"
+            >
+              <path
+                d="M9.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.2 288 416 288c17.7 0 32-14.3 32-32s-14.3-32-32-32l-306.7 0L214.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"
+              />
+            </svg>
+            Back
           </a>
           <% if (req.session.user?.role === "ADMIN") { %>
           <div class="flex" style="gap: 5px">
-            <a class="btn btn-sm btn-warning" href="/games/<%= game.id %>/edit">
+            <a class="btn btn-outline btn-sm" href="/games/<%= game.id %>/edit">
               Edit
             </a>
             <form action="/games/<%= game.id %>/delete" method="POST">
               <button
-                class="btn-sm btn-danger"
+                class="btn btn-outline btn-sm"
                 onclick="return confirm('Are you sure?')"
                 type="submit"
               >
@@ -44,9 +59,9 @@
         <div style="clear: left"></div>
         <div class="text-sm" style="margin-bottom: 20px">
           <hr />
-          Genre: <%= game.genre %><br />
-          Release: <%= game.release %><br />
-          Developer / Publisher: <%= [game.developer,
+          <strong>Genre</strong>: <%= game.genre %><br />
+          <strong>Release</strong>: <%= game.release %><br />
+          <strong>Developer / Publisher</strong>: <%= [game.developer,
           game.publisher].filter(Boolean).join(", ") %><br />
           <hr />
         </div>
@@ -76,7 +91,7 @@
       <div class="flex" style="gap: 10px">
         <div class="flex-1">
           <p>
-            <button disabled type="button">Download</button>
+            <button class="btn" disabled type="button">Download</button>
           </p>
           <% if (game.manual) { %>
           <p>

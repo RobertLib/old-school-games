@@ -1,4 +1,4 @@
-<article class="game-item">
+<article class="game-item card">
   <a href="/<%= game.slug %>">
     <img
       alt="<%= game.title %>"
@@ -13,16 +13,16 @@
     </a>
     <div><%= game.description?.slice(0, 100) %>...</div>
     <div class="text-sm">
-      Genre: <%= game.genre %><br />
-      Release: <%= game.release %><br />
-      Developer / Publisher: <%= [game.developer, game.publisher].filter(Boolean).join(", ") %><br />
+      <strong>Genre</strong>: <%= game.genre %><br />
+      <strong>Release</strong>: <%= game.release %><br />
+      <strong>Developer / Publisher</strong>: <%= [game.developer, game.publisher].filter(Boolean).join(", ") %><br />
     </div>
     <% if (req.session.user?.role === "ADMIN") { %>
     <div class="flex" style="gap: 5px">
-      <a class="btn btn-sm btn-warning" href="/games/<%= game.id %>/edit">Edit</a>
+      <a class="btn btn-outline btn-sm" href="/games/<%= game.id %>/edit">Edit</a>
       <form action="/games/<%= game.id %>/delete" method="POST">
         <button
-          class="btn-sm btn-danger"
+          class="btn btn-outline btn-sm"
           onclick="return confirm('Are you sure?')"
           type="submit"
         >

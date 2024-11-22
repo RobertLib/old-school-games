@@ -23,7 +23,7 @@
         <hr />
         <% if (req.session.user?.role === "ADMIN") { %>
         <div class="text-right" style="margin-bottom: 15px">
-          <a class="btn" href="/games/new">+ Add a new game</a>
+          <a class="btn btn-outline" href="/games/new">+ Add a new game</a>
         </div>
         <% } %>
         <%- include('games/game-filters') %>

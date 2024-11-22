@@ -1,7 +1,8 @@
 <form action="/games/<%= game?.id %>" method="POST">
   <p>
-    <label for="title">Title *</label><br />
+    <label class="form-label" for="title">Title *</label><br />
     <input
+      class="form-control"
       id="title"
       maxlength="255"
       name="title"
@@ -11,12 +12,17 @@
     />
   </p>
   <p>
-    <label for="description">Description</label><br />
-    <textarea id="description" name="description" rows="10"><%= game?.description %></textarea>
+    <label class="form-label" for="description">Description</label><br />
+    <textarea
+      class="form-control"
+      id="description"
+      name="description"
+      rows="10"
+    ><%= game?.description %></textarea>
   </p>
   <p>
-    <label for="genre">Genre *</label><br />
-    <select id="genre" name="genre" required>
+    <label class="form-label" for="genre">Genre *</label><br />
+    <select class="form-control" id="genre" name="genre" required>
       <option value="">&nbsp;</option>
       <% gameGenres.map(genre => { %>
       <% locals.selected = game?.genre === genre ? "selected" : ""; %>
@@ -25,8 +31,9 @@
     </select>
   </p>
   <p>
-    <label for="release">Release</label><br />
+    <label class="form-label" for="release">Release</label><br />
     <input
+      class="form-control"
       id="release"
       name="release"
       type="number"
@@ -34,8 +41,9 @@
     />
   </p>
   <p>
-    <label for="developer">Developer</label><br />
+    <label class="form-label" for="developer">Developer</label><br />
     <input
+      class="form-control"
       id="developer"
       maxlength="255"
       name="developer"
@@ -44,8 +52,9 @@
     />
   </p>
   <p>
-    <label for="publisher">Publisher</label><br />
+    <label class="form-label" for="publisher">Publisher</label><br />
     <input
+      class="form-control"
       id="publisher"
       maxlength="255"
       name="publisher"
@@ -54,12 +63,13 @@
     />
   </p>
   <div>
-    <label for="image-cover">Images</label><br />
+    <label class="form-label" for="image-cover">Images</label><br />
     <ul style="margin-top: 5px">
       <li>
         <p>
-          <label for="image-cover">Cover</label><br />
+          <label class="form-label" for="image-cover">Cover</label><br />
           <input
+            class="form-control"
             id="image-cover"
             name="images"
             type="url"
@@ -69,8 +79,9 @@
       </li>
       <li>
         <p>
-          <label for="image-1">Image 1</label><br />
+          <label class="form-label" for="image-1">Image 1</label><br />
           <input
+            class="form-control"
             id="image-1"
             name="images"
             type="url"
@@ -80,8 +91,9 @@
       </li>
       <li>
         <p>
-          <label for="image-2">Image 2</label><br />
+          <label class="form-label" for="image-2">Image 2</label><br />
           <input
+            class="form-control"
             id="image-2"
             name="images"
             type="url"
@@ -91,8 +103,9 @@
       </li>
       <li>
         <p>
-          <label for="image-3">Image 3</label><br />
+          <label class="form-label" for="image-3">Image 3</label><br />
           <input
+            class="form-control"
             id="image-3"
             name="images"
             type="url"
@@ -103,13 +116,30 @@
     </ul>
   </div>
   <p>
-    <label for="stream">Stream</label><br />
-    <input id="stream" name="stream" type="text" value="<%= game?.stream %>" />
+    <label class="form-label" for="stream">Stream</label><br />
+    <input
+      class="form-control"
+      id="stream"
+      name="stream"
+      type="text"
+      value="<%= game?.stream %>"
+    />
   </p>
   <p>
-    <label for="manual">Manual</label><br />
-    <input id="manual" name="manual" type="url" value="<%= game?.manual %>" />
+    <label class="form-label" for="manual">Manual</label><br />
+    <input
+      class="form-control"
+      id="manual"
+      name="manual"
+      type="url"
+      value="<%= game?.manual %>"
+    />
   </p>
-  <button type="submit"><%= game ? "Update" : "Create" %> Game</button> |
-  <a href="/">Back</a>
+  <p style="margin-top: 20px">
+    <button class="btn" type="submit">
+      <%= game ? "Update" : "Create" %> Game
+    </button>
+    |
+    <a href="/">Back</a>
+  </p>
 </form>

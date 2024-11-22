@@ -1,4 +1,5 @@
 User-agent: *
 Allow: /
+Disallow: /js-dos.html
 
 Sitemap: https://oldschoolgames.eu/sitemap.xml

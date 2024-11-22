@@ -1,12 +1,24 @@
 <form id="comment-form">
-  <input name="gameId" type="hidden" value="<%= game.id %>" />
+  <input
+    class="form-control"
+    name="gameId"
+    type="hidden"
+    value="<%= game.id %>"
+  />
   <p>
-    <label for="nick">Nick</label><br />
-    <input id="nick" maxlength="255" name="nick" type="text" />
+    <label class="form-label" for="nick">Nick</label><br />
+    <input
+      class="form-control"
+      id="nick"
+      maxlength="255"
+      name="nick"
+      type="text"
+    />
   </p>
   <p>
-    <label for="content">Content *</label><br />
+    <label class="form-label" for="content">Content *</label><br />
     <textarea
+      class="form-control"
       id="content"
       maxlength="1000"
       name="content"
@@ -14,7 +26,7 @@
       rows="10"
     ></textarea>
   </p>
-  <button type="submit">Create Comment</button>
+  <button class="btn" type="submit">Create Comment</button>
   <br /><br />
 </form>
 

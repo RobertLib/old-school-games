@@ -1,13 +1,15 @@
 <aside class="left-sidebar">
   <header>Genres</header>
-  <ul>
+  <ul class="nav nav-column">
     <li>
-      <a href="/">All Genres</a>
+      <a class="nav-link" href="/">All Genres</a>
     </li>
     <% gameGenres.map(genre => { %>
     <li>
-      <% locals.class = genre.toLowerCase() === req.params.genre ? "class=active" : ""; %>
-      <a <%= locals.class %> href="/<%= genre.toLowerCase() %>">
+      <a
+        class="nav-link <%= genre.toLowerCase() === req.params.genre ? 'active' : '' %>"
+        href="/<%= genre.toLowerCase() %>"
+      >
         <%= genre.charAt(0) %><%= genre.slice(1).toLowerCase() %>
       </a>
     </li>

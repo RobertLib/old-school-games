@@ -3,9 +3,10 @@
   <p><%= error %></p>
   <% } %>
   <p>
-    <label for="email">Email *</label><br />
+    <label class="form-label" for="email">Email *</label><br />
     <input
       autocomplete="email"
+      class="form-control"
       id="email"
       maxlength="255"
       name="email"
@@ -14,9 +15,10 @@
     />
   </p>
   <p>
-    <label for="password">Password *</label><br />
+    <label class="form-label" for="password">Password *</label><br />
     <input
       autocomplete="new-password"
+      class="form-control"
       id="password"
       maxlength="255"
       name="password"
@@ -25,9 +27,10 @@
     />
   </p>
   <p>
-    <label for="confirm-password">Confirm password *</label><br />
+    <label class="form-label" for="confirm-password">Confirm password *</label><br />
     <input
       autocomplete="new-password"
+      class="form-control"
       id="confirm-password"
       maxlength="255"
       name="confirmPassword"
@@ -35,5 +38,5 @@
       type="password"
     />
   </p>
-  <button type="submit">Register</button> | <a href="/">Back</a>
+  <button class="btn" type="submit">Register</button> | <a href="/">Back</a>
 </form>
