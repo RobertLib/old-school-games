@@ -56,7 +56,7 @@
 
   hr {
     border: none;
-    border-top: 1px solid rgb(var(--border-rgb));
+    border-top: 1px solid rgb(var(--border-rgb) / 0.5);
     margin: 17px 0;
   }
 
@@ -68,7 +68,7 @@
 @layer forms {
   .form-control {
     background-color: rgb(var(--background-rgb));
-    border: 1px solid rgb(var(--border-rgb));
+    border: 1px solid rgb(var(--border-rgb) / 0.75);
     border-radius: var(--border-radius);
     color: rgb(var(--color-rgb));
     font-family: Arial, sans-serif;
@@ -164,8 +164,8 @@
   }
 
   .btn-outline {
-    background-color: transparent;
-    border: 1px solid rgb(var(--border-rgb));
+    background-color: rgb(var(--background-rgb));
+    border: 1px solid rgb(var(--border-rgb) / 0.75);
     color: rgb(var(--color-rgb));
 
     &:hover {
@@ -178,7 +178,6 @@
     border: 1px solid rgb(var(--border-rgb) / 0.5);
     border-radius: var(--border-radius);
     box-shadow: var(--box-shadow);
-    margin-bottom: 15px;
     padding: 15px;
   }
 
@@ -558,10 +557,21 @@
     }
   }
 
+  .game-list {
+    display: grid;
+    gap: 15px;
+    grid-template-columns: 1fr 1fr;
+    margin-bottom: 20px;
+
+    @media (max-width: 768px) {
+      grid-template-columns: 1fr;
+    }
+  }
+
   .game-item {
+    align-items: start;
     display: flex;
     gap: 15px;
-    margin-bottom: 20px;
   }
 
   .game-item-content {

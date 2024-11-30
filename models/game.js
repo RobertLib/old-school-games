@@ -113,7 +113,15 @@ export default class Game extends Model {
 
     const { rows } = await db.query(query, values);
 
-    return rows.map((row) => new Game(row));
+    const games = await Promise.all(
+      rows.map(async (row) => {
+        const game = new Game(row);
+        game.averageRating = await Game.getAverageRating(game.id);
+        return game;
+      })
+    );
+
+    return games;
   }
 
   static async findRecentlyAdded() {
@@ -148,7 +156,13 @@ export default class Game extends Model {
       slug,
     ]);
 
-    return rows[0] ? new Game(rows[0]) : null;
+    const game = rows[0] ? new Game(rows[0]) : null;
+
+    if (game) {
+      game.averageRating = await Game.getAverageRating(game.id);
+    }
+
+    return game;
   }
 
   static async create(data) {
@@ -199,5 +213,21 @@ export default class Game extends Model {
 
   static async delete(id) {
     await db.query('DELETE FROM "games" WHERE "id" = $1', [id]);
+  }
+
+  static async rate(id, ip, rating) {
+    await db.query(
+      'INSERT INTO "ratings" ("gameId", "ipAddress", "rating") VALUES ($1, $2, $3) ON CONFLICT ("gameId", "ipAddress") DO UPDATE SET "rating" = $3',
+      [id, ip, rating]
+    );
+  }
+
+  static async getAverageRating(id) {
+    const { rows } = await db.query(
+      'SELECT AVG("rating") as "averageRating" FROM "ratings" WHERE "gameId" = $1',
+      [id]
+    );
+
+    return rows[0]?.averageRating ?? 0;
   }
 }

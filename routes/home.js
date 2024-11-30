@@ -23,7 +23,7 @@ router.get("/", async (req, res, next) => {
     return next();
   }
 
-  const page = parseInt(req.query.page) || 1;
+  const page = parseInt(req.query.page, 10) || 1;
   const limit = 25;
 
   const games = await Game.find({ search, page, limit, orderBy, orderDir });
@@ -35,7 +35,7 @@ router.get("/:genre", async (req, res, next) => {
   const { genre } = req.params;
   const { orderBy, orderDir } = req.query;
 
-  const page = parseInt(req.query.page) || 1;
+  const page = parseInt(req.query.page, 10) || 1;
   const limit = 25;
 
   const genres = await Game.getGenres();

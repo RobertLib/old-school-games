@@ -7,6 +7,7 @@
       maxlength="255"
       name="title"
       required
+      style="max-width: 480px; width: 100%"
       type="text"
       value="<%= game?.title %>"
     />
@@ -17,12 +18,18 @@
       class="form-control"
       id="description"
       name="description"
-      rows="10"
+      rows="12"
+      style="width: 100%"
     ><%= game?.description %></textarea>
   </p>
   <p>
     <label class="form-label" for="genre">Genre *</label><br />
-    <select class="form-control" id="genre" name="genre" required>
+    <select
+      class="form-control"
+      id="genre"
+      name="genre"
+      required
+    >
       <option value="">&nbsp;</option>
       <% gameGenres.map(genre => { %>
       <% locals.selected = game?.genre === genre ? "selected" : ""; %>
@@ -47,6 +54,7 @@
       id="developer"
       maxlength="255"
       name="developer"
+      style="max-width: 480px; width: 100%"
       type="text"
       value="<%= game?.developer %>"
     />
@@ -58,6 +66,7 @@
       id="publisher"
       maxlength="255"
       name="publisher"
+      style="max-width: 480px; width: 100%"
       type="text"
       value="<%= game?.publisher %>"
     />
@@ -72,6 +81,7 @@
             class="form-control"
             id="image-cover"
             name="images"
+            style="max-width: 768px; width: 100%"
             type="url"
             value="<%= game?.images[0] %>"
           />
@@ -84,6 +94,7 @@
             class="form-control"
             id="image-1"
             name="images"
+            style="max-width: 768px; width: 100%"
             type="url"
             value="<%= game?.images[1] %>"
           />
@@ -96,6 +107,7 @@
             class="form-control"
             id="image-2"
             name="images"
+            style="max-width: 768px; width: 100%"
             type="url"
             value="<%= game?.images[2] %>"
           />
@@ -108,6 +120,7 @@
             class="form-control"
             id="image-3"
             name="images"
+            style="max-width: 768px; width: 100%"
             type="url"
             value="<%= game?.images[3] %>"
           />
@@ -121,6 +134,7 @@
       class="form-control"
       id="stream"
       name="stream"
+      style="max-width: 768px; width: 100%"
       type="text"
       value="<%= game?.stream %>"
     />
@@ -131,6 +145,7 @@
       class="form-control"
       id="manual"
       name="manual"
+      style="max-width: 768px; width: 100%"
       type="url"
       value="<%= game?.manual %>"
     />

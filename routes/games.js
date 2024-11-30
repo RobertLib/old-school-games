@@ -2,6 +2,7 @@ import express from "express";
 import isAuth from "../middlewares/is-auth.js";
 import isAdmin from "../middlewares/is-admin.js";
 import Game from "../models/game.js";
+import rateLimit from "express-rate-limit";
 
 const router = express.Router();
 
@@ -51,6 +52,29 @@ router.post("/:id/delete", isAuth, isAdmin, async (req, res, next) => {
   req.flash("info", "Game deleted successfully.");
 
   res.redirect("/");
+});
+
+const ratingLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 50,
+  message: "Too many ratings from this IP, please try again later.",
+});
+
+router.post("/:id/rate", ratingLimiter, async (req, res) => {
+  const { id } = req.params;
+  const { rating } = req.body;
+  const { ip } = req;
+
+  try {
+    await Game.rate(id, ip, rating);
+
+    const avarageRating = await Game.getAverageRating(id);
+
+    res.status(200).send({ avarageRating });
+  } catch (error) {
+    console.error("Error saving rating:", error);
+    res.status(500).send("Error saving rating");
+  }
 });
 
 router.get("/:id", async (req, res, next) => {

@@ -2,6 +2,7 @@
 <html lang="en">
   <head>
     <%- include('../head') %>
+    <script src="/js/rating-stars.js"></script>
   </head>
   <body class="layout">
     <%- include('../navbar') %>
@@ -61,8 +62,15 @@
           <hr />
           <strong>Genre</strong>: <%= game.genre %><br />
           <strong>Release</strong>: <%= game.release %><br />
-          <strong>Developer / Publisher</strong>: <%= [game.developer,
-          game.publisher].filter(Boolean).join(", ") %><br />
+          <strong>Developer / Publisher</strong>:
+            <%= [game.developer, game.publisher].filter(Boolean).join(", ") %><br />
+          <div style="margin-top: 10px">
+            <rating-stars
+              gameId="<%= game.id %>"
+              rating="<%= game.averageRating %>"
+            >
+            </rating-stars>
+          </div>
           <hr />
         </div>
       </section>
