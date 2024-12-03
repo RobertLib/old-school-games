@@ -58,7 +58,9 @@ class RatingStars extends HTMLElement {
         .map((star, index) => {
           return `<span class="star ${
             index < rating ? "selected" : ""
-          }">${star}</span>`;
+          }" role="button" aria-label="Rating ${
+            index + 1
+          } out of 5">${star}</span>`;
         })
         .join("")}
     `;

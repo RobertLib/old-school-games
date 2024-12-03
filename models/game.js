@@ -98,7 +98,11 @@ export default class Game extends Model {
       values.push(`%${search.trim()}%`);
     }
 
-    query += ` ORDER BY "${orderBy}" ${orderDir}`;
+    if (orderBy === "rating") {
+      query += ` ORDER BY (SELECT AVG("rating") FROM "ratings" WHERE "gameId" = "games"."id") ${orderDir}`;
+    } else {
+      query += ` ORDER BY "${orderBy}" ${orderDir}`;
+    }
 
     if (limit) {
       query += ` LIMIT $${values.length + 1}`;

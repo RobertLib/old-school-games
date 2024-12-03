@@ -15,7 +15,7 @@ router.get("/", async (req, res, next) => {
     return next();
   }
 
-  if (orderBy && !["createdAt", "release"].includes(orderBy)) {
+  if (orderBy && !["createdAt", "release", "rating"].includes(orderBy)) {
     return next();
   }
 
@@ -44,7 +44,7 @@ router.get("/:genre", async (req, res, next) => {
     return next();
   }
 
-  if (orderBy && !["createdAt", "release"].includes(orderBy)) {
+  if (orderBy && !["createdAt", "release", "rating"].includes(orderBy)) {
     return next();
   }
 

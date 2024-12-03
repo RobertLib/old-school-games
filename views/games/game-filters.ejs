@@ -7,6 +7,8 @@
       Recently added games
       <% } else if (req.query.orderBy === "release") { %>
       Games by release year
+      <% } else if (req.query.orderBy === "rating") { %>
+      Games by rating
       <% } else { %>
       Games of all genres
       <% } %>
