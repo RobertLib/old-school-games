@@ -36,6 +36,10 @@
   }
 }
 
+@view-transition {
+  navigation: auto;
+}
+
 @layer base {
   * {
     box-sizing: border-box;
