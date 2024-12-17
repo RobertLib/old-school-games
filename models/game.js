@@ -42,16 +42,9 @@ export default class Game extends Model {
   constructor(data) {
     super(data);
 
-    this.title = data.title;
-    this.slug = data.slug;
-    this.description = data.description;
-    this.genre = data.genre;
-    this.release = data.release;
-    this.developer = data.developer;
-    this.publisher = data.publisher;
-    this.images = data.images;
-    this.stream = data.stream;
-    this.manual = data.manual;
+    Object.entries(properties).forEach(([prop, type]) => {
+      this[prop] = data[prop];
+    });
   }
 
   static async getGenres() {
