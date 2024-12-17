@@ -8,7 +8,8 @@
   --danger-rgb: 220 53 69;
 
   --border-radius: 10px;
-  --box-shadow: 0 1px 2px rgb(0 0 0 / 0.1);
+  --box-shadow: 0 1px 2px rgb(var(--color-rgb) / 0.1);
+  --box-shadow-hover: 0 4px 8px rgb(var(--color-rgb) / 0.1);
   --letter-spacing: 0.01em;
   --line-height: 1.4;
   --navbar-height: 90px;
@@ -179,6 +180,11 @@
     border-radius: var(--border-radius);
     box-shadow: var(--box-shadow);
     padding: 15px;
+    transition: box-shadow 0.4s;
+
+    &:hover {
+      box-shadow: var(--box-shadow-hover);
+    }
   }
 
   .dropdown {
