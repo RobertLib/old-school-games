@@ -66,6 +66,15 @@
   }
 }
 
+@layer animations {
+  @keyframes fadeInSlideUp {
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
+
 @layer forms {
   .form-control {
     background-color: rgb(var(--background-rgb));
@@ -175,11 +184,14 @@
   }
 
   .card {
+    animation: fadeInSlideUp 1s forwards;
     background-color: rgb(var(--background-rgb));
     border: 1px solid rgb(var(--border-rgb) / 0.5);
     border-radius: var(--border-radius);
     box-shadow: var(--box-shadow);
+    opacity: 0;
     padding: 15px;
+    transform: translateY(20px);
     transition: box-shadow 0.4s;
 
     &:hover {
