@@ -4,6 +4,8 @@ import Comment from "../models/comment.js";
 
 const router = express.Router();
 
+const VALID_ORDER_BY_FIELDS = ["createdAt", "release", "rating", "title"];
+
 router.get("/", async (req, res, next) => {
   const { genre, search, orderBy, orderDir } = req.query;
 
@@ -15,7 +17,7 @@ router.get("/", async (req, res, next) => {
     return next();
   }
 
-  if (orderBy && !["createdAt", "release", "rating"].includes(orderBy)) {
+  if (orderBy && !VALID_ORDER_BY_FIELDS.includes(orderBy)) {
     return next();
   }
 
@@ -44,7 +46,7 @@ router.get("/:genre", async (req, res, next) => {
     return next();
   }
 
-  if (orderBy && !["createdAt", "release", "rating"].includes(orderBy)) {
+  if (orderBy && !VALID_ORDER_BY_FIELDS.includes(orderBy)) {
     return next();
   }
 

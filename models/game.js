@@ -72,8 +72,8 @@ export default class Game extends Model {
   static async find({
     genre,
     limit,
-    orderBy = "title",
-    orderDir = "ASC",
+    orderBy = "rating",
+    orderDir = "DESC",
     page,
     search,
   } = {}) {

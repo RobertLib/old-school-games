@@ -18,7 +18,7 @@
     <li>
       <a
         aria-label="Order by ASC"
-        class="inline-block hover-scale <%= !req.query.orderDir || req.query.orderDir === 'ASC' ? 'active' : '' %>"
+        class="inline-block hover-scale <%= req.query.orderDir === 'ASC' ? 'active' : '' %>"
         href="?<%= new URLSearchParams({ ...req.query, orderDir: 'ASC' }).toString() %>"
         title="Order by ASC"
       >
@@ -28,7 +28,7 @@
     <li>
       <a
         aria-label="Order by DESC"
-        class="inline-block hover-scale <%= req.query.orderDir === 'DESC' ? 'active' : '' %>"
+        class="inline-block hover-scale <%= !req.query.orderDir || req.query.orderDir === 'DESC' ? 'active' : '' %>"
         href="?<%= new URLSearchParams({ ...req.query, orderDir: 'DESC' }).toString() %>"
         title="Order by DESC"
       >

@@ -413,6 +413,8 @@
   }
 
   main {
+    border-left: 1px solid rgb(var(--border-rgb) / 0.3);
+    border-right: 1px solid rgb(var(--border-rgb) / 0.3);
     grid-area: main;
   }
 
