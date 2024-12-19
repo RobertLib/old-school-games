@@ -3,16 +3,19 @@
     <% if (locals.genre) { %>
     Games in the "<%= genre %>" genre
     <% } else { %>
-      <% if (req.query.orderBy === "createdAt") { %>
-      Recently added games
-      <% } else if (req.query.orderBy === "release") { %>
-      Games by release year
-      <% } else if (req.query.orderBy === "rating") { %>
-      Games by rating
-      <% } else { %>
-      Games of all genres
-      <% } %>
+    Games of all genres
     <% } %>
+    <small>
+      <% if (req.query.orderBy === "title") { %>
+      (alphabetical)
+      <% } else if (req.query.orderBy === "createdAt") { %>
+      (recently added)
+      <% } else if (req.query.orderBy === "release") { %>
+      (by release years)
+      <% } else if (req.query.orderBy === "rating") { %>
+      (by rating)
+      <% } %>
+    </small>
   </h2>
   <ul>
     <li>
