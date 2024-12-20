@@ -32,8 +32,8 @@
     >
       <option value="">&nbsp;</option>
       <% gameGenres.map(genre => { %>
-      <% locals.selected = game?.genre === genre ? "selected" : ""; %>
-      <option <%= locals.selected %> value="<%= genre %>"><%= genre %></option>
+      <% const selected = game?.genre === genre ? "selected" : ""; %>
+      <option <%= selected %> value="<%= genre %>"><%= genre %></option>
       <% }); %>
     </select>
   </p>

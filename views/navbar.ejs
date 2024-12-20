@@ -64,21 +64,38 @@
         <div class="dropdown">
           <span class="dropdown-toggle">Browse by</span>
           <ul class="dropdown-menu">
+            <% const basePath = ["/", "/:genre"].includes(req.route.path) ? "" : "/"; %>
             <li>
-              <a class="dropdown-item" href="?orderBy=title&orderDir=ASC">Alphabetical</a>
+              <a
+                class="dropdown-item"
+                href="<%= basePath %>?orderBy=title&orderDir=ASC"
+              >
+                Alphabetical
+              </a>
             </li>
             <li>
-              <a class="dropdown-item" href="?orderBy=createdAt&orderDir=DESC">
+              <a
+                class="dropdown-item"
+                href="<%= basePath %>?orderBy=createdAt&orderDir=DESC"
+              >
                 Recently added
               </a>
             </li>
             <li>
-              <a class="dropdown-item" href="?orderBy=release&orderDir=ASC">
+              <a
+                class="dropdown-item"
+                href="<%= basePath %>?orderBy=release&orderDir=ASC"
+              >
                 By release years
               </a>
             </li>
             <li>
-              <a class="dropdown-item" href="?orderBy=rating&orderDir=DESC">By rating</a>
+              <a
+                class="dropdown-item"
+                href="<%= basePath %>?orderBy=rating&orderDir=DESC"
+              >
+                By rating
+              </a>
             </li>
           </ul>
         </div>
