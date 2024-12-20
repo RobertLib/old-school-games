@@ -49,8 +49,9 @@
           <h1 class="text-xl" style="margin: 20px 0"><%= game.title %></h1>
           <p>
             <img
-              alt="initial"
+              alt="<%= game.title %>"
               class="game-detail-initial"
+              loading="lazy"
               src="<%= game.images[0] %>"
               width="150"
             />

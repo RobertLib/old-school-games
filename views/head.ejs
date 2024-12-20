@@ -12,6 +12,15 @@
 
   gtag("config", "G-915H2BJTTY");
 </script>
+<script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "name": "OldSchoolGames",
+    "url": "https://oldschoolgames.eu",
+    "description": "Explore the world of classic retro games from the MS-DOS era!"
+  }
+</script>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title><%= locals.title || 'OldSchoolGames - Retro MS-DOS Games' %></title>
@@ -20,7 +29,7 @@
 <link rel="canonical" href="https://oldschoolgames.eu<%= req.path %>" />
 <meta
   name="description"
-  content="Explore the world of classic retro games from the MS-DOS era! Stream your favorite vintage games directly on our website and relive the nostalgia."
+  content="<%= locals.description || 'Explore the world of classic retro games from the MS-DOS era!' %>"
 />
 <meta
   name="keywords"
