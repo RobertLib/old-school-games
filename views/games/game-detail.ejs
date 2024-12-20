@@ -2,6 +2,9 @@
 <html lang="en">
   <head>
     <%- include('../head') %>
+    <link rel="stylesheet" href="/css/games.css" />
+    <link rel="stylesheet" href="/css/comments.css" />
+    <script src="/js/ui.js"></script>
     <script src="/js/rating-stars.js"></script>
   </head>
   <body class="layout">
@@ -47,18 +50,28 @@
         </header>
         <header>
           <h1 class="text-xl" style="margin: 20px 0"><%= game.title %></h1>
-          <p>
-            <img
-              alt="<%= game.title %>"
-              class="game-detail-initial"
-              loading="lazy"
-              src="<%= game.images[0] %>"
-              width="150"
-            />
-            <%- game.description %>
-          </p>
+          <div class="description">
+            <div class="description-content clearfix">
+              <img
+                alt="<%= game.title %>"
+                class="game-detail-initial"
+                loading="lazy"
+                src="<%= game.images[0] %>"
+                width="150"
+              />
+              <%- game.description %>
+            </div>
+            <div class="text-right">
+              <button
+                class="more-btn btn btn-sm"
+                style="margin-top: 10px"
+                type="button"
+              >
+                more...
+              </button>
+            </div>
+          </div>
         </header>
-        <div style="clear: left"></div>
         <div class="text-sm" style="margin-bottom: 20px">
           <hr />
           <strong>Genre</strong>: <%= game.genre %><br />

@@ -18,17 +18,17 @@
     "connect-flash": "^0.1.1",
     "connect-pg-simple": "^10.0.0",
     "cookie-parser": "^1.4.7",
-    "dompurify": "^3.1.7",
-    "dotenv": "^16.4.5",
+    "dompurify": "^3.2.3",
+    "dotenv": "^16.4.7",
     "ejs": "^3.1.10",
     "express": "^5.0.1",
-    "express-rate-limit": "^7.4.1",
+    "express-rate-limit": "^7.5.0",
     "express-session": "^1.18.1",
     "helmet": "^8.0.0",
     "jsdom": "^25.0.1",
     "pg": "^8.13.1",
     "sitemap": "^8.0.0",
-    "winston": "^3.16.0"
+    "winston": "^3.17.0"
   },
   "devDependencies": {
     "@flydotio/dockerfile": "^0.5.9"
