@@ -595,15 +595,14 @@
   .game-item {
     align-items: start;
     display: flex;
-    gap: 15px;
-  }
-
-  .game-item-content {
-    align-items: start;
-    display: flex;
     flex-direction: column;
     flex-grow: 1;
     gap: 7px;
+  }
+
+  .game-item-initial {
+    float: left;
+    margin: 5px 15px 5px 0;
   }
 
   .game-detail-header {
