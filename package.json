@@ -2,36 +2,45 @@
   "name": "old-school-games",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "index.ts",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "npx nodemon index.js",
-    "start": "node index.js",
-    "migrate": "node migrate.js"
+    "dev": "nodemon index.ts",
+    "start": "node index.ts",
+    "migrate": "node migrate.ts"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
     "bcrypt": "^5.1.1",
-    "compression": "^1.7.5",
+    "compression": "^1.8.0",
     "connect-flash": "^0.1.1",
     "connect-pg-simple": "^10.0.0",
     "cookie-parser": "^1.4.7",
-    "dompurify": "^3.2.3",
+    "dompurify": "^3.2.4",
     "dotenv": "^16.4.7",
     "ejs": "^3.1.10",
     "express": "^5.0.1",
     "express-rate-limit": "^7.5.0",
     "express-session": "^1.18.1",
-    "helmet": "^8.0.0",
+    "helmet": "^8.1.0",
     "jsdom": "^26.0.0",
-    "pg": "^8.13.1",
+    "pg": "^8.14.1",
     "sitemap": "^8.0.0",
     "winston": "^3.17.0"
   },
   "devDependencies": {
-    "@flydotio/dockerfile": "^0.6.1"
+    "@flydotio/dockerfile": "^0.7.9",
+    "@types/bcrypt": "^5.0.2",
+    "@types/compression": "^1.7.5",
+    "@types/connect-flash": "^0.0.40",
+    "@types/connect-pg-simple": "^7.0.3",
+    "@types/cookie-parser": "^1.4.8",
+    "@types/express": "^5.0.1",
+    "@types/jsdom": "^21.1.7",
+    "nodemon": "^3.1.9",
+    "ts-node": "^10.9.2"
   },
   "type": "module"
 }

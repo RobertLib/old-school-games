@@ -1,7 +1,7 @@
 import express from "express";
-import isAuth from "../middlewares/is-auth.js";
-import isAdmin from "../middlewares/is-admin.js";
-import Game from "../models/game.js";
+import isAuth from "../middlewares/is-auth.ts";
+import isAdmin from "../middlewares/is-admin.ts";
+import Game from "../models/game.ts";
 import rateLimit from "express-rate-limit";
 
 const router = express.Router();
@@ -36,7 +36,8 @@ router.post("/:id", isAuth, isAdmin, async (req, res, next) => {
   const game = await Game.update(id, req.body);
 
   if (!game) {
-    return res.status(404).send("Game not found");
+    res.status(404).send("Game not found");
+    return;
   }
 
   req.flash("info", "Game updated successfully.");
@@ -66,7 +67,7 @@ router.post("/:id/rate", ratingLimiter, async (req, res) => {
   const { ip } = req;
 
   try {
-    await Game.rate(id, ip, rating);
+    await Game.rate(id, ip!, rating);
 
     const avarageRating = await Game.getAverageRating(id);
 
