@@ -450,6 +450,21 @@
   .left-sidebar {
     border-left: 1px solid rgb(var(--border-rgb) / 0.3);
     grid-area: left-sidebar;
+
+    a {
+      align-items: center;
+      display: flex;
+      gap: 10px;
+
+      &::before {
+        background-color: rgb(var(--color-rgb) / 0.3);
+        border-radius: 50%;
+        content: "";
+        display: inline-block;
+        height: 10px;
+        width: 10px;
+      }
+    }
   }
 
   .right-sidebar {

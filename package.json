@@ -25,13 +25,13 @@
     "express-rate-limit": "^7.5.0",
     "express-session": "^1.18.1",
     "helmet": "^8.0.0",
-    "jsdom": "^25.0.1",
+    "jsdom": "^26.0.0",
     "pg": "^8.13.1",
     "sitemap": "^8.0.0",
     "winston": "^3.17.0"
   },
   "devDependencies": {
-    "@flydotio/dockerfile": "^0.5.9"
+    "@flydotio/dockerfile": "^0.6.1"
   },
   "type": "module"
 }
