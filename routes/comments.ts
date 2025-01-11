@@ -1,5 +1,5 @@
 import express from "express";
-import Comment from "../models/comment.js";
+import Comment from "../models/comment.ts";
 import DOMPurify from "dompurify";
 import { JSDOM } from "jsdom";
 
@@ -15,15 +15,18 @@ router.post("/", async (req, res, next) => {
   const sanitizedContent = purify.sanitize(content);
 
   if (!sanitizedContent || !gameId) {
-    return res.status(400).send("Invalid input");
+    res.status(400).send("Invalid input");
+    return;
   }
 
   if (sanitizedNick.length > 255) {
-    return res.status(400).send("Nick is too long");
+    res.status(400).send("Nick is too long");
+    return;
   }
 
   if (sanitizedContent.length > 1000) {
-    return res.status(400).send("Content is too long");
+    res.status(400).send("Content is too long");
+    return;
   }
 
   const comment = await Comment.create({

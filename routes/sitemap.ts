@@ -1,7 +1,7 @@
 import express from "express";
 import { SitemapStream, streamToPromise } from "sitemap";
 import { createGzip } from "zlib";
-import Game from "../models/game.js";
+import Game from "../models/game.ts";
 
 const router = express.Router();
 
@@ -25,6 +25,8 @@ router.get("/sitemap.xml", async (req, res) => {
     smStream.write({ url: "/", changefreq: "monthly", priority: 1.0 });
 
     const gameGenres = await Game.getGenres();
+    const orderByFields = ["title", "createdAt", "release", "rating"];
+    const orderDirFields = ["ASC", "DESC"];
 
     gameGenres.forEach((genre) => {
       smStream.write({
@@ -32,13 +34,33 @@ router.get("/sitemap.xml", async (req, res) => {
         changefreq: "monthly",
         priority: 0.8,
       });
+
+      orderByFields.forEach((orderBy) => {
+        orderDirFields.forEach((orderDir) => {
+          smStream.write({
+            url: `/${genre.toLowerCase()}?orderBy=${orderBy}&orderDir=${orderDir}`,
+            changefreq: "monthly",
+            priority: 0.8,
+          });
+        });
+      });
+
+      orderDirFields.forEach((orderDir) => {
+        smStream.write({
+          url: `/${genre.toLowerCase()}?orderDir=${orderDir}`,
+          changefreq: "monthly",
+          priority: 0.8,
+        });
+      });
     });
 
-    gameGenres.forEach((genre) => {
-      smStream.write({
-        url: `/?genre=${genre}`,
-        changefreq: "monthly",
-        priority: 0.8,
+    orderByFields.forEach((orderBy) => {
+      orderDirFields.forEach((orderDir) => {
+        smStream.write({
+          url: `/?orderBy=${orderBy}&orderDir=${orderDir}`,
+          changefreq: "monthly",
+          priority: 0.8,
+        });
       });
     });
 
@@ -47,6 +69,12 @@ router.get("/sitemap.xml", async (req, res) => {
     games.forEach((game) => {
       smStream.write({
         url: `/${game.slug}`,
+        changefreq: "weekly",
+        priority: 0.7,
+      });
+
+      smStream.write({
+        url: `js-dos.html?stream=${game.stream}`,
         changefreq: "weekly",
         priority: 0.7,
       });

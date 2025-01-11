@@ -6,6 +6,8 @@
 app = 'old-school-games'
 
 [build]
+  [build.args]
+    NODE_VERSION = "23"
 
 [http_service]
   internal_port = 3000

@@ -1,13 +1,16 @@
 import express from "express";
-import Game from "../models/game.js";
-import Comment from "../models/comment.js";
+import Game from "../models/game.ts";
+import Comment from "../models/comment.ts";
 
 const router = express.Router();
 
 const VALID_ORDER_BY_FIELDS = ["createdAt", "release", "rating", "title"];
 
 router.get("/", async (req, res, next) => {
-  const { genre, search, orderBy, orderDir } = req.query;
+  const { genre, search, orderBy, orderDir } = req.query as Record<
+    string,
+    string
+  >;
 
   if (genre) {
     return res.redirect(`/${genre.toLowerCase()}`);
@@ -25,7 +28,7 @@ router.get("/", async (req, res, next) => {
     return next();
   }
 
-  const page = parseInt(req.query.page, 10) || 1;
+  const page = parseInt(req.query.page as string, 10) || 1;
   const limit = 25;
 
   const games = await Game.find({ search, page, limit, orderBy, orderDir });
@@ -35,9 +38,9 @@ router.get("/", async (req, res, next) => {
 
 router.get("/:genre", async (req, res, next) => {
   const { genre } = req.params;
-  const { orderBy, orderDir } = req.query;
+  const { orderBy, orderDir } = req.query as Record<string, string>;
 
-  const page = parseInt(req.query.page, 10) || 1;
+  const page = parseInt(req.query.page as string, 10) || 1;
   const limit = 25;
 
   const genres = await Game.getGenres();
@@ -62,7 +65,9 @@ router.get("/:genre", async (req, res, next) => {
 router.get("/:id", async (req, res, next) => {
   const { id } = req.params;
 
-  const game = await (isNaN(id) ? Game.findBySlug(id) : Game.findById(id));
+  const game = await (isNaN(id as unknown as number)
+    ? Game.findBySlug(id)
+    : Game.findById(id));
 
   if (!game) {
     return next();

@@ -7,17 +7,17 @@ import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import compression from "compression";
 import cookieParser from "cookie-parser";
-import session from "express-session";
+import session, { type SessionOptions } from "express-session";
 import connectPg from "connect-pg-simple";
-import pool from "./db.js";
+import pool from "./db.ts";
 import flash from "connect-flash";
-import Game from "./models/game.js";
+import Game from "./models/game.ts";
 
-import authRoutes from "./routes/auth.js";
-import sitemapRoutes from "./routes/sitemap.js";
-import homeRoutes from "./routes/home.js";
-import gamesRoutes from "./routes/games.js";
-import commentsRoutes from "./routes/comments.js";
+import authRoutes from "./routes/auth.ts";
+import sitemapRoutes from "./routes/sitemap.ts";
+import homeRoutes from "./routes/home.ts";
+import gamesRoutes from "./routes/games.ts";
+import commentsRoutes from "./routes/comments.ts";
 
 const app = express();
 
@@ -109,9 +109,9 @@ app.use(cookieParser());
 
 const pgSession = connectPg(session);
 
-const sessionOptions = {
+const sessionOptions: SessionOptions = {
   store: new pgSession({ pool }),
-  secret: process.env.SESSION_SECRET,
+  secret: process.env.SESSION_SECRET ?? "secret",
   resave: false,
   saveUninitialized: false,
   cookie: {
