@@ -34,10 +34,6 @@ function validate(data) {
   }
 }
 
-let cachedRecentlyAdded = null;
-let cachedRecentlyAddedTimestamp = null;
-const CACHE_TTL = 86400 * 1000;
-
 export default class Game extends Model {
   constructor(data) {
     super(data);
@@ -122,20 +118,11 @@ export default class Game extends Model {
   }
 
   static async findRecentlyAdded() {
-    const now = Date.now();
-
-    if (cachedRecentlyAdded && now - cachedRecentlyAddedTimestamp < CACHE_TTL) {
-      return cachedRecentlyAdded;
-    }
-
     const result = await Game.find({
       limit: 5,
       orderBy: "createdAt",
       orderDir: "DESC",
     });
-
-    cachedRecentlyAdded = result;
-    cachedRecentlyAddedTimestamp = now;
 
     return result;
   }
