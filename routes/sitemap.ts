@@ -6,12 +6,16 @@ import Game from "../models/game.ts";
 const router = express.Router();
 
 let sitemap;
+let sitemapGeneratedAt;
+const SITEMAP_TTL = 24 * 60 * 60 * 1000; // 24 hours
 
 router.get("/sitemap.xml", async (req, res) => {
   res.header("Content-Type", "application/xml");
   res.header("Content-Encoding", "gzip");
 
-  if (sitemap) {
+  const now = Date.now();
+
+  if (sitemap && sitemapGeneratedAt && now - sitemapGeneratedAt < SITEMAP_TTL) {
     res.send(sitemap);
     return;
   }
@@ -100,6 +104,8 @@ router.get("/sitemap.xml", async (req, res) => {
     streamToPromise(pipeline).then((sm) => (sitemap = sm));
 
     smStream.end();
+
+    sitemapGeneratedAt = now;
 
     pipeline.pipe(res).on("error", (error) => {
       throw error;

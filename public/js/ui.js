@@ -36,7 +36,7 @@ function initScrollAnimations() {
     });
   }, observerOptions);
 
-  document.querySelectorAll(".card").forEach((item, index) => {
+  document.querySelectorAll(".animate-on-scroll").forEach((item, index) => {
     item.style.opacity = "0";
     item.style.transform = "translateY(20px)";
     item.style.transition = `opacity 0.25s ease 0.025s, transform 0.25s ease 0.025s`;

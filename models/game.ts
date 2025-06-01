@@ -118,53 +118,60 @@ export default class Game extends Model {
     page?: number;
     search?: string;
   } = {}): Promise<Game[]> {
-    let query = 'SELECT * FROM "games"';
+    let query = `
+      SELECT g.*, COALESCE(AVG(r.rating), 0) as "averageRating"
+      FROM "games" g
+      LEFT JOIN "ratings" r ON g.id = r."gameId"
+    `;
+
     const values: any[] = [];
+    const whereConditions: string[] = [];
 
     const direction =
       orderDir || (letter || year || developer || publisher ? "ASC" : "DESC");
 
     if (genre) {
-      query += ` WHERE "genre" = $${values.length + 1}`;
+      whereConditions.push(`g."genre" = $${values.length + 1}`);
       values.push(genre.toUpperCase());
     }
 
     if (letter) {
-      query += query.includes("WHERE") ? " AND" : " WHERE";
-      query += ` "title" ILIKE $${values.length + 1}`;
+      whereConditions.push(`g."title" ILIKE $${values.length + 1}`);
       values.push(`${letter}%`);
     }
 
     if (year) {
-      query += query.includes("WHERE") ? " AND" : " WHERE";
-      query += ` "release" = $${values.length + 1}`;
+      whereConditions.push(`g."release" = $${values.length + 1}`);
       values.push(year);
     }
 
     if (search) {
-      query += query.includes("WHERE") ? " AND" : " WHERE";
-      query += ` "title" ILIKE $${values.length + 1}`;
+      whereConditions.push(`g."title" ILIKE $${values.length + 1}`);
       values.push(`%${search.trim()}%`);
     }
 
     if (developer) {
-      query += query.includes("WHERE") ? " AND" : " WHERE";
-      query += ` "developer" = $${values.length + 1}`;
+      whereConditions.push(`g."developer" = $${values.length + 1}`);
       values.push(developer);
     }
 
     if (publisher) {
-      query += query.includes("WHERE") ? " AND" : " WHERE";
-      query += ` "publisher" = $${values.length + 1}`;
+      whereConditions.push(`g."publisher" = $${values.length + 1}`);
       values.push(publisher);
     }
 
+    if (whereConditions.length > 0) {
+      query += ` WHERE ${whereConditions.join(" AND ")}`;
+    }
+
+    query += ` GROUP BY g.id`;
+
     if (letter || year || developer || publisher) {
-      query += ` ORDER BY "title" ${direction}, "id" ${direction}`;
+      query += ` ORDER BY g."title" ${direction}, g."id" ${direction}`;
     } else if (orderBy === "rating") {
-      query += ` ORDER BY (SELECT AVG("rating") FROM "ratings" WHERE "gameId" = "games"."id") ${direction}, "id" ${direction}`;
+      query += ` ORDER BY "averageRating" ${direction}, g."id" ${direction}`;
     } else {
-      query += ` ORDER BY "${orderBy}" ${direction}, "id" ${direction}`;
+      query += ` ORDER BY g."${orderBy}" ${direction}, g."id" ${direction}`;
     }
 
     if (limit) {
@@ -180,13 +187,11 @@ export default class Game extends Model {
 
     const { rows } = await db.query(query, values);
 
-    const games = await Promise.all(
-      rows.map(async (row) => {
-        const game = new Game(row);
-        game.averageRating = await Game.getAverageRating(game.id);
-        return game;
-      })
-    );
+    const games = rows.map((row) => {
+      const game = new Game(row);
+      game.averageRating = parseFloat(row.averageRating) || 0;
+      return game;
+    });
 
     return games;
   }
@@ -211,7 +216,11 @@ export default class Game extends Model {
       LIMIT 5
     `);
 
-    return rows.map((row) => new Game(row));
+    return rows.map((row) => {
+      const game = new Game(row);
+      game.averageRating = parseFloat(row.averageRating) || 0;
+      return game;
+    });
   }
 
   static async findById(id: string | number): Promise<Game | null> {

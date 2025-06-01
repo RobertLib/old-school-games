@@ -1,33 +1,26 @@
 import express from "express";
 import Comment from "../models/comment.ts";
 import DOMPurify from "dompurify";
+import rateLimit from "express-rate-limit";
 import { JSDOM } from "jsdom";
+import { validateComment } from "../validations/comments.ts";
 
 const window = new JSDOM("").window;
 const purify = DOMPurify(window);
 
 const router = express.Router();
 
-router.post("/", async (req, res, next) => {
+const commentRateLimit = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 50,
+  message: "Too many comments, please try again later.",
+});
+
+router.post("/", commentRateLimit, validateComment, async (req, res, next) => {
   const { nick, content, gameId } = req.body;
 
   const sanitizedNick = purify.sanitize(nick);
   const sanitizedContent = purify.sanitize(content);
-
-  if (!sanitizedContent || !gameId) {
-    res.status(400).send("Invalid input");
-    return;
-  }
-
-  if (sanitizedNick.length > 255) {
-    res.status(400).send("Nick is too long");
-    return;
-  }
-
-  if (sanitizedContent.length > 1000) {
-    res.status(400).send("Content is too long");
-    return;
-  }
 
   const comment = await Comment.create({
     nick: sanitizedNick || "anonymous",

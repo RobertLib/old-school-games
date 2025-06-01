@@ -19,6 +19,8 @@ import sitemapRoutes from "./routes/sitemap.ts";
 import homeRoutes from "./routes/home.ts";
 import gamesRoutes from "./routes/games.ts";
 import commentsRoutes from "./routes/comments.ts";
+import analyticsMiddleware from "./middlewares/analytics.ts";
+import analyticsRoutes from "./routes/analytics.ts";
 
 const app = express();
 
@@ -99,6 +101,10 @@ app.set("views", path.join(__dirname, "views"));
 
 app.use(cookieParser());
 
+if (process.env.NODE_ENV === "production") {
+  app.set("trust proxy", 1);
+}
+
 const pgSession = connectPg(session);
 
 const sessionOptions: SessionOptions = {
@@ -110,24 +116,77 @@ const sessionOptions: SessionOptions = {
     maxAge: 365 * 24 * 60 * 60 * 1000,
     sameSite: "strict",
     httpOnly: true,
-    secure: app.get("env") === "production",
+    secure: process.env.NODE_ENV === "production",
   },
 };
-
-if (app.get("env") === "production") {
-  app.set("trust proxy", 1);
-}
 
 app.use(session(sessionOptions));
 
 app.use(flash());
 
+const cache = new Map();
+const cacheTimers = new Map();
+
 app.use(async (req, res, next) => {
-  res.locals.req = req;
-  res.locals.gameGenres = await Game.getGenres();
-  res.locals.recentlyAddedGames = await Game.findRecentlyAdded();
-  res.locals.topRatedGames = await Game.findTopRated();
-  res.locals.gameOfTheWeek = await GameOfTheWeek.getOrSelectCurrent();
+  try {
+    const cacheKey = "game-genres";
+    let gameGenres = cache.get(cacheKey);
+
+    if (!gameGenres) {
+      gameGenres = await Game.getGenres();
+      cache.set(cacheKey, gameGenres);
+
+      if (cacheTimers.has(cacheKey)) {
+        clearTimeout(cacheTimers.get(cacheKey));
+      }
+
+      const timer = setTimeout(() => {
+        cache.delete(cacheKey);
+        cacheTimers.delete(cacheKey);
+      }, 3600000);
+
+      cacheTimers.set(cacheKey, timer);
+    }
+
+    res.locals.gameGenres = gameGenres;
+  } catch (error) {
+    logger.error("Error loading genres:", error);
+    res.locals.gameGenres = [];
+  }
+
+  next();
+});
+
+app.use(async (req, res, next) => {
+  try {
+    res.locals.req = req;
+
+    let recentGames = cache.get("recent-games");
+    if (!recentGames) {
+      recentGames = await Game.findRecentlyAdded();
+      cache.set("recent-games", recentGames);
+
+      if (cacheTimers.has("recent-games")) {
+        clearTimeout(cacheTimers.get("recent-games"));
+      }
+
+      const timer = setTimeout(() => {
+        cache.delete("recent-games");
+        cacheTimers.delete("recent-games");
+      }, 300000);
+
+      cacheTimers.set("recent-games", timer);
+    }
+
+    res.locals.recentlyAddedGames = recentGames;
+    res.locals.topRatedGames = await Game.findTopRated();
+    res.locals.gameOfTheWeek = await GameOfTheWeek.getOrSelectCurrent();
+  } catch (error) {
+    logger.error("Error loading common data:", error);
+    res.locals.recentlyAddedGames = [];
+    res.locals.topRatedGames = [];
+    res.locals.gameOfTheWeek = null;
+  }
 
   next();
 });
@@ -138,11 +197,14 @@ app.use((req, res, next) => {
   next();
 });
 
+app.use(analyticsMiddleware);
+
 app.use("/", authRoutes);
 app.use("/", sitemapRoutes);
 app.use("/", homeRoutes);
 app.use("/games", gamesRoutes);
 app.use("/comments", commentsRoutes);
+app.use("/", analyticsRoutes);
 
 app.use((req, res, next) => {
   res.status(404).render("404");
@@ -158,4 +220,12 @@ const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
   logger.info(`Server is running on port ${PORT}`);
+});
+
+process.on("SIGTERM", () => {
+  logger.info("SIGTERM received, clearing timers...");
+  cacheTimers.forEach((timer) => clearTimeout(timer));
+  cacheTimers.clear();
+  cache.clear();
+  process.exit(0);
 });

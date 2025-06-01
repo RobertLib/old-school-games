@@ -90,7 +90,8 @@ class RatingStars extends HTMLElement {
 
         alert(`You rated this game ${rating} stars!`);
       } else {
-        alert("Failed to submit rating.");
+        const errorData = await response.json();
+        alert(errorData.error || "Failed to submit rating.");
       }
     } catch (error) {
       console.error("Error submitting rating:", error);

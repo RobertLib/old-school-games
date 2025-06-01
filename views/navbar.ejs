@@ -59,7 +59,7 @@
         <div class="dropdown">
           <span class="dropdown-toggle">Browse by</span>
           <ul class="dropdown-menu">
-            <% const basePath = ["/", "/:genre"].includes(req.route.path) ? "" : "/"; %>
+            <% const basePath = ["/", "/:genre"].includes(req.route?.path) ? "" : "/"; %>
             <li>
               <a class="dropdown-item" href="<%= basePath %>?orderBy=title&orderDir=ASC">
                 Alphabetical

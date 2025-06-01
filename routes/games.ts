@@ -3,6 +3,7 @@ import isAuth from "../middlewares/is-auth.ts";
 import isAdmin from "../middlewares/is-admin.ts";
 import Game from "../models/game.ts";
 import rateLimit from "express-rate-limit";
+import { validateGameRating } from "../validations/games.ts";
 
 const router = express.Router();
 
@@ -61,22 +62,27 @@ const ratingLimiter = rateLimit({
   message: "Too many ratings from this IP, please try again later.",
 });
 
-router.post("/:id/rate", ratingLimiter, async (req, res) => {
-  const { id } = req.params;
-  const { rating } = req.body;
-  const { ip } = req;
+router.post(
+  "/:id/rate",
+  ratingLimiter,
+  validateGameRating,
+  async (req, res) => {
+    const { id } = req.params;
+    const { rating } = req.body;
+    const { ip } = req;
 
-  try {
-    await Game.rate(id, ip!, rating);
+    try {
+      await Game.rate(id, ip!, rating);
 
-    const averageRating = await Game.getAverageRating(id);
+      const averageRating = await Game.getAverageRating(id);
 
-    res.status(200).send({ averageRating });
-  } catch (error) {
-    console.error("Error saving rating:", error);
-    res.status(500).send("Error saving rating");
+      res.status(200).send({ averageRating });
+    } catch (error) {
+      console.error("Error saving rating:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
   }
-});
+);
 
 router.get("/:id", async (req, res, next) => {
   res.redirect(`/${req.params.id}`);
