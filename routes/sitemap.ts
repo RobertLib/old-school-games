@@ -1,6 +1,5 @@
 import express from "express";
 import { SitemapStream, streamToPromise } from "sitemap";
-import { createGzip } from "zlib";
 import Game from "../models/game.ts";
 
 const router = express.Router();
@@ -9,9 +8,13 @@ let sitemap;
 let sitemapGeneratedAt;
 const SITEMAP_TTL = 24 * 60 * 60 * 1000; // 24 hours
 
+export function clearSitemapCache() {
+  sitemap = undefined;
+  sitemapGeneratedAt = undefined;
+}
+
 router.get("/sitemap.xml", async (req, res) => {
-  res.header("Content-Type", "application/xml");
-  res.header("Content-Encoding", "gzip");
+  res.header("Content-Type", "application/xml; charset=utf-8");
 
   const now = Date.now();
 
@@ -22,9 +25,14 @@ router.get("/sitemap.xml", async (req, res) => {
 
   try {
     const smStream = new SitemapStream({
-      hostname: "https://oldschoolgames.eu/",
+      hostname: "https://oldschoolgames.eu",
+      xmlns: {
+        news: false,
+        xhtml: false,
+        image: false,
+        video: false,
+      },
     });
-    const pipeline = smStream.pipe(createGzip());
 
     smStream.write({ url: "/", changefreq: "daily", priority: 1.0 });
 
@@ -46,6 +54,12 @@ router.get("/sitemap.xml", async (req, res) => {
       priority: 0.8,
     });
 
+    smStream.write({
+      url: `/profile`,
+      changefreq: "monthly",
+      priority: 0.5,
+    });
+
     const alphabet = "abcdefghijklmnopqrstuvwxyz".split("");
     alphabet.forEach((letter) => {
       smStream.write({
@@ -55,7 +69,15 @@ router.get("/sitemap.xml", async (req, res) => {
       });
     });
 
-    const gameGenres = await Game.getGenres();
+    const [gameGenres, developers, publishers, years, games] =
+      await Promise.all([
+        Game.getGenres(),
+        Game.getDevelopers(),
+        Game.getPublishers(),
+        Game.getYears(),
+        Game.find(),
+      ]);
+
     gameGenres.forEach((genre) => {
       smStream.write({
         url: `/${genre.toLowerCase()}`,
@@ -64,7 +86,6 @@ router.get("/sitemap.xml", async (req, res) => {
       });
     });
 
-    const developers = await Game.getDevelopers();
     developers.forEach((developer) => {
       smStream.write({
         url: `/developer/${encodeURIComponent(developer)}`,
@@ -73,7 +94,6 @@ router.get("/sitemap.xml", async (req, res) => {
       });
     });
 
-    const publishers = await Game.getPublishers();
     publishers.forEach((publisher) => {
       smStream.write({
         url: `/publisher/${encodeURIComponent(publisher)}`,
@@ -82,7 +102,6 @@ router.get("/sitemap.xml", async (req, res) => {
       });
     });
 
-    const years = await Game.getYears();
     years.forEach((year) => {
       smStream.write({
         url: `/year/${year}`,
@@ -91,28 +110,32 @@ router.get("/sitemap.xml", async (req, res) => {
       });
     });
 
-    const games = await Game.find();
     games.forEach((game) => {
+      const lastmod = game.updatedAt
+        ? new Date(game.updatedAt).toISOString().split("T")[0]
+        : new Date().toISOString().split("T")[0];
+
       smStream.write({
         url: `/${game.slug}`,
         changefreq: "monthly",
         priority: 0.7,
-        lastmod: new Date(game.updatedAt).toISOString().split("T")[0],
+        lastmod,
       });
     });
 
-    streamToPromise(pipeline).then((sm) => (sitemap = sm));
-
     smStream.end();
 
+    const generatedSitemap = await streamToPromise(smStream);
+    sitemap = generatedSitemap;
     sitemapGeneratedAt = now;
 
-    pipeline.pipe(res).on("error", (error) => {
-      throw error;
-    });
+    res.send(sitemap);
   } catch (error) {
-    console.error(error);
-    res.status(500).end();
+    console.error("Sitemap generation error:", error);
+    res
+      .status(500)
+      .header("Content-Type", "text/plain")
+      .send("Sitemap temporarily unavailable");
   }
 });
 

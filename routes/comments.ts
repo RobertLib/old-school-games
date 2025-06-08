@@ -11,24 +11,31 @@ const purify = DOMPurify(window);
 const router = express.Router();
 
 const commentRateLimit = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  limit: 50,
+  windowMs: 5 * 60 * 1000,
+  limit: 10,
   message: "Too many comments, please try again later.",
+  standardHeaders: true,
+  legacyHeaders: false,
 });
 
 router.post("/", commentRateLimit, validateComment, async (req, res, next) => {
-  const { nick, content, gameId } = req.body;
+  try {
+    const { nick, content, gameId } = req.body;
 
-  const sanitizedNick = purify.sanitize(nick);
-  const sanitizedContent = purify.sanitize(content);
+    const sanitizedNick = purify.sanitize(nick);
+    const sanitizedContent = purify.sanitize(content);
 
-  const comment = await Comment.create({
-    nick: sanitizedNick || "anonymous",
-    content: sanitizedContent,
-    gameId,
-  });
+    const comment = await Comment.create({
+      nick: sanitizedNick || "anonymous",
+      content: sanitizedContent,
+      gameId,
+    });
 
-  res.render("comments/comment-item", { comment });
+    res.render("comments/comment-item", { comment });
+  } catch (error) {
+    console.error("Error creating comment:", error);
+    res.status(500).json({ error: "Failed to create comment" });
+  }
 });
 
 export default router;
