@@ -6,7 +6,7 @@ export default function isAdmin(
   res: Response,
   next: NextFunction
 ) {
-  if (req.session.user?.role === "ADMIN") {
+  if (req.session?.user?.role === "ADMIN") {
     return next();
   }
 

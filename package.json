@@ -4,7 +4,9 @@
   "description": "",
   "main": "index.ts",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "vitest run",
+    "test:watch": "vitest watch",
+    "test:coverage": "vitest run --coverage",
     "dev": "nodemon index.ts",
     "start": "node index.ts",
     "migrate": "node migrate.ts",
@@ -19,7 +21,7 @@
     "connect-flash": "^0.1.1",
     "connect-pg-simple": "^10.0.0",
     "cookie-parser": "^1.4.7",
-    "dompurify": "^3.2.5",
+    "dompurify": "^3.2.6",
     "dotenv": "^16.5.0",
     "ejs": "^3.1.10",
     "express": "^5.1.0",
@@ -27,21 +29,25 @@
     "express-session": "^1.18.1",
     "helmet": "^8.1.0",
     "jsdom": "^26.1.0",
-    "pg": "^8.16.0",
+    "pg": "^8.16.1",
     "sitemap": "^8.0.0",
     "winston": "^3.17.0"
   },
   "devDependencies": {
     "@flydotio/dockerfile": "^0.7.10",
     "@types/bcrypt": "^5.0.2",
-    "@types/compression": "^1.7.5",
+    "@types/compression": "^1.8.1",
     "@types/connect-flash": "^0.0.40",
     "@types/connect-pg-simple": "^7.0.3",
-    "@types/cookie-parser": "^1.4.8",
-    "@types/express": "^5.0.1",
+    "@types/cookie-parser": "^1.4.9",
+    "@types/express": "^5.0.3",
     "@types/jsdom": "^21.1.7",
+    "@types/supertest": "^6.0.3",
+    "@vitest/coverage-v8": "^3.2.4",
     "nodemon": "^3.1.10",
-    "ts-node": "^10.9.2"
+    "supertest": "^7.1.1",
+    "ts-node": "^10.9.2",
+    "vitest": "^3.2.4"
   },
   "type": "module"
 }

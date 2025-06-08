@@ -22,8 +22,17 @@ export const validateComment = (
     return res.redirect(req.get("Referer") || "/");
   }
 
+  if (content && /<script|javascript:|data:/i.test(content)) {
+    req.flash("error", "Invalid content detected");
+    return res.redirect(req.get("Referer") || "/");
+  }
+
   const numericGameId = parseInt(gameId, 10);
-  if (isNaN(numericGameId) || numericGameId <= 0) {
+  if (
+    isNaN(numericGameId) ||
+    numericGameId <= 0 ||
+    numericGameId > Number.MAX_SAFE_INTEGER
+  ) {
     req.flash("error", "Invalid game ID");
     return res.redirect(req.get("Referer") || "/");
   }

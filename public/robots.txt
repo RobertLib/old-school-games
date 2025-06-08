@@ -1,6 +1,6 @@
 User-agent: *
 Allow: /
-Disallow: /profile
+Disallow: /login
 Disallow: /analytics
 
 Sitemap: https://oldschoolgames.eu/sitemap.xml

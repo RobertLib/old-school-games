@@ -125,7 +125,7 @@ function loadFavoriteGames() {
 
   favorites.forEach((game) => {
     html += `
-      <article class="game-item card animate-on-scroll">
+      <article class="game-item card">
         <div>
           <a class="color-primary font-bold" href="/${game.slug}">
             <h3 class="text-lg" style="margin: 0">${game.title}</h3>
@@ -190,7 +190,7 @@ function loadRecentlyPlayedGames() {
   recentlyPlayed.forEach((game) => {
     const playedDate = new Date(game.playedAt).toLocaleDateString();
     html += `
-      <article class="game-item card animate-on-scroll">
+      <article class="game-item card">
         <div>
           <a class="color-primary font-bold" href="/${game.slug}">
             <h3 class="text-lg" style="margin: 0">${game.title}</h3>
