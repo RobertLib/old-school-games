@@ -3,4 +3,4 @@ Allow: /
 Disallow: /login
 Disallow: /analytics
 
-Sitemap: https://oldschoolgames.eu/sitemap.xml
+Sitemap: https://oldschoolgames.eu/sitemap-index.xml

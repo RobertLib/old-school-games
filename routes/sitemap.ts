@@ -13,7 +13,7 @@ export function clearSitemapCache() {
   sitemapGeneratedAt = undefined;
 }
 
-router.get("/sitemap.xml", async (req, res) => {
+router.get("/sitemap-index.xml", async (req, res) => {
   res.header("Content-Type", "application/xml; charset=utf-8");
 
   const now = Date.now();

@@ -23,7 +23,7 @@ describe("Sitemap Routes", () => {
     clearSitemapCache();
   });
 
-  describe("GET /sitemap.xml", () => {
+  describe("GET /sitemap-index.xml", () => {
     it("should return sitemap with correct headers", async () => {
       const mockGames = [
         {
@@ -39,7 +39,7 @@ describe("Sitemap Routes", () => {
       vi.mocked(Game.getPublishers).mockResolvedValue(["Test Publisher"]);
       vi.mocked(Game.getYears).mockResolvedValue([2025]);
 
-      const response = await request(app).get("/sitemap.xml");
+      const response = await request(app).get("/sitemap-index.xml");
 
       expect(response.status).toBe(200);
       expect(response.headers["content-type"]).toContain("application/xml");
@@ -61,7 +61,7 @@ describe("Sitemap Routes", () => {
       vi.mocked(Game.getPublishers).mockResolvedValue(["Test Publisher"]);
       vi.mocked(Game.getYears).mockResolvedValue([2025]);
 
-      const response = await request(app).get("/sitemap.xml");
+      const response = await request(app).get("/sitemap-index.xml");
 
       expect(response.status).toBe(200);
       expect(response.body).toBeDefined();
@@ -75,7 +75,7 @@ describe("Sitemap Routes", () => {
       vi.mocked(Game.getPublishers).mockRejectedValue(error);
       vi.mocked(Game.getYears).mockRejectedValue(error);
 
-      const response = await request(app).get("/sitemap.xml");
+      const response = await request(app).get("/sitemap-index.xml");
 
       expect(response.status).toBe(500);
       expect(response.text).toBe("Sitemap temporarily unavailable");
