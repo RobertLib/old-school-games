@@ -19,6 +19,7 @@ A web application for browsing and playing classic MS-DOS games directly in your
 - **Analytics**: Visitor tracking and statistics
 - **Responsive Design**: Fully responsive web interface
 - **Sitemap**: Automatic sitemap generation for SEO
+- **IndexNow**: Automatic search engine notification for content changes
 
 ## 🛠️ Technologies
 
@@ -48,7 +49,10 @@ A web application for browsing and playing classic MS-DOS games directly in your
 │   ├── games.ts         # Game management
 │   ├── home.ts          # Home page
 │   ├── comments.ts      # Comments
+│   ├── indexnow.ts      # IndexNow integration
 │   └── analytics.ts     # Analytics
+├── utils/                # Utility functions
+│   └── indexnow.ts      # IndexNow API client
 ├── views/                # EJS templates
 ├── public/               # Static files
 ├── middlewares/          # Express middlewares
@@ -157,6 +161,28 @@ The application uses the following environment variables:
 - `DATABASE_URL` - PostgreSQL connection string
 - `SESSION_SECRET` - Secret key for sessions
 - `NODE_ENV` - Application environment (development/production)
+- `INDEXNOW_KEY` - IndexNow API key for search engine notifications
+- `SITE_URL` - Full URL of the website (e.g., https://yoursite.com)
+
+### IndexNow Setup
+
+1. Generate a random key:
+
+   ```bash
+   node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+   ```
+
+2. Create key file in `public/` directory:
+
+   ```bash
+   echo "your-generated-key" > public/your-generated-key.txt
+   ```
+
+3. Add environment variables:
+   ```env
+   INDEXNOW_KEY="your-generated-key"
+   SITE_URL="https://yoursite.com"
+   ```
 
 ## 🧪 Testing
 

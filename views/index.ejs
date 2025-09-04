@@ -71,8 +71,22 @@
         <hr />
         <% } %>
         <% if (req.session?.user?.role === "ADMIN") { %>
-        <div class="text-right" style="margin-bottom: 5px">
+        <div class="text-right" style="margin-bottom: 5px; display: flex; gap: 10px; justify-content: flex-end; align-items: center;">
           <a class="btn btn-outline" href="/games/new">+ Add a new game</a>
+
+          <div style="display: flex; gap: 5px;">
+            <form action="/indexnow/test" method="POST" style="display: inline;">
+              <button class="btn btn-outline btn-sm" type="submit" title="Test IndexNow configuration">
+                🔍 Test IndexNow
+              </button>
+            </form>
+
+            <form action="/indexnow/submit-all" method="POST" style="display: inline;" onsubmit="return confirm('This will submit all URLs to search engines. Continue?')">
+              <button class="btn btn-outline btn-sm" type="submit" title="Submit all URLs to search engines">
+                📡 Submit All to IndexNow
+              </button>
+            </form>
+          </div>
         </div>
         <% } %>
         <% if (req.originalUrl === '/' || req.originalUrl === '') { %>

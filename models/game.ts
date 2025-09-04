@@ -1,5 +1,7 @@
 import Model, { type ModelData } from "./model.ts";
 import db from "../db.ts";
+import IndexNow from "../utils/indexnow.ts";
+import { clearSitemapCache } from "../routes/sitemap.ts";
 
 interface GameData extends ModelData {
   title: string;
@@ -157,7 +159,9 @@ export default class Game extends Model {
 
     if (publisher) {
       whereConditions.push(
-        `(g."publisher" = $${values.length + 1} OR (g."developer" = $${values.length + 1} AND (g."publisher" IS NULL OR g."publisher" = '')))`
+        `(g."publisher" = $${values.length + 1} OR (g."developer" = $${
+          values.length + 1
+        } AND (g."publisher" IS NULL OR g."publisher" = '')))`
       );
       values.push(publisher);
     }
@@ -265,6 +269,20 @@ export default class Game extends Model {
       values
     );
 
+    // Clear sitemap cache
+    clearSitemapCache();
+
+    // Submit to IndexNow (async, don't await to avoid blocking)
+    IndexNow.submitGameUrls(
+      gameData.slug!,
+      gameData.genre,
+      gameData.developer,
+      gameData.publisher,
+      gameData.release || undefined
+    ).catch((error) => {
+      console.error("IndexNow submission failed for created game:", error);
+    });
+
     return rows[0];
   }
 
@@ -293,11 +311,38 @@ export default class Game extends Model {
       values
     );
 
+    // Clear sitemap cache
+    clearSitemapCache();
+
+    // Submit to IndexNow (async, don't await to avoid blocking)
+    IndexNow.submitGameUrls(
+      gameData.slug!,
+      gameData.genre,
+      gameData.developer,
+      gameData.publisher,
+      gameData.release || undefined
+    ).catch((error) => {
+      console.error("IndexNow submission failed for updated game:", error);
+    });
+
     return rows[0];
   }
 
   static async delete(id: string | number): Promise<void> {
+    // Get game data before deletion for IndexNow
+    const game = await Game.findById(id);
+
     await db.query('DELETE FROM "games" WHERE "id" = $1', [id]);
+
+    // Clear sitemap cache
+    clearSitemapCache();
+
+    // Submit to IndexNow if game existed (async, don't await to avoid blocking)
+    if (game) {
+      IndexNow.submitGameDeletedUrls(game.slug).catch((error) => {
+        console.error("IndexNow submission failed for deleted game:", error);
+      });
+    }
   }
 
   static async rate(

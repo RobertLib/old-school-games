@@ -74,6 +74,11 @@
                 Delete
               </button>
             </form>
+            <form action="/indexnow/submit-game/<%= game.id %>" method="POST" style="display: inline;">
+              <button class="btn btn-outline btn-sm" type="submit" title="Submit this game to IndexNow">
+                📡 IndexNow
+              </button>
+            </form>
           </div>
           <% } %>
         </header>
