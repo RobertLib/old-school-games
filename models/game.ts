@@ -251,6 +251,60 @@ export default class Game extends Model {
     return game;
   }
 
+  static async count({
+    genre,
+    letter,
+    developer,
+    publisher,
+    year,
+  }: {
+    genre?: string;
+    letter?: string;
+    developer?: string;
+    publisher?: string;
+    year?: number;
+  } = {}): Promise<number> {
+    let query = 'SELECT COUNT(*) as total FROM "games" g';
+    const values: any[] = [];
+    const whereConditions: string[] = [];
+
+    if (genre) {
+      whereConditions.push(`g."genre" = $${values.length + 1}`);
+      values.push(genre.toUpperCase());
+    }
+
+    if (letter) {
+      whereConditions.push(`g."title" ILIKE $${values.length + 1}`);
+      values.push(`${letter}%`);
+    }
+
+    if (year) {
+      whereConditions.push(`g."release" = $${values.length + 1}`);
+      values.push(year);
+    }
+
+    if (developer) {
+      whereConditions.push(`g."developer" = $${values.length + 1}`);
+      values.push(developer);
+    }
+
+    if (publisher) {
+      whereConditions.push(
+        `(g."publisher" = $${values.length + 1} OR (g."developer" = $${
+          values.length + 1
+        } AND (g."publisher" IS NULL OR g."publisher" = '')))`
+      );
+      values.push(publisher);
+    }
+
+    if (whereConditions.length > 0) {
+      query += ` WHERE ${whereConditions.join(" AND ")}`;
+    }
+
+    const { rows } = await db.query(query, values);
+    return parseInt(rows[0].total, 10);
+  }
+
   static async create(data: Partial<GameData>): Promise<{ id: number }> {
     const gameData = serialize(data);
 

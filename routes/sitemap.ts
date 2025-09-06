@@ -24,6 +24,8 @@ router.get("/sitemap-index.xml", async (req, res) => {
   }
 
   try {
+    const LIMIT = 25; // Same limit as used in routes
+
     const smStream = new SitemapStream({
       hostname: "https://oldschoolgames.eu",
       xmlns: {
@@ -35,6 +37,18 @@ router.get("/sitemap-index.xml", async (req, res) => {
     });
 
     smStream.write({ url: "/", changefreq: "daily", priority: 1.0 });
+
+    // Add paginated pages for main index
+    const totalGamesCount = await Game.count();
+    const totalPages = Math.ceil(totalGamesCount / LIMIT);
+
+    for (let page = 2; page <= totalPages; page++) {
+      smStream.write({
+        url: `/?page=${page}`,
+        changefreq: "daily",
+        priority: 0.8,
+      });
+    }
 
     smStream.write({
       url: `/developers`,
@@ -61,13 +75,25 @@ router.get("/sitemap-index.xml", async (req, res) => {
     });
 
     const alphabet = "abcdefghijklmnopqrstuvwxyz".split("");
-    alphabet.forEach((letter) => {
+    for (const letter of alphabet) {
       smStream.write({
         url: `/letter/${letter}`,
         changefreq: "weekly",
         priority: 0.8,
       });
-    });
+
+      // Add paginated pages for letter
+      const letterCount = await Game.count({ letter });
+      const letterPages = Math.ceil(letterCount / LIMIT);
+
+      for (let page = 2; page <= letterPages; page++) {
+        smStream.write({
+          url: `/letter/${letter}?page=${page}`,
+          changefreq: "weekly",
+          priority: 0.7,
+        });
+      }
+    }
 
     const [gameGenres, developers, publishers, years, games] =
       await Promise.all([
@@ -78,37 +104,85 @@ router.get("/sitemap-index.xml", async (req, res) => {
         Game.find(),
       ]);
 
-    gameGenres.forEach((genre) => {
+    for (const genre of gameGenres) {
       smStream.write({
         url: `/${genre.toLowerCase()}`,
         changefreq: "weekly",
         priority: 0.8,
       });
-    });
 
-    developers.forEach((developer) => {
+      // Add paginated pages for genre
+      const genreCount = await Game.count({ genre: genre.toLowerCase() });
+      const genrePages = Math.ceil(genreCount / LIMIT);
+
+      for (let page = 2; page <= genrePages; page++) {
+        smStream.write({
+          url: `/${genre.toLowerCase()}?page=${page}`,
+          changefreq: "weekly",
+          priority: 0.7,
+        });
+      }
+    }
+
+    for (const developer of developers) {
       smStream.write({
         url: `/developer/${encodeURIComponent(developer)}`,
         changefreq: "weekly",
         priority: 0.7,
       });
-    });
 
-    publishers.forEach((publisher) => {
+      // Add paginated pages for developer
+      const developerCount = await Game.count({ developer });
+      const developerPages = Math.ceil(developerCount / LIMIT);
+
+      for (let page = 2; page <= developerPages; page++) {
+        smStream.write({
+          url: `/developer/${encodeURIComponent(developer)}?page=${page}`,
+          changefreq: "weekly",
+          priority: 0.6,
+        });
+      }
+    }
+
+    for (const publisher of publishers) {
       smStream.write({
         url: `/publisher/${encodeURIComponent(publisher)}`,
         changefreq: "weekly",
         priority: 0.7,
       });
-    });
 
-    years.forEach((year) => {
+      // Add paginated pages for publisher
+      const publisherCount = await Game.count({ publisher });
+      const publisherPages = Math.ceil(publisherCount / LIMIT);
+
+      for (let page = 2; page <= publisherPages; page++) {
+        smStream.write({
+          url: `/publisher/${encodeURIComponent(publisher)}?page=${page}`,
+          changefreq: "weekly",
+          priority: 0.6,
+        });
+      }
+    }
+
+    for (const year of years) {
       smStream.write({
         url: `/year/${year}`,
         changefreq: "weekly",
         priority: 0.7,
       });
-    });
+
+      // Add paginated pages for year
+      const yearCount = await Game.count({ year });
+      const yearPages = Math.ceil(yearCount / LIMIT);
+
+      for (let page = 2; page <= yearPages; page++) {
+        smStream.write({
+          url: `/year/${year}?page=${page}`,
+          changefreq: "weekly",
+          priority: 0.6,
+        });
+      }
+    }
 
     games.forEach((game) => {
       const lastmod = game.updatedAt
