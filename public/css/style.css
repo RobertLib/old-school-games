@@ -14,6 +14,20 @@
   --secondary-rgb: 255 255 255;
   --muted-rgb: 128 128 128;
 
+  /* Conway's Game of Life configuration */
+  /* --conway-opacity: Controls the overall visibility of the background animation (0.0 - 1.0) */
+  --conway-opacity: 0.15;
+  /* --conway-color-*: RGB values for the living cells (0-255) */
+  --conway-color-r: 0;
+  --conway-color-g: 255;
+  --conway-color-b: 0;
+  /* --conway-glow-intensity: How much the cells glow (0.0 - 1.0) */
+  --conway-glow-intensity: 0.2;
+  /* --conway-cell-size: Size of each cell in pixels */
+  --conway-cell-size: 4;
+  /* --conway-update-speed: Time between updates in milliseconds */
+  --conway-update-speed: 10000;
+
   /* Retro gradient effects */
   --gradient-crt: linear-gradient(
     180deg,
@@ -119,6 +133,52 @@ body::after {
     overflow-x: hidden;
   }
 
+  /* Conway's Game of Life Background Canvas */
+  #conway-background {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    pointer-events: none !important;
+    z-index: 1 !important;
+    opacity: var(--conway-opacity) !important;
+  }
+
+  /* Hide Conway background on very small screens or reduced motion preference */
+  @media (max-width: 480px), (prefers-reduced-motion: reduce) {
+    #conway-background {
+      display: none !important;
+    }
+  }
+
+  /* Alternative Conway themes */
+  .conway-blue {
+    --conway-color-r: 0;
+    --conway-color-g: 150;
+    --conway-color-b: 255;
+    --conway-opacity: 0.06;
+  }
+
+  .conway-amber {
+    --conway-color-r: 255;
+    --conway-color-g: 200;
+    --conway-color-b: 0;
+    --conway-opacity: 0.05;
+  }
+
+  .conway-intense {
+    --conway-opacity: 0.15;
+    --conway-glow-intensity: 0.6;
+    --conway-update-speed: 150;
+  }
+
+  .conway-subtle {
+    --conway-opacity: 0.03;
+    --conway-glow-intensity: 0.1;
+    --conway-update-speed: 300;
+  }
+
   main {
     min-height: calc(100vh - 165px);
     padding: 30px;
@@ -130,7 +190,7 @@ body::after {
         transparent 1px,
         transparent 3px
       ),
-      rgb(var(--canvas-background-rgb));
+      rgb(var(--canvas-background-rgb) / 0.8);
     border: 2px solid rgb(var(--border-rgb));
     border-radius: var(--border-radius);
     box-shadow: var(--box-shadow);
