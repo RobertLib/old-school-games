@@ -61,7 +61,18 @@
         <div class="dropdown">
           <span class="dropdown-toggle">Browse by</span>
           <ul class="dropdown-menu">
-            <% const basePath = ["/", "/:genre"].includes(req.route?.path) ? "" : "/"; %>
+            <% 
+              // Check if current page supports filtering (has list of games)
+              const currentUrlPath = req.originalUrl.split('?')[0];
+              const supportsFiltering = 
+                currentUrlPath === '/' || // homepage
+                currentUrlPath.match(/^\/[a-z]+$/) || // genres
+                currentUrlPath.match(/^\/letter\/[a-z]$/) || // letters
+                currentUrlPath.match(/^\/developer\//) || // developers
+                currentUrlPath.match(/^\/publisher\//) || // publishers
+                currentUrlPath.match(/^\/year\/\d+$/); // years
+              const basePath = supportsFiltering ? currentUrlPath : "/";
+            %>
             <li>
               <a class="dropdown-item" href="<%= basePath %>?orderBy=title&orderDir=ASC">
                 Alphabetical

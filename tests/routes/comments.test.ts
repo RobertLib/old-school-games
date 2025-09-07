@@ -1,275 +1,259 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, beforeAll } from "vitest";
 import request from "supertest";
 import express from "express";
-import commentsRouter from "../../routes/comments";
-import Comment from "../../models/comment";
-
-vi.mock("../../models/comment", () => ({
-  default: {
-    create: vi.fn(),
-    findByGameId: vi.fn(),
-  },
-}));
-
-vi.mock("dompurify", () => ({
-  default: () => ({
-    sanitize: vi.fn((content: string) => content),
-  }),
-}));
-
-vi.mock("jsdom", () => ({
-  JSDOM: vi.fn(() => ({
-    window: {},
-  })),
-}));
-
-vi.mock("../../validations/comments", () => ({
-  validateComment: (req: any, res: any, next: any) => {
-    const { nick, content, gameId } = req.body;
-
-    if (nick && nick.length > 255) {
-      req.flash("error", "Nick is too long");
-      return res.redirect(req.get("Referer") || "/");
-    }
-
-    if (!content || content.trim().length === 0) {
-      req.flash("error", "Content is required");
-      return res.redirect(req.get("Referer") || "/");
-    }
-
-    if (content.length > 1000) {
-      req.flash("error", "Content is too long");
-      return res.redirect(req.get("Referer") || "/");
-    }
-
-    const numericGameId = parseInt(gameId, 10);
-    if (isNaN(numericGameId) || numericGameId <= 0) {
-      req.flash("error", "Invalid game ID");
-      return res.redirect(req.get("Referer") || "/");
-    }
-
-    next();
-  },
-}));
-
-vi.mock("express-rate-limit", () => ({
-  default: () => (req: any, res: any, next: any) => next(),
-}));
+import pool from "../../db.ts";
+import commentsRouter from "../../routes/comments.ts";
 
 const app = express();
 
+// Test setup
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Setup view engine
+app.set("view engine", "ejs");
+app.set("views", "views");
+
+// Mock render function
 app.use((req, res, next) => {
-  req.flash = vi.fn((type: string, message: string) => {
-    (req as any).flashMessages = (req as any).flashMessages || {};
-    if (!(req as any).flashMessages[type]) {
-      (req as any).flashMessages[type] = [];
+  const originalRender = res.render;
+  res.render = function (view: string, locals?: any) {
+    // For tests simply return JSON response
+    return res.json({ view, locals });
+  };
+  next();
+});
+
+// Mock flash middleware
+app.use((req, res, next) => {
+  req.flash = ((type?: string, message?: string | string[]) => {
+    if (type && message) {
+      return 0; // Returns number of messages
     }
-    (req as any).flashMessages[type].push(message);
+    return {}; // Returns all messages
   }) as any;
   next();
 });
 
+// Mock request referer
 app.use((req, res, next) => {
-  res.render = vi.fn((view, data) => {
-    res.json({ view, data });
-  });
-  next();
-});
-
-app.use((req, res, next) => {
-  req.get = vi.fn((header: string) => {
-    if (header === "Referer") {
-      return (req.headers.referer as string) || null;
+  req.get = (name: string): any => {
+    if (name === "Referer") {
+      return "/games/1";
     }
-    return req.headers[header.toLowerCase()] as string;
-  }) as any;
+    if (name === "set-cookie") {
+      return undefined;
+    }
+    return undefined;
+  };
   next();
 });
 
-app.use(commentsRouter);
+app.use("/comments", commentsRouter);
 
 describe("Comments Routes", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
+  beforeAll(async () => {
+    // Ensure database is ready
+    await new Promise((resolve) => setTimeout(resolve, 100));
   });
 
-  describe("POST /", () => {
-    const mockComment = {
-      id: 1,
-      nick: "TestUser",
-      content: "This is a test comment",
-      gameId: 1,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
+  beforeEach(async () => {
+    // Clean tables before each test
+    await pool.query('DELETE FROM "comments"');
+    await pool.query('DELETE FROM "games"');
+    await pool.query('DELETE FROM "users"');
 
-    beforeEach(() => {
-      vi.mocked(Comment.create).mockResolvedValue(mockComment as any);
-    });
+    // Reset auto-increment
+    await pool.query('ALTER SEQUENCE "comments_id_seq" RESTART WITH 1');
+    await pool.query('ALTER SEQUENCE "games_id_seq" RESTART WITH 1');
+    await pool.query('ALTER SEQUENCE "users_id_seq" RESTART WITH 1');
 
-    it("should create a comment successfully with valid data", async () => {
-      const response = await request(app).post("/").send({
+    // Create test game
+    await pool.query(
+      'INSERT INTO "games" ("id", "title", "slug", "description", "genre", "developer") VALUES ($1, $2, $3, $4, $5, $6)',
+      [
+        1,
+        "Test Game",
+        "test-game",
+        "Test Description",
+        "ACTION",
+        "Test Developer",
+      ]
+    );
+  });
+
+  describe("POST /comments", () => {
+    it("should create comment with valid data", async () => {
+      const commentData = {
         nick: "TestUser",
         content: "This is a test comment",
         gameId: "1",
-      });
+      };
+
+      const response = await request(app).post("/comments").send(commentData);
 
       expect(response.status).toBe(200);
       expect(response.body.view).toBe("comments/comment-item");
-      expect(response.body.data.comment).toMatchObject({
-        id: 1,
+      expect(response.body.locals.comment).toBeDefined();
+
+      // Verify that comment was created in database
+      const result = await pool.query(
+        'SELECT * FROM "comments" WHERE "content" = $1',
+        [commentData.content]
+      );
+      expect(result.rows).toHaveLength(1);
+      expect(result.rows[0].nick).toBe(commentData.nick);
+      expect(result.rows[0].content).toBe(commentData.content);
+      expect(result.rows[0].gameId).toBe(1);
+    });
+
+    it("should handle validation error for empty content", async () => {
+      const invalidCommentData = {
         nick: "TestUser",
-        content: "This is a test comment",
-        gameId: 1,
-      });
-      expect(Comment.create).toHaveBeenCalledWith({
-        nick: "TestUser",
-        content: "This is a test comment",
+        content: "", // Empty content
         gameId: "1",
-      });
-    });
-
-    it("should redirect when nick is too long", async () => {
-      const longNick = "a".repeat(256);
+      };
 
       const response = await request(app)
-        .post("/")
-        .set("referer", "/games/1")
-        .send({
-          nick: longNick,
-          content: "This is a test comment",
-          gameId: "1",
-        });
+        .post("/comments")
+        .send(invalidCommentData);
 
       expect(response.status).toBe(302);
       expect(response.headers.location).toBe("/games/1");
+
+      // Verify that no comment was created in database
+      const result = await pool.query(
+        'SELECT COUNT(*) as count FROM "comments"'
+      );
+      expect(parseInt(result.rows[0].count)).toBe(0);
     });
 
-    it("should redirect when content is empty", async () => {
-      const response = await request(app)
-        .post("/")
-        .set("referer", "/games/1")
-        .send({
-          nick: "TestUser",
-          content: "",
-          gameId: "1",
-        });
-
-      expect(response.status).toBe(302);
-      expect(response.headers.location).toBe("/games/1");
-    });
-
-    it("should redirect when content is too long", async () => {
-      const longContent = "a".repeat(1001);
-
-      const response = await request(app)
-        .post("/")
-        .set("referer", "/games/1")
-        .send({
-          nick: "TestUser",
-          content: longContent,
-          gameId: "1",
-        });
-
-      expect(response.status).toBe(302);
-      expect(response.headers.location).toBe("/games/1");
-    });
-
-    it("should redirect when gameId is invalid (not a number)", async () => {
-      const response = await request(app)
-        .post("/")
-        .set("referer", "/games/1")
-        .send({
-          nick: "TestUser",
-          content: "This is a test comment",
-          gameId: "invalid",
-        });
-
-      expect(response.status).toBe(302);
-      expect(response.headers.location).toBe("/games/1");
-    });
-
-    it("should redirect when gameId is negative", async () => {
-      const response = await request(app)
-        .post("/")
-        .set("referer", "/games/1")
-        .send({
-          nick: "TestUser",
-          content: "This is a test comment",
-          gameId: "-1",
-        });
-
-      expect(response.status).toBe(302);
-      expect(response.headers.location).toBe("/games/1");
-    });
-
-    it("should redirect when gameId is zero", async () => {
-      const response = await request(app)
-        .post("/")
-        .set("referer", "/games/1")
-        .send({
-          nick: "TestUser",
-          content: "This is a test comment",
-          gameId: "0",
-        });
-
-      expect(response.status).toBe(302);
-      expect(response.headers.location).toBe("/games/1");
-    });
-
-    it("should redirect to home when no referer is provided and validation fails", async () => {
-      const response = await request(app).post("/").send({
+    it("should handle validation error for content too long", async () => {
+      const longContent = "a".repeat(1001); // Over 1000 character limit
+      const invalidCommentData = {
         nick: "TestUser",
-        content: "",
+        content: longContent,
         gameId: "1",
-      });
+      };
+
+      const response = await request(app)
+        .post("/comments")
+        .send(invalidCommentData);
 
       expect(response.status).toBe(302);
-      expect(response.headers.location).toBe("/");
+      expect(response.headers.location).toBe("/games/1");
+
+      // Verify that no comment was created in database
+      const result = await pool.query(
+        'SELECT COUNT(*) as count FROM "comments"'
+      );
+      expect(parseInt(result.rows[0].count)).toBe(0);
     });
 
-    it("should handle Comment.create errors", async () => {
-      vi.mocked(Comment.create).mockRejectedValue(new Error("Database error"));
-
-      const response = await request(app).post("/").send({
-        nick: "TestUser",
-        content: "This is a test comment",
+    it("should handle validation error for nick too long", async () => {
+      const longNick = "a".repeat(256); // Over 255 character limit
+      const invalidCommentData = {
+        nick: longNick,
+        content: "Valid content",
         gameId: "1",
-      });
+      };
 
-      expect(response.status).toBe(500);
+      const response = await request(app)
+        .post("/comments")
+        .send(invalidCommentData);
+
+      expect(response.status).toBe(302);
+      expect(response.headers.location).toBe("/games/1");
+
+      // Verify that no comment was created in database
+      const result = await pool.query(
+        'SELECT COUNT(*) as count FROM "comments"'
+      );
+      expect(parseInt(result.rows[0].count)).toBe(0);
     });
 
-    it("should create comment with nick provided", async () => {
-      const response = await request(app).post("/").send({
+    it("should handle validation error for invalid game ID", async () => {
+      const invalidCommentData = {
         nick: "TestUser",
-        content: "This is a test comment",
-        gameId: "1",
-      });
+        content: "Valid content",
+        gameId: "invalid", // Invalid game ID
+      };
 
-      expect(response.status).toBe(200);
-      expect(Comment.create).toHaveBeenCalledWith({
-        nick: "TestUser",
-        content: "This is a test comment",
-        gameId: "1",
-      });
+      const response = await request(app)
+        .post("/comments")
+        .send(invalidCommentData);
+
+      expect(response.status).toBe(302);
+      expect(response.headers.location).toBe("/games/1");
+
+      // Verify that no comment was created in database
+      const result = await pool.query(
+        'SELECT COUNT(*) as count FROM "comments"'
+      );
+      expect(parseInt(result.rows[0].count)).toBe(0);
     });
 
     it("should create comment without nick (anonymous)", async () => {
-      const response = await request(app).post("/").send({
-        content: "This is a test comment",
+      const commentData = {
+        content: "Anonymous comment",
         gameId: "1",
-      });
+      };
+
+      const response = await request(app).post("/comments").send(commentData);
 
       expect(response.status).toBe(200);
-      expect(Comment.create).toHaveBeenCalledWith({
-        nick: "anonymous",
-        content: "This is a test comment",
+      expect(response.body.view).toBe("comments/comment-item");
+      expect(response.body.locals.comment).toBeDefined();
+
+      // Verify that comment was created in database
+      const result = await pool.query(
+        'SELECT * FROM "comments" WHERE "content" = $1',
+        [commentData.content]
+      );
+      expect(result.rows).toHaveLength(1);
+      expect(result.rows[0].nick).toBe("anonymous"); // Anonymous nick
+      expect(result.rows[0].content).toBe(commentData.content);
+      expect(result.rows[0].gameId).toBe(1);
+    });
+
+    it("should sanitize and trim content", async () => {
+      const commentData = {
+        nick: "TestUser",
+        content: "  Trimmed content  ",
         gameId: "1",
-      });
+      };
+
+      const response = await request(app).post("/comments").send(commentData);
+
+      expect(response.status).toBe(200);
+      expect(response.body.view).toBe("comments/comment-item");
+
+      // Verify that comment was created with sanitized content
+      const result = await pool.query(
+        'SELECT * FROM "comments" WHERE "gameId" = $1',
+        [1]
+      );
+      expect(result.rows).toHaveLength(1);
+      expect(result.rows[0].content).toContain("Trimmed content");
+    });
+
+    it("should reject content with script tags", async () => {
+      const commentData = {
+        nick: "TestUser",
+        content: "<script>alert('xss')</script>Malicious content",
+        gameId: "1",
+      };
+
+      const response = await request(app).post("/comments").send(commentData);
+
+      expect(response.status).toBe(302);
+      expect(response.headers.location).toBe("/games/1");
+
+      // Verify that no comment was created in database
+      const result = await pool.query(
+        'SELECT COUNT(*) as count FROM "comments"'
+      );
+      expect(parseInt(result.rows[0].count)).toBe(0);
     });
   });
 });

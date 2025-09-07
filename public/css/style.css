@@ -1401,7 +1401,7 @@ body::after {
   .homepage-features {
     display: grid;
     grid-template-columns: 1.2fr 0.8fr;
-    gap: 20px;
+    gap: 15px;
     margin-top: 10px;
     align-items: start;
   }
@@ -1409,13 +1409,6 @@ body::after {
   @media (max-width: 1024px) {
     .homepage-features {
       grid-template-columns: 1fr;
-      gap: 15px;
-    }
-  }
-
-  @media (max-width: 768px) {
-    .homepage-features {
-      gap: 15px;
     }
   }
 

@@ -172,12 +172,17 @@ export default class Game extends Model {
 
     query += ` GROUP BY g.id`;
 
-    if (letter || year || developer || publisher) {
-      query += ` ORDER BY g."title" ${direction}, g."id" ${direction}`;
-    } else if (orderBy === "rating") {
+    if (orderBy === "rating") {
       query += ` ORDER BY "averageRating" ${direction}, g."id" ${direction}`;
-    } else {
+    } else if (orderBy) {
       query += ` ORDER BY g."${orderBy}" ${direction}, g."id" ${direction}`;
+    } else {
+      // Default ordering for different page types
+      if (letter || year || developer || publisher) {
+        query += ` ORDER BY g."title" ${direction}, g."id" ${direction}`;
+      } else {
+        query += ` ORDER BY "averageRating" ${direction}, g."id" ${direction}`;
+      }
     }
 
     if (limit) {
