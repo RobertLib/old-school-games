@@ -197,7 +197,7 @@ function loadRecentlyPlayedGames() {
   let html = '<div class="game-list">';
 
   recentlyPlayed.forEach((game) => {
-    const playedDate = new Date(game.playedAt).toLocaleDateString();
+    const playedDate = new Date(game.playedAt).toLocaleDateString('en-US');
     html += `
       <article class="game-item card">
         <div>

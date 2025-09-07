@@ -202,6 +202,14 @@ export default class Game extends Model {
     return games;
   }
 
+  static async findForSitemap(): Promise<{ slug: string; updatedAt?: Date }[]> {
+    const { rows } = await db.query(
+      'SELECT "slug", "updatedAt" FROM "games" ORDER BY "id"'
+    );
+
+    return rows;
+  }
+
   static async findRecentlyAdded(): Promise<Game[]> {
     const result = await Game.find({
       limit: 5,

@@ -67,12 +67,19 @@
           adventure filled with pixelated graphics, unforgettable music, and a
           unique atmosphere. Welcome back to the past! 💾🕹️👾
         </marquee>
-        <%- include('game-of-the-week') %>
+
+        <!-- Game of the Week and Latest News side by side -->
+        <div class="homepage-features">
+          <%- include('game-of-the-week') %>
+          <%- include('news/news-preview') %>
+        </div>
+
         <hr />
         <% } %>
         <% if (req.session?.user?.role === "ADMIN") { %>
-        <div class="text-right" style="margin-bottom: 5px; display: flex; gap: 10px; justify-content: flex-end; align-items: center;">
+        <div class="text-right" style="margin-bottom: 25px; display: flex; gap: 10px; justify-content: flex-end; align-items: center;">
           <a class="btn btn-outline" href="/games/new">+ Add a new game</a>
+          <a class="btn btn-outline" href="/news/new">+ Add news</a>
 
           <div style="display: flex; gap: 5px;">
             <form action="/indexnow/test" method="POST" style="display: inline;">

@@ -2,6 +2,7 @@ import express from "express";
 import Game from "../models/game.ts";
 import Comment from "../models/comment.ts";
 import GameOfTheWeek from "../models/game-of-the-week.ts";
+import News from "../models/news.ts";
 
 const router = express.Router();
 
@@ -37,9 +38,12 @@ router.get("/", async (req, res, next) => {
   const page = parseInt(req.query.page as string, 10) || 1;
   const limit = 25;
 
-  const games = await Game.find({ search, page, limit, orderBy, orderDir });
+  const [games, recentNews] = await Promise.all([
+    Game.find({ search, page, limit, orderBy, orderDir }),
+    News.findRecent(3), // Load recent news only for homepage
+  ]);
 
-  res.render("index", { games, limit, page });
+  res.render("index", { games, limit, page, recentNews });
 });
 
 router.get("/:genre", async (req, res, next) => {

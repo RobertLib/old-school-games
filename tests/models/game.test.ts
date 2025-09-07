@@ -435,6 +435,38 @@ describe("Game Model", () => {
     });
   });
 
+  describe("findForSitemap", () => {
+    it("should find games with minimal data for sitemap", async () => {
+      const mockSitemapData = [
+        {
+          slug: "game-1",
+          updatedAt: new Date("2025-01-01"),
+        },
+        {
+          slug: "game-2",
+          updatedAt: new Date("2025-01-02"),
+        },
+      ];
+
+      (mockDb.query as any).mockResolvedValueOnce({ rows: mockSitemapData });
+
+      const result = await Game.findForSitemap();
+
+      expect(mockDb.query).toHaveBeenCalledWith(
+        'SELECT "slug", "updatedAt" FROM "games" ORDER BY "id"'
+      );
+      expect(result).toHaveLength(2);
+      expect(result[0]).toEqual({
+        slug: "game-1",
+        updatedAt: new Date("2025-01-01"),
+      });
+      expect(result[1]).toEqual({
+        slug: "game-2",
+        updatedAt: new Date("2025-01-02"),
+      });
+    });
+  });
+
   describe("findTopRated", () => {
     it("should find top rated games", async () => {
       const mockGamesData = [

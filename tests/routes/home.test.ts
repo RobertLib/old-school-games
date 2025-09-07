@@ -5,6 +5,7 @@ import homeRouter from "../../routes/home.ts";
 import Game from "../../models/game.ts";
 import Comment from "../../models/comment.ts";
 import GameOfTheWeek from "../../models/game-of-the-week.ts";
+import News from "../../models/news.ts";
 
 vi.mock("../../models/game", () => ({
   default: {
@@ -22,6 +23,12 @@ vi.mock("../../models/game", () => ({
 vi.mock("../../models/comment", () => ({
   default: {
     findByGameId: vi.fn(),
+  },
+}));
+
+vi.mock("../../models/news", () => ({
+  default: {
+    findRecent: vi.fn(),
   },
 }));
 
@@ -49,14 +56,18 @@ app.use("/", homeRouter);
 describe("Home Routes", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Default mock for News.findRecent
+    vi.mocked(News.findRecent).mockResolvedValue([]);
   });
 
   describe("GET /", () => {
     it("should render index page", async () => {
       const mockGames = [{ id: 1, title: "Test Game 1", genre: "ACTION" }];
+      const mockNews = [{ id: 1, title: "Test News", content: "Test content" }];
 
       vi.mocked(Game.find).mockResolvedValue(mockGames as any);
       vi.mocked(GameOfTheWeek.getCurrent).mockResolvedValue({ id: 1 } as any);
+      vi.mocked(News.findRecent).mockResolvedValue(mockNews as any);
 
       const response = await request(app).get("/");
 

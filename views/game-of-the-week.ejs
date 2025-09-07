@@ -10,7 +10,7 @@
     <div class="game-of-the-week-info">
       <h3><a href="/<%= gameOfTheWeek.game.slug %>" class="color-primary"><%= gameOfTheWeek.game.title %></a></h3>
       <p class="game-of-the-week-description text-sm">
-        <%= gameOfTheWeek.game.description?.replaceAll("<br />", "").slice(0, 150) %>...
+        <%= gameOfTheWeek.game.description?.replaceAll("<br />", "") %>
       </p>
       <div class="text-sm">
         <strong>Genre</strong>: <%= gameOfTheWeek.game.genre %><br />

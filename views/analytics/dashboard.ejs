@@ -127,7 +127,7 @@
                 <% reversedStats.forEach((day, index) => {
                   if (index % Math.ceil(reversedStats.length / 6) === 0) {
                     const x = chartLeft + (index * stepX);
-                    const shortDate = new Date(day.date).toLocaleDateString('cs-CZ', { day: 'numeric', month: 'numeric' });
+                    const shortDate = new Date(day.date).toLocaleDateString('en-US', { day: 'numeric', month: 'numeric' });
                 %>
                 <text x="<%= x %>" y="185"><%= shortDate %></text>
                 <% }
