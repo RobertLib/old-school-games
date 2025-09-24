@@ -43,7 +43,13 @@ router.get("/", async (req, res, next) => {
     News.findRecent(3), // Load recent news only for homepage
   ]);
 
-  res.render("index", { games, limit, page, recentNews });
+  // Set canonical URL for paginated pages
+  let canonicalUrl;
+  if (page > 1) {
+    canonicalUrl = `https://oldschoolgames.eu/?page=${page}`;
+  }
+
+  res.render("index", { games, limit, page, recentNews, canonicalUrl });
 });
 
 router.get("/:genre", async (req, res, next) => {
@@ -72,7 +78,21 @@ router.get("/:genre", async (req, res, next) => {
   const title = `Games in ${genre} - OldSchoolGames`;
   const description = `Discover classic MS-DOS ${genre.toLowerCase()} games from the 80s and 90s. Play authentic retro games directly in your browser with DOSBox emulation - no downloads required`;
 
-  res.render("index", { games, genre, limit, page, title, description });
+  // Set canonical URL for paginated pages
+  let canonicalUrl;
+  if (page > 1) {
+    canonicalUrl = `https://oldschoolgames.eu/${genre.toLowerCase()}?page=${page}`;
+  }
+
+  res.render("index", {
+    games,
+    genre,
+    limit,
+    page,
+    title,
+    description,
+    canonicalUrl,
+  });
 });
 
 router.get("/letter/:letter", async (req, res, next) => {
@@ -95,7 +115,12 @@ router.get("/letter/:letter", async (req, res, next) => {
   const limit = 25;
 
   const games = await Game.find({ letter, page, limit, orderBy, orderDir });
-  const canonicalUrl = `https://oldschoolgames.eu/letter/${letter.toLowerCase()}`;
+
+  // Set canonical URL - include page parameter for paginated pages
+  let canonicalUrl = `https://oldschoolgames.eu/letter/${letter.toLowerCase()}`;
+  if (page > 1) {
+    canonicalUrl += `?page=${page}`;
+  }
 
   res.render("index", {
     games,
@@ -137,7 +162,23 @@ router.get("/developer/:developer", async (req, res, next) => {
   const title = `Games by ${developer} - OldSchoolGames`;
   const description = `Explore classic MS-DOS games developed by ${developer}. Play authentic retro games from this legendary developer in your browser with DOSBox.`;
 
-  res.render("index", { games, developer, limit, page, title, description });
+  // Set canonical URL for paginated pages
+  let canonicalUrl;
+  if (page > 1) {
+    canonicalUrl = `https://oldschoolgames.eu/developer/${encodeURIComponent(
+      developer
+    )}?page=${page}`;
+  }
+
+  res.render("index", {
+    games,
+    developer,
+    limit,
+    page,
+    title,
+    description,
+    canonicalUrl,
+  });
 });
 
 router.get("/publisher/:publisher", async (req, res, next) => {
@@ -160,7 +201,23 @@ router.get("/publisher/:publisher", async (req, res, next) => {
   const title = `Games published by ${publisher} - OldSchoolGames`;
   const description = `Discover classic MS-DOS games published by ${publisher}. Browse retro games from this publisher, all playable online with DOSBox emulation.`;
 
-  res.render("index", { games, publisher, limit, page, title, description });
+  // Set canonical URL for paginated pages
+  let canonicalUrl;
+  if (page > 1) {
+    canonicalUrl = `https://oldschoolgames.eu/publisher/${encodeURIComponent(
+      publisher
+    )}?page=${page}`;
+  }
+
+  res.render("index", {
+    games,
+    publisher,
+    limit,
+    page,
+    title,
+    description,
+    canonicalUrl,
+  });
 });
 
 router.get("/years", async (req, res) => {
@@ -208,6 +265,12 @@ router.get("/year/:year", async (req, res, next) => {
     orderDir,
   });
 
+  // Set canonical URL for paginated pages
+  let canonicalUrl;
+  if (page > 1) {
+    canonicalUrl = `https://oldschoolgames.eu/year/${yearNum}?page=${page}`;
+  }
+
   res.render("index", {
     games,
     year: yearNum,
@@ -215,6 +278,7 @@ router.get("/year/:year", async (req, res, next) => {
     page,
     title: `Games from ${yearNum} - OldSchoolGames`,
     description: `Discover classic MS-DOS games released in ${yearNum}. Play authentic retro games from this year directly in your browser with DOSBox.`,
+    canonicalUrl,
   });
 });
 

@@ -45,12 +45,19 @@ router.get("/", async (req, res, next) => {
 
     const { news, total, totalPages } = await News.findAll({ page, limit });
 
+    // Set canonical URL for paginated pages
+    let canonicalUrl;
+    if (page > 1) {
+      canonicalUrl = `https://oldschoolgames.eu/news?page=${page}`;
+    }
+
     res.render("news/news-list", {
       title: "News - OldSchoolGames",
       news,
       currentPage: page,
       totalPages,
       total,
+      canonicalUrl,
     });
   } catch (error) {
     next(error);
