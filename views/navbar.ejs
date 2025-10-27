@@ -57,45 +57,48 @@
           News
         </a>
       </li>
+      <% 
+        // Check if current page supports filtering (has list of games)
+        const currentUrlPath = req.originalUrl.split('?')[0];
+        const pathSegment = currentUrlPath.substring(1); // remove leading slash
+        const isGenrePage = gameGenres.some(genre => genre.toLowerCase() === pathSegment);
+        const supportsFiltering = 
+          currentUrlPath === '/' || // homepage
+          isGenrePage || // genre pages (action, adventure, etc.)
+          currentUrlPath.match(/^\/letter\/[a-z]$/) || // letters
+          currentUrlPath.match(/^\/developer\/.+/) || // specific developer (not /developers list)
+          currentUrlPath.match(/^\/publisher\/.+/) || // specific publisher (not /publishers list)
+          currentUrlPath.match(/^\/year\/\d+$/); // specific year (not /years list)
+      %>
+      <% if (supportsFiltering) { %>
       <li>
         <div class="dropdown">
           <span class="dropdown-toggle">Browse by</span>
           <ul class="dropdown-menu">
-            <% 
-              // Check if current page supports filtering (has list of games)
-              const currentUrlPath = req.originalUrl.split('?')[0];
-              const supportsFiltering = 
-                currentUrlPath === '/' || // homepage
-                currentUrlPath.match(/^\/[a-z]+$/) || // genres
-                currentUrlPath.match(/^\/letter\/[a-z]$/) || // letters
-                currentUrlPath.match(/^\/developer\//) || // developers
-                currentUrlPath.match(/^\/publisher\//) || // publishers
-                currentUrlPath.match(/^\/year\/\d+$/); // years
-              const basePath = supportsFiltering ? currentUrlPath : "/";
-            %>
             <li>
-              <a class="dropdown-item" href="<%= basePath %>?orderBy=title&orderDir=ASC">
+              <a class="dropdown-item" href="<%= currentUrlPath %>?orderBy=title&orderDir=ASC">
                 Alphabetical
               </a>
             </li>
             <li>
-              <a class="dropdown-item" href="<%= basePath %>?orderBy=createdAt&orderDir=DESC">
+              <a class="dropdown-item" href="<%= currentUrlPath %>?orderBy=createdAt&orderDir=DESC">
                 Recently added
               </a>
             </li>
             <li>
-              <a class="dropdown-item" href="<%= basePath %>?orderBy=release&orderDir=ASC">
+              <a class="dropdown-item" href="<%= currentUrlPath %>?orderBy=release&orderDir=ASC">
                 By release years
               </a>
             </li>
             <li>
-              <a class="dropdown-item" href="<%= basePath %>?orderBy=rating&orderDir=DESC">
+              <a class="dropdown-item" href="<%= currentUrlPath %>?orderBy=rating&orderDir=DESC">
                 By rating
               </a>
             </li>
           </ul>
         </div>
       </li>
+      <% } %>
     </ul>
   </nav>
 </header>

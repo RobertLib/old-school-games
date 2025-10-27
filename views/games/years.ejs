@@ -73,27 +73,6 @@
           <p>No years found</p>
           <% } %>
         </div>
-
-        <!-- Popular Decades Section -->
-        <% if (years.length > 5) { %>
-        <div style="margin: 30px 0; padding: 20px; background: rgba(var(--border-rgb), 0.1); border: 1px solid rgb(var(--border-rgb)); border-radius: var(--border-radius); color: rgb(var(--color-rgb));">
-          <h3 style="margin: 0 0 15px; color: rgb(var(--primary-rgb)); text-shadow: var(--text-shadow);">Browse by Decade:</h3>
-          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px;">
-            <div>
-              <strong style="color: rgb(var(--accent-rgb));">1980s:</strong><br>
-              <% years.filter(y => y >= 1980 && y <= 1989).slice(0, 5).forEach((year, index) => { %>
-              <a href="/year/<%= year %>" class="color-primary underline"><%= year %></a><%= index < 4 && years.filter(y => y >= 1980 && y <= 1989).slice(0, 5).length > index + 1 ? ', ' : '' %>
-              <% }); %>
-            </div>
-            <div>
-              <strong style="color: rgb(var(--accent-rgb));">1990s:</strong><br>
-              <% years.filter(y => y >= 1990 && y <= 1999).slice(0, 5).forEach((year, index) => { %>
-              <a href="/year/<%= year %>" class="color-primary underline"><%= year %></a><%= index < 4 && years.filter(y => y >= 1990 && y <= 1999).slice(0, 5).length > index + 1 ? ', ' : '' %>
-              <% }); %>
-            </div>
-          </div>
-        </div>
-        <% } %>
       </section>
     </div>
   </main>
