@@ -492,4 +492,34 @@ export default class Game extends Model {
 
     return games;
   }
+
+  static async findAdjacentGames(
+    title: string
+  ): Promise<{ prevGame: Game | null; nextGame: Game | null }> {
+    // Find previous game (alphabetically before current)
+    const prevQuery = `
+      SELECT * FROM "games"
+      WHERE LOWER("title") < LOWER($1)
+      ORDER BY "title" DESC
+      LIMIT 1
+    `;
+
+    // Find next game (alphabetically after current)
+    const nextQuery = `
+      SELECT * FROM "games"
+      WHERE LOWER("title") > LOWER($1)
+      ORDER BY "title" ASC
+      LIMIT 1
+    `;
+
+    const [prevResult, nextResult] = await Promise.all([
+      db.query(prevQuery, [title]),
+      db.query(nextQuery, [title]),
+    ]);
+
+    const prevGame = prevResult.rows[0] ? new Game(prevResult.rows[0]) : null;
+    const nextGame = nextResult.rows[0] ? new Game(nextResult.rows[0]) : null;
+
+    return { prevGame, nextGame };
+  }
 }

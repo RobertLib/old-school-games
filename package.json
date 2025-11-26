@@ -25,12 +25,12 @@
     "dotenv": "^17.2.3",
     "ejs": "^3.1.10",
     "express": "^5.1.0",
-    "express-rate-limit": "^8.1.0",
+    "express-rate-limit": "^8.2.1",
     "express-session": "^1.18.2",
     "helmet": "^8.1.0",
-    "jsdom": "^27.0.1",
+    "jsdom": "^27.2.0",
     "pg": "^8.16.3",
-    "sitemap": "^8.0.1",
+    "sitemap": "^9.0.0",
     "winston": "^3.18.3"
   },
   "devDependencies": {
@@ -40,14 +40,14 @@
     "@types/connect-flash": "^0.0.40",
     "@types/connect-pg-simple": "^7.0.3",
     "@types/cookie-parser": "^1.4.10",
-    "@types/express": "^5.0.4",
+    "@types/express": "^5.0.5",
     "@types/jsdom": "^27.0.0",
     "@types/supertest": "^6.0.3",
-    "@vitest/coverage-v8": "^4.0.3",
-    "nodemon": "^3.1.10",
+    "@vitest/coverage-v8": "^4.0.14",
+    "nodemon": "^3.1.11",
     "supertest": "^7.1.4",
     "ts-node": "^10.9.2",
-    "vitest": "^4.0.3"
+    "vitest": "^4.0.14"
   },
   "type": "module"
 }

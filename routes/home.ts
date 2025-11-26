@@ -293,8 +293,11 @@ router.get("/:id", async (req, res, next) => {
     return next();
   }
 
-  const comments = await Comment.findByGameId(game.id);
-  const similarGames = await Game.findSimilar(game.id, game.genre, 6);
+  const [comments, similarGames, { prevGame, nextGame }] = await Promise.all([
+    Comment.findByGameId(game.id),
+    Game.findSimilar(game.id, game.genre, 6),
+    Game.findAdjacentGames(game.title),
+  ]);
 
   const title = `${game.title.slice(0, 29)} - Play Online | OldSchoolGames`;
 
@@ -342,6 +345,8 @@ router.get("/:id", async (req, res, next) => {
     game,
     comments,
     similarGames,
+    prevGame,
+    nextGame,
     title,
     description,
     image,

@@ -9,9 +9,14 @@ vi.mock("pg", () => {
     on: vi.fn(),
   };
 
+  // Use a class instead of arrow function for proper constructor behavior
+  const MockPool = vi.fn(function () {
+    return mockPool;
+  });
+
   return {
     default: {
-      Pool: vi.fn(() => mockPool),
+      Pool: MockPool,
     },
   };
 });

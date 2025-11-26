@@ -57,7 +57,11 @@ describe("News Routes", () => {
   });
 
   beforeEach(async () => {
-    // Clean tables before each test
+    // Clean tables before each test - in correct order for foreign keys
+    await pool.query('DELETE FROM "ratings"');
+    await pool.query('DELETE FROM "comments"');
+    await pool.query('DELETE FROM "game_of_the_week"');
+    await pool.query('DELETE FROM "games"');
     await pool.query('DELETE FROM "news"');
     await pool.query('DELETE FROM "users"');
 

@@ -17,6 +17,7 @@ vi.mock("../../models/game", () => ({
     findById: vi.fn(),
     findBySlug: vi.fn(),
     findSimilar: vi.fn(),
+    findAdjacentGames: vi.fn(),
   },
 }));
 
@@ -462,16 +463,19 @@ describe("Home Routes", () => {
       const mockSimilarGames = [
         { id: 124, title: "Similar Game", genre: "Action" },
       ];
+      const mockAdjacentGames = { prevGame: null, nextGame: null };
 
       vi.mocked(Game.findById).mockResolvedValue(mockGame as any);
       vi.mocked(Comment.findByGameId).mockResolvedValue(mockComments as any);
       vi.mocked(Game.findSimilar).mockResolvedValue(mockSimilarGames as any);
+      vi.mocked(Game.findAdjacentGames).mockResolvedValue(mockAdjacentGames);
 
       const response = await request(app).get("/123");
 
       expect(Game.findById).toHaveBeenCalledWith("123");
       expect(Comment.findByGameId).toHaveBeenCalledWith(123);
       expect(Game.findSimilar).toHaveBeenCalledWith(123, "Action", 6);
+      expect(Game.findAdjacentGames).toHaveBeenCalledWith("Test Game");
       expect(response.status).toBe(200);
       expect(response.body.view).toBe("games/game-detail");
       expect(response.body.data.game).toEqual(mockGame);
@@ -489,10 +493,12 @@ describe("Home Routes", () => {
       };
       const mockComments = [];
       const mockSimilarGames = [];
+      const mockAdjacentGames = { prevGame: null, nextGame: null };
 
       vi.mocked(Game.findBySlug).mockResolvedValue(mockGame as any);
       vi.mocked(Comment.findByGameId).mockResolvedValue(mockComments as any);
       vi.mocked(Game.findSimilar).mockResolvedValue(mockSimilarGames as any);
+      vi.mocked(Game.findAdjacentGames).mockResolvedValue(mockAdjacentGames);
 
       const response = await request(app).get("/test-game-slug");
 

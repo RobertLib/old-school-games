@@ -1207,6 +1207,10 @@ body::after {
     text-overflow: ellipsis;
   }
 
+  .nowrap {
+    white-space: nowrap;
+  }
+
   .text-right {
     text-align: right;
   }
@@ -1371,6 +1375,7 @@ body::after {
     box-shadow: var(--box-shadow);
     margin-bottom: 20px;
     padding: 15px;
+    gap: 10px;
   }
 
   .game-detail-initial {
