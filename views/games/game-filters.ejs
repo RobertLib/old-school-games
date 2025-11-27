@@ -25,7 +25,20 @@
       <% } %>
     </small>
   </h2>
-  <ul>
+  <ul class="sorting-options">
+    <li>
+      <a class="<%= req.query.orderBy === 'title' ? 'active' : '' %>" href="?orderBy=title&orderDir=ASC">A-Z</a>
+    </li>
+    <li>
+      <a class="<%= req.query.orderBy === 'createdAt' ? 'active' : '' %>" href="?orderBy=createdAt&orderDir=DESC">New</a>
+    </li>
+    <li>
+      <a class="<%= req.query.orderBy === 'release' ? 'active' : '' %>" href="?orderBy=release&orderDir=ASC">Year</a>
+    </li>
+    <li>
+      <a class="<%= req.query.orderBy === 'rating' ? 'active' : '' %>" href="?orderBy=rating&orderDir=DESC">Rating</a>
+    </li>
+    <li class="separator">|</li>
     <li>
       <a aria-label="Order by ASC" class="inline-block hover-scale <%= req.query.orderDir === 'ASC' || (!req.query.orderDir && (locals.letter || locals.year || locals.developer || locals.publisher)) ? 'active' : '' %>" href="?<%= new URLSearchParams({ ...req.query, orderDir: 'ASC' }).toString() %>" title="Order by ASC">
         ▲
