@@ -1,5 +1,4 @@
-/* Import retro fonts */
-@import url("https://fonts.googleapis.com/css2?family=VT323&family=Orbitron:wght@400;700;900&display=swap");
+/* Fonts are loaded in head.ejs with preload for better CLS */
 
 :root {
   /* MS-DOS style color palette */
