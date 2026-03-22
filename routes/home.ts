@@ -72,6 +72,33 @@ router.get("/", async (req, res, next) => {
   });
 });
 
+router.get("/about", (req, res) => {
+  res.render("about", {
+    title: "About - OldSchoolGames.eu",
+    description:
+      "OldSchoolGames.eu is a hobby project dedicated to preserving and celebrating classic MS-DOS games from the 80s and 90s. Play retro games directly in your browser.",
+    canonicalUrl: "https://oldschoolgames.eu/about",
+  });
+});
+
+router.get("/privacy-policy", (req, res) => {
+  res.render("privacy-policy", {
+    title: "Privacy Policy - OldSchoolGames.eu",
+    description:
+      "Privacy Policy for OldSchoolGames.eu — learn how we collect and process your personal data in accordance with GDPR.",
+    canonicalUrl: "https://oldschoolgames.eu/privacy-policy",
+  });
+});
+
+router.get("/dmca", (req, res) => {
+  res.render("dmca", {
+    title: "DMCA Policy - OldSchoolGames.eu",
+    description:
+      "DMCA takedown policy for OldSchoolGames.eu. Learn how to submit a copyright infringement notice and how we respond to takedown requests.",
+    canonicalUrl: "https://oldschoolgames.eu/dmca",
+  });
+});
+
 router.get("/:genre", async (req, res, next) => {
   const { genre } = req.params;
   const { orderBy, orderDir } = req.query as Record<string, string>;
@@ -457,11 +484,18 @@ router.get("/:id", async (req, res, next) => {
     name: game.title,
     description: plainDescription.slice(0, 500),
     genre: game.genre,
-    gamePlatform: "MS-DOS",
+    gamePlatform: ["MS-DOS", "Web browser"],
     operatingSystem: "MS-DOS",
     applicationCategory: "Game",
+    playMode: "SinglePlayer",
     url: canonicalUrl,
     image: game.images.filter(Boolean),
+    offers: {
+      "@type": "Offer",
+      price: "0",
+      priceCurrency: "USD",
+      availability: "https://schema.org/InStock",
+    },
   };
   if (game.release) ldJson.datePublished = String(game.release);
   if (game.publisher || game.developer) {

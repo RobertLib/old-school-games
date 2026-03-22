@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <%- include('head') %>
+  <title><%= locals.title %></title>
+  <meta name="description" content="<%= locals.description %>" />
+  <meta property="og:title" content="<%= locals.title %>" />
+  <meta property="og:description" content="<%= locals.description %>" />
+  <meta property="og:url" content="https://oldschoolgames.eu/about" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="OldSchoolGames" />
+  <meta property="og:image" content="https://oldschoolgames.eu/images/navbar.webp" />
+  <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        "name": "OldSchoolGames.eu",
+        "url": "https://oldschoolgames.eu",
+        "logo": "https://oldschoolgames.eu/favicon.png",
+        "description": "A hobby project dedicated to preserving and celebrating classic MS-DOS games from the 80s and 90s.",
+        "founder": {
+          "@type": "Person",
+          "name": "RobLib",
+          "url": "https://roblib.dev",
+          "sameAs": [
+            "https://github.com/RobertLib",
+            "https://twitter.com/RobertLibsansky"
+          ]
+        },
+        "contactPoint": {
+          "@type": "ContactPoint",
+          "contactType": "Customer Support",
+          "email": "contact@oldschoolgames.eu"
+        }
+      }
+    </script>
+</head>
+
+<body class="layout">
+  <%- include('navbar') %> <%- include('left-sidebar') %>
+  <main>
+    <div class="container">
+      <%- include('flash') %>
+      <section>
+        <h1 class="text-lg" style="margin-bottom: 20px">
+          About OldSchoolGames.eu
+        </h1>
+
+        <h2 class="text-md" style="margin-bottom: 10px">
+          What is this site?
+        </h2>
+        <p style="margin-bottom: 15px">
+          OldSchoolGames.eu is a hobby project dedicated to preserving and
+          celebrating classic
+          <strong>MS-DOS games from the 1980s and 1990s</strong>. The goal is
+          to make it easy for anyone to rediscover the games that shaped the
+          history of PC gaming — playable directly in your browser, no
+          installation required.
+        </p>
+        <p style="margin-bottom: 25px">
+          Games run through <strong>js-dos</strong>, a JavaScript port of the
+          legendary
+          <a class="color-primary underline" href="https://www.dosbox.com/" target="_blank" rel="noopener noreferrer">DOSBox</a>
+          emulator. Everything works inside a standard web browser — nothing
+          to install, just click and play.
+        </p>
+
+        <h2 class="text-md" style="margin-bottom: 10px">Who runs this?</h2>
+        <p style="margin-bottom: 15px">
+          This site is created and maintained by
+          <strong>RobLib</strong>, a software developer and retro
+          gaming enthusiast based in the Czech Republic.
+        </p>
+        <ul style="margin-bottom: 25px; padding-left: 20px; line-height: 2">
+          <li>
+            Personal site:
+            <a class="color-primary underline" href="https://roblib.dev" target="_blank" rel="noopener noreferrer">roblib.dev</a>
+          </li>
+          <li>
+            GitHub:
+            <a class="color-primary underline" href="https://github.com/RobertLib" target="_blank" rel="noopener noreferrer">github.com/RobertLib</a>
+          </li>
+          <li>
+            X (Twitter):
+            <a class="color-primary underline" href="https://twitter.com/RobertLibsansky" target="_blank" rel="noopener noreferrer">@RobertLibsansky</a>
+          </li>
+        </ul>
+
+        <h2 class="text-md" style="margin-bottom: 10px">Open Source</h2>
+        <p style="margin-bottom: 25px">
+          The source code for this project is publicly available on GitHub:
+          <a class="color-primary underline" href="https://github.com/RobertLib/old-school-games" target="_blank" rel="noopener noreferrer">github.com/RobertLib/old-school-games</a>. Contributions, bug reports, and feedback are always welcome.
+        </p>
+
+        <h2 class="text-md" style="margin-bottom: 10px">Copyright & Games</h2>
+        <p style="margin-bottom: 15px">
+          This site hosts games that are believed to be freely distributable —
+          including titles officially released as freeware by their
+          publishers, and classic abandonware titles no longer commercially
+          available. We do not profit from the games hosted on this platform.
+        </p>
+        <p style="margin-bottom: 25px">
+          If you are a copyright holder and believe any content hosted here
+          infringes your rights, please contact us via our
+          <a class="color-primary underline" href="/dmca">DMCA policy page</a>
+          and we will remove it promptly.
+        </p>
+
+        <h2 class="text-md" style="margin-bottom: 10px">Contact</h2>
+        <p>
+          For general inquiries, game suggestions, or copyright concerns,
+          reach out at
+          <a class="color-primary underline" href="mailto:contact@oldschoolgames.eu">contact@oldschoolgames.eu</a>.
+        </p>
+      </section>
+    </div>
+  </main>
+  <%- include('right-sidebar') %> <%- include('footer') %>
+</body>
+
+</html>
