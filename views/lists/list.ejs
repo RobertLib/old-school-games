@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <%- include('../head') %>
+  <meta name="description" content="<%= list.description %>" />
+  <title><%= list.title %></title>
+  <!-- Open Graph -->
+  <meta property="og:title" content="<%= list.title %>" />
+  <meta property="og:description" content="<%= list.description %>" />
+  <meta property="og:url" content="<%= canonicalUrl %>" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="OldSchoolGames" />
+  <script src="/js/rating-stars.js"></script>
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "ItemList",
+      "name": "<%= list.h1 %>",
+      "description": "<%= list.description.replace(/"/g, '&quot;') %>",
+      "url": "<%= canonicalUrl %>",
+      "numberOfItems": <%= totalCount %>,
+      "itemListElement": [
+        <% games.slice(0, 10).forEach((game, index) => { %>
+        {
+          "@type": "ListItem",
+          "position": <%= (page - 1) * limit + index + 1 %>,
+          "item": {
+            "@type": "VideoGame",
+            "name": "<%= game.title.replace(/"/g, '&quot;') %>",
+            "genre": "<%= game.genre %>",
+            "gamePlatform": "MS-DOS",
+            "url": "https://oldschoolgames.eu/<%= game.slug %>"
+          }
+        }<%= index < Math.min(games.length - 1, 9) ? ',' : '' %>
+        <% }); %>
+      ]
+    }
+  </script>
+</head>
+
+<body class="layout">
+  <%- include('../navbar') %>
+  <%- include('../left-sidebar') %>
+  <main>
+    <div class="container">
+      <%- include('../flash') %>
+
+      <!-- Breadcrumb -->
+      <nav aria-label="breadcrumb" style="margin-bottom: 1em; font-size: 0.85em;">
+        <a href="/">Home</a>
+        &rsaquo;
+        <a href="/game-lists">Game Lists</a>
+        &rsaquo;
+        <span><%= list.h1 %></span>
+      </nav>
+
+      <section>
+        <h1 class="text-xl" style="margin: 0 0 12px"><%= list.h1 %></h1>
+
+        <div style="margin-bottom: 1.5em; padding: 1em; background: rgba(var(--border-rgb), 0.15); border-left: 3px solid rgb(var(--primary-rgb)); border-radius: var(--border-radius);">
+          <p style="margin: 0; line-height: 1.7; color: rgb(var(--color-rgb))"><%= list.intro %></p>
+        </div>
+
+        <%- include('../games/game-filters') %>
+
+        <%- include('../games/game-list', { games, page, limit }) %>
+
+        <!-- Related Lists -->
+        <% if (relatedLists && relatedLists.length > 0) { %>
+        <div style="margin-top: 2em; padding: 1.2em; background: rgba(var(--border-rgb), 0.2); border: 1px solid rgb(var(--border-rgb)); border-radius: var(--border-radius);">
+          <h2 style="margin: 0 0 0.8em; font-size: 1rem; color: rgb(var(--primary-rgb)); text-shadow: var(--text-shadow);">More game lists you might enjoy:</h2>
+          <div style="display: flex; flex-wrap: wrap; gap: 0.6em;">
+            <% relatedLists.forEach(related => { %>
+            <a href="/<%= related.slug %>" class="btn btn-sm btn-outline"><%= related.h1 %></a>
+            <% }); %>
+          </div>
+        </div>
+        <% } %>
+
+        <!-- Link back to all lists -->
+        <div style="margin-top: 1.5em; text-align: center;">
+          <a href="/game-lists" class="btn btn-outline">Browse all game lists &rarr;</a>
+        </div>
+      </section>
+    </div>
+  </main>
+  <%- include('../right-sidebar') %>
+  <%- include('../footer') %>
+</body>
+
+</html>

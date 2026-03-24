@@ -33,4 +33,30 @@
       </a>
     </li>
   </ul>
+
+  <br />
+
+  <header>Top Lists</header>
+  <ul class="nav nav-column">
+    <li>
+      <a class="nav-link <%= req.path === '/game-lists' ? 'active' : '' %>" href="/game-lists">
+        All Game Lists
+      </a>
+    </li>
+    <li>
+      <a class="nav-link <%= req.path === '/top-dos-games' ? 'active' : '' %>" href="/top-dos-games">
+        Top DOS Games
+      </a>
+    </li>
+    <li>
+      <a class="nav-link <%= req.path === '/dos-games-1990s' ? 'active' : '' %>" href="/dos-games-1990s">
+        Best of the 90s
+      </a>
+    </li>
+    <li>
+      <a class="nav-link <%= req.path === '/dos-games-1980s' ? 'active' : '' %>" href="/dos-games-1980s">
+        Best of the 80s
+      </a>
+    </li>
+  </ul>
 </aside>

@@ -2,6 +2,7 @@ import express from "express";
 import { SitemapStream, streamToPromise } from "sitemap";
 import Game from "../models/game.ts";
 import News from "../models/news.ts";
+import { LISTS } from "./lists.ts";
 
 const router = express.Router();
 
@@ -68,6 +69,21 @@ router.get("/sitemap-index.xml", async (req, res) => {
       changefreq: "weekly",
       priority: 0.8,
     });
+
+    // Add curated game list pages
+    smStream.write({
+      url: `/game-lists`,
+      changefreq: "monthly",
+      priority: 0.9,
+    });
+
+    for (const list of LISTS) {
+      smStream.write({
+        url: `/${list.slug}`,
+        changefreq: "weekly",
+        priority: 0.9,
+      });
+    }
 
     smStream.write({
       url: `/profile`,

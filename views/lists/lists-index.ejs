@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <%- include('../head') %>
+  <meta name="description" content="<%= description %>" />
+  <title><%= title %></title>
+  <!-- Open Graph -->
+  <meta property="og:title" content="<%= title %>" />
+  <meta property="og:description" content="<%= description %>" />
+  <meta property="og:url" content="<%= canonicalUrl %>" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="OldSchoolGames" />
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "CollectionPage",
+      "name": "<%= title %>",
+      "description": "<%= description.replace(/"/g, '&quot;') %>",
+      "url": "<%= canonicalUrl %>"
+    }
+  </script>
+</head>
+
+<body class="layout">
+  <%- include('../navbar') %>
+  <%- include('../left-sidebar') %>
+  <main>
+    <div class="container">
+      <%- include('../flash') %>
+
+      <!-- Breadcrumb -->
+      <nav aria-label="breadcrumb" style="margin-bottom: 1em; font-size: 0.85em;">
+        <a href="/">Home</a>
+        &rsaquo;
+        <span>Game Lists</span>
+      </nav>
+
+      <section>
+        <h1 class="text-xl" style="margin: 0 0 10px">Classic DOS Game Lists & Top Picks</h1>
+        <p style="margin: 0 0 1.8em; color: rgb(var(--color-rgb)); line-height: 1.6;">
+          Not sure what to play next? Browse our curated lists of the best classic MS-DOS games, organized by genre, decade, and community rating. Every game on this site is playable free in your browser — no downloads or installation needed.
+        </p>
+
+        <!-- Top Picks -->
+        <h2 style="margin: 0 0 0.8em; font-size: 1.1rem; color: rgb(var(--primary-rgb)); text-shadow: var(--text-shadow);">&#9733; Top Picks</h2>
+        <div class="game-list" style="margin-bottom: 2em;">
+          <% lists.filter(l => ['top-dos-games', 'dos-games-1990s', 'dos-games-1980s'].includes(l.slug)).forEach(list => { %>
+          <article class="card" style="padding: 1em;">
+            <a href="/<%= list.slug %>" class="color-primary font-bold">
+              <h3 class="text-lg" style="margin: 0 0 0.4em"><%= list.h1 %></h3>
+            </a>
+            <p style="margin: 0 0 0.8em; font-size: 0.9em; line-height: 1.5; color: rgb(var(--color-rgb))"><%= list.description %></p>
+            <a href="/<%= list.slug %>" class="btn btn-sm btn-outline">Browse list &rarr;</a>
+          </article>
+          <% }); %>
+        </div>
+
+        <!-- By Genre -->
+        <h2 style="margin: 0 0 0.8em; font-size: 1.1rem; color: rgb(var(--primary-rgb)); text-shadow: var(--text-shadow);">Browse by Genre</h2>
+        <div class="game-list" style="margin-bottom: 2em;">
+          <% lists.filter(l => !['top-dos-games', 'dos-games-1990s', 'dos-games-1980s'].includes(l.slug)).forEach(list => { %>
+          <article class="card" style="padding: 1em;">
+            <a href="/<%= list.slug %>" class="color-primary font-bold">
+              <h3 class="text-lg" style="margin: 0 0 0.4em"><%= list.h1 %></h3>
+            </a>
+            <p style="margin: 0 0 0.8em; font-size: 0.9em; line-height: 1.5; color: rgb(var(--color-rgb))"><%= list.description %></p>
+            <a href="/<%= list.slug %>" class="btn btn-sm btn-outline">Browse list &rarr;</a>
+          </article>
+          <% }); %>
+        </div>
+      </section>
+    </div>
+  </main>
+  <%- include('../right-sidebar') %>
+  <%- include('../footer') %>
+</body>
+
+</html>

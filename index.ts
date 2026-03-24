@@ -25,6 +25,7 @@ import gamesRoutes from "./routes/games.ts";
 import commentsRoutes from "./routes/comments.ts";
 import newsRoutes from "./routes/news.ts";
 import indexnowRoutes from "./routes/indexnow.ts";
+import listsRoutes from "./routes/lists.ts";
 // import analyticsMiddleware from "./middlewares/analytics.ts";
 // import analyticsRoutes from "./routes/analytics.ts";
 
@@ -256,6 +257,7 @@ app.use((req, res, next) => {
 
 app.use("/", authRoutes);
 app.use("/", sitemapRoutes);
+app.use("/", listsRoutes);
 app.use("/", homeRoutes);
 app.use("/games", gamesRoutes);
 app.use("/comments", commentsRoutes);

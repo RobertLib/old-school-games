@@ -106,6 +106,8 @@ export default class Game extends Model {
     developer,
     publisher,
     year,
+    releaseFrom,
+    releaseTo,
     limit,
     orderBy,
     orderDir,
@@ -117,6 +119,8 @@ export default class Game extends Model {
     developer?: string;
     publisher?: string;
     year?: number;
+    releaseFrom?: number;
+    releaseTo?: number;
     limit?: number;
     orderBy?: string;
     orderDir?: string;
@@ -148,6 +152,16 @@ export default class Game extends Model {
     if (year) {
       whereConditions.push(`g."release" = $${values.length + 1}`);
       values.push(year);
+    }
+
+    if (releaseFrom) {
+      whereConditions.push(`g."release" >= $${values.length + 1}`);
+      values.push(releaseFrom);
+    }
+
+    if (releaseTo) {
+      whereConditions.push(`g."release" <= $${values.length + 1}`);
+      values.push(releaseTo);
     }
 
     if (search) {
@@ -310,12 +324,16 @@ export default class Game extends Model {
     developer,
     publisher,
     year,
+    releaseFrom,
+    releaseTo,
   }: {
     genre?: string;
     letter?: string;
     developer?: string;
     publisher?: string;
     year?: number;
+    releaseFrom?: number;
+    releaseTo?: number;
   } = {}): Promise<number> {
     let query = 'SELECT COUNT(*) as total FROM "games" g';
     const values: any[] = [];
@@ -334,6 +352,16 @@ export default class Game extends Model {
     if (year) {
       whereConditions.push(`g."release" = $${values.length + 1}`);
       values.push(year);
+    }
+
+    if (releaseFrom) {
+      whereConditions.push(`g."release" >= $${values.length + 1}`);
+      values.push(releaseFrom);
+    }
+
+    if (releaseTo) {
+      whereConditions.push(`g."release" <= $${values.length + 1}`);
+      values.push(releaseTo);
     }
 
     if (developer) {
