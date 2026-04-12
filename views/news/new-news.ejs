@@ -17,6 +17,7 @@
         <h1 class="text-xl" style="margin: 0 0 20px;">Add New News</h1>
 
         <form action="/news" method="POST">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
           <div class="form-group">
             <label for="title" class="form-label">Title *</label><br />
             <input type="text" class="form-control <%= locals.errors?.find(error => error.field === 'title') ? 'is-invalid' : '' %>" id="title" name="title" value="<%= locals.formData?.title || '' %>" maxlength="255" required style="max-width: 768px; width: 100%" />

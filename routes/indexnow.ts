@@ -1,4 +1,5 @@
 import express from "express";
+import logger from "../utils/logger.ts";
 import isAuth from "../middlewares/is-auth.ts";
 import isAdmin from "../middlewares/is-admin.ts";
 import IndexNow from "../utils/indexnow.ts";
@@ -58,20 +59,23 @@ router.post("/indexnow/submit-all", isAuth, isAdmin, async (req, res) => {
       urls.push(`/${genre.toLowerCase()}`);
     });
 
+    // Deduplicate URLs before submitting
+    const uniqueUrls = [...new Set(urls)];
+
     // Submit to IndexNow (in batches of 100 URLs)
     const batchSize = 100;
     let successCount = 0;
     let errorCount = 0;
 
-    for (let i = 0; i < urls.length; i += batchSize) {
-      const batch = urls.slice(i, i + batchSize);
+    for (let i = 0; i < uniqueUrls.length; i += batchSize) {
+      const batch = uniqueUrls.slice(i, i + batchSize);
       const result = await IndexNow.submitUrls(batch);
 
       if (result.success) {
         successCount += batch.length;
       } else {
         errorCount += batch.length;
-        console.error(`IndexNow batch failed:`, result.error);
+        logger.error(`IndexNow batch failed:`, { error: result.error });
       }
     }
 
@@ -87,7 +91,7 @@ router.post("/indexnow/submit-all", isAuth, isAdmin, async (req, res) => {
       );
     }
   } catch (error) {
-    console.error("IndexNow manual submission error:", error);
+    logger.error("IndexNow manual submission error:", error);
     req.flash("error", "Failed to submit URLs to IndexNow.");
   }
 
@@ -122,7 +126,7 @@ router.post("/indexnow/submit-game/:id", isAuth, isAdmin, async (req, res) => {
       req.flash("error", `Failed to submit game to IndexNow: ${result.error}`);
     }
   } catch (error) {
-    console.error("IndexNow game submission error:", error);
+    logger.error("IndexNow game submission error:", error);
     req.flash("error", "Failed to submit game to IndexNow.");
   }
 
@@ -140,7 +144,7 @@ router.post("/indexnow/test", isAuth, isAdmin, async (req, res) => {
       req.flash("error", `IndexNow test failed: ${result.error}`);
     }
   } catch (error) {
-    console.error("IndexNow test error:", error);
+    logger.error("IndexNow test error:", error);
     req.flash("error", "IndexNow test failed.");
   }
 

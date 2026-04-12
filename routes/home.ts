@@ -1,7 +1,6 @@
 import express from "express";
 import Game from "../models/game.ts";
 import Comment from "../models/comment.ts";
-import GameOfTheWeek from "../models/game-of-the-week.ts";
 import News from "../models/news.ts";
 
 const router = express.Router();
@@ -9,11 +8,6 @@ const router = express.Router();
 const VALID_ORDER_BY_FIELDS = ["createdAt", "release", "rating", "title"];
 
 router.get("/", async (req, res, next) => {
-  const gameOfTheWeek = await GameOfTheWeek.getCurrent();
-  if (!gameOfTheWeek) {
-    await GameOfTheWeek.selectNewGameOfTheWeek();
-  }
-
   const { genre, search, orderBy, orderDir } = req.query as Record<
     string,
     string
@@ -103,14 +97,14 @@ router.get("/:genre", async (req, res, next) => {
   const { genre } = req.params;
   const { orderBy, orderDir } = req.query as Record<string, string>;
 
-  const page = parseInt(req.query.page as string, 10) || 1;
-  const limit = 25;
-
-  const genres = await Game.getGenres();
+  const genres: string[] = res.locals.gameGenres ?? (await Game.getGenres());
 
   if (!genres.includes(genre.toUpperCase())) {
     return next();
   }
+
+  const page = parseInt(req.query.page as string, 10) || 1;
+  const limit = 25;
 
   if (orderBy && !VALID_ORDER_BY_FIELDS.includes(orderBy)) {
     return next();
@@ -403,7 +397,7 @@ router.get("/:slug/gallery/:index", async (req, res, next) => {
 router.get("/:id", async (req, res, next) => {
   const { id } = req.params;
 
-  const game = await (isNaN(id as unknown as number)
+  const game = await (Number.isNaN(Number(id))
     ? Game.findBySlug(id)
     : Game.findById(id));
 

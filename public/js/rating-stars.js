@@ -75,11 +75,15 @@ class RatingStars extends HTMLElement {
 
   async submitRating(gameId, rating) {
     try {
+      const csrfToken = document
+        .querySelector('meta[name="csrf-token"]')
+        ?.getAttribute("content");
+      const headers = { "Content-Type": "application/json" };
+      if (csrfToken) headers["X-CSRF-Token"] = csrfToken;
+
       const response = await fetch(`/games/${gameId}/rate`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers,
         body: JSON.stringify({ rating }),
       });
 

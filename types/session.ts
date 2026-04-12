@@ -7,5 +7,17 @@ declare module "express-session" {
       email: string;
       role?: string;
     };
+    csrfToken?: string;
+    flash?: Record<string, string[]>;
+  }
+}
+
+declare global {
+  namespace Express {
+    interface Request {
+      flash(): Record<string, string[]>;
+      flash(type: string): string[];
+      flash(type: string, message: string): void;
+    }
   }
 }

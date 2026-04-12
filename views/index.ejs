@@ -87,12 +87,14 @@
 
           <div style="display: flex; gap: 5px;">
             <form action="/indexnow/test" method="POST" style="display: inline;">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
               <button class="btn btn-outline btn-sm" type="submit" title="Test IndexNow configuration">
                 🔍 Test IndexNow
               </button>
             </form>
 
             <form action="/indexnow/submit-all" method="POST" style="display: inline;" onsubmit="return confirm('This will submit all URLs to search engines. Continue?')">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
               <button class="btn btn-outline btn-sm" type="submit" title="Submit all URLs to search engines">
                 📡 Submit All to IndexNow
               </button>

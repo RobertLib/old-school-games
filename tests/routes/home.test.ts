@@ -80,18 +80,14 @@ describe("Home Routes", () => {
       expect(response.body.data.games).toEqual(mockGames);
     });
 
-    it("should select new game of the week if none exists", async () => {
+    it("should render index page when game of the week is not set", async () => {
       const mockGames = [{ id: 1, title: "Test Game 1" }];
 
       vi.mocked(Game.find).mockResolvedValue(mockGames as any);
       vi.mocked(GameOfTheWeek.getCurrent).mockResolvedValue(null);
-      vi.mocked(GameOfTheWeek.selectNewGameOfTheWeek).mockResolvedValue(
-        undefined as any,
-      );
 
       const response = await request(app).get("/");
 
-      expect(GameOfTheWeek.selectNewGameOfTheWeek).toHaveBeenCalled();
       expect(response.status).toBe(200);
     });
 
@@ -544,6 +540,7 @@ describe("Home Routes", () => {
         id: 1,
         title: "Test Game",
         slug: "test-game",
+        description: "A test game description.",
         images: ["image1.jpg", "image2.jpg", "image3.jpg"],
       };
 

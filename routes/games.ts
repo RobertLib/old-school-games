@@ -1,10 +1,10 @@
 import express from "express";
+import logger from "../utils/logger.ts";
 import isAuth from "../middlewares/is-auth.ts";
 import isAdmin from "../middlewares/is-admin.ts";
 import Game from "../models/game.ts";
 import rateLimit from "express-rate-limit";
 import { validateGameRating } from "../validations/games.ts";
-import { clearSitemapCache } from "./sitemap.ts";
 
 const router = express.Router();
 
@@ -13,12 +13,15 @@ router.get("/new", isAuth, isAdmin, async (req, res) => {
 });
 
 router.post("/", isAuth, isAdmin, async (req, res, next) => {
-  await Game.create(req.body);
+  try {
+    await Game.create(req.body);
 
-  clearSitemapCache();
-  req.flash("info", "Game created successfully.");
+    req.flash("info", "Game created successfully.");
 
-  res.redirect("/");
+    res.redirect("/");
+  } catch (error) {
+    next(error);
+  }
 });
 
 router.get("/:id/edit", isAuth, isAdmin, async (req, res, next) => {
@@ -36,17 +39,20 @@ router.get("/:id/edit", isAuth, isAdmin, async (req, res, next) => {
 router.post("/:id", isAuth, isAdmin, async (req, res, next) => {
   const id = req.params.id as string;
 
-  const game = await Game.update(id, req.body);
+  try {
+    const game = await Game.update(id, req.body);
 
-  if (!game) {
-    res.status(404).send("Game not found");
-    return;
+    if (!game) {
+      res.status(404).send("Game not found");
+      return;
+    }
+
+    req.flash("info", "Game updated successfully.");
+
+    res.redirect("/");
+  } catch (error) {
+    next(error);
   }
-
-  clearSitemapCache();
-  req.flash("info", "Game updated successfully.");
-
-  res.redirect("/");
 });
 
 router.post("/:id/delete", isAuth, isAdmin, async (req, res, next) => {
@@ -54,7 +60,6 @@ router.post("/:id/delete", isAuth, isAdmin, async (req, res, next) => {
 
   await Game.delete(id);
 
-  clearSitemapCache();
   req.flash("info", "Game deleted successfully.");
 
   res.redirect("/");
@@ -82,7 +87,7 @@ router.post(
 
       res.status(200).send({ averageRating });
     } catch (error) {
-      console.error("Error saving rating:", error);
+      logger.error("Error saving rating:", error);
       res.status(500).json({ error: "Internal server error" });
     }
   },

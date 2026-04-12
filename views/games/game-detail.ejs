@@ -71,11 +71,13 @@
               Edit
             </a>
             <form action="/games/<%= game.id %>/delete" method="POST">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
               <button class="btn btn-outline btn-sm" onclick="return confirm('Are you sure?')" type="submit">
                 Delete
               </button>
             </form>
             <form action="/indexnow/submit-game/<%= game.id %>" method="POST" style="display: inline;">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
               <button class="btn btn-outline btn-sm" type="submit" title="Submit this game to IndexNow">
                 📡 IndexNow
               </button>

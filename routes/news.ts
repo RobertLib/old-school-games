@@ -72,4 +72,32 @@ router.get("/", async (req, res, next) => {
   }
 });
 
+// Public route - single news item
+router.get("/:id", async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (isNaN(id) || id <= 0) {
+      return next();
+    }
+
+    const newsItem = await News.findById(id);
+    if (!newsItem) {
+      return next();
+    }
+
+    res.render("news/news-detail", {
+      title: `${newsItem.title} - OldSchoolGames`,
+      description: newsItem.content
+        .replace(/<[^>]+>/g, " ")
+        .replace(/\s+/g, " ")
+        .trim()
+        .slice(0, 160),
+      canonicalUrl: `https://oldschoolgames.eu/news/${newsItem.id}`,
+      newsItem,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 export default router;

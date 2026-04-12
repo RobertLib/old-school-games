@@ -4,7 +4,7 @@
   <div class="card-body">
     <% recentNews.forEach((newsItem, index) => { %>
     <article class="news-item-preview <% if (index > 0) { %>news-item-preview-bordered<% } %>">
-      <h3 class="news-item-preview-title"><%= newsItem.title %></h3>
+      <h3 class="news-item-preview-title"><a href="/news/<%= newsItem.id %>"><%= newsItem.title %></a></h3>
       <div class="news-item-preview-meta">
         <time datetime="<%= new Date(newsItem.createdAt).toISOString() %>">
           <%= new Date(newsItem.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) %>

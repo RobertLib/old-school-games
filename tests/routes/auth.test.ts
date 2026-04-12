@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import request from "supertest";
 import express from "express";
-import bcrypt from "bcrypt";
+import * as password from "../../utils/password";
 import authRouter from "../../routes/auth";
 import User from "../../models/user";
 
-vi.mock("bcrypt");
+vi.mock("../../utils/password");
 vi.mock("../../models/user", () => ({
   default: {
     findByEmail: vi.fn(),
@@ -27,7 +27,9 @@ app.use((req, res, next) => {
         ...sessionData,
         id: "test-session-id",
         cookie: {} as any,
-        regenerate: vi.fn(),
+        regenerate: vi.fn((callback?: (err?: any) => void) => {
+          if (callback) callback();
+        }),
         destroy: vi.fn((callback?: (err?: any) => void) => {
           req.session = {
             id: "test-session-id",
@@ -48,7 +50,9 @@ app.use((req, res, next) => {
       req.session = {
         id: "test-session-id",
         cookie: {} as any,
-        regenerate: vi.fn(),
+        regenerate: vi.fn((callback?: (err?: any) => void) => {
+          if (callback) callback();
+        }),
         destroy: vi.fn((callback?: (err?: any) => void) => {
           if (callback) callback();
         }),
@@ -61,7 +65,9 @@ app.use((req, res, next) => {
     req.session = {
       id: "test-session-id",
       cookie: {} as any,
-      regenerate: vi.fn(),
+      regenerate: vi.fn((callback?: (err?: any) => void) => {
+        if (callback) callback();
+      }),
       destroy: vi.fn((callback?: (err?: any) => void) => {
         if (callback) callback();
       }),
@@ -107,7 +113,7 @@ describe("Auth Routes", () => {
 
     it("should login successfully with valid credentials", async () => {
       vi.mocked(User.findByEmail).mockResolvedValue(mockUser as any);
-      vi.mocked(bcrypt.compare).mockResolvedValue(true as never);
+      vi.mocked(password.verifyPassword).mockResolvedValue(true);
 
       const response = await request(app).post("/login").send({
         email: "test@example.com",
@@ -117,7 +123,7 @@ describe("Auth Routes", () => {
       expect(response.status).toBe(302);
       expect(response.headers.location).toBe("/");
       expect(User.findByEmail).toHaveBeenCalledWith("test@example.com");
-      expect(bcrypt.compare).toHaveBeenCalledWith(
+      expect(password.verifyPassword).toHaveBeenCalledWith(
         "password123",
         "hashedpassword",
       );
@@ -167,7 +173,7 @@ describe("Auth Routes", () => {
 
     it("should return error when password is invalid", async () => {
       vi.mocked(User.findByEmail).mockResolvedValue(mockUser as any);
-      vi.mocked(bcrypt.compare).mockResolvedValue(false as never);
+      vi.mocked(password.verifyPassword).mockResolvedValue(false);
 
       const response = await request(app).post("/login").send({
         email: "test@example.com",
@@ -178,7 +184,7 @@ describe("Auth Routes", () => {
       expect(response.body.view).toBe("auth/login");
       expect(response.body.data.error).toBe("Invalid credentials.");
       expect(User.findByEmail).toHaveBeenCalledWith("test@example.com");
-      expect(bcrypt.compare).toHaveBeenCalledWith(
+      expect(password.verifyPassword).toHaveBeenCalledWith(
         "wrongpassword",
         "hashedpassword",
       );
@@ -186,7 +192,7 @@ describe("Auth Routes", () => {
 
     it("should set session user data on successful login", async () => {
       vi.mocked(User.findByEmail).mockResolvedValue(mockUser as any);
-      vi.mocked(bcrypt.compare).mockResolvedValue(true as never);
+      vi.mocked(password.verifyPassword).mockResolvedValue(true);
 
       const response = await request(app).post("/login").send({
         email: "test@example.com",

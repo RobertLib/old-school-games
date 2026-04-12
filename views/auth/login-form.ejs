@@ -1,4 +1,5 @@
 <form action="/login" method="POST">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
   <% if (locals.error) { %>
   <p><%= error %></p>
   <% } %>

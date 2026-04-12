@@ -26,7 +26,6 @@ async function cleanTestData(client: pg.PoolClient) {
     "ratings",
     "game_of_the_week",
     "news",
-    "analytics",
     "games",
     "users",
   ];
@@ -45,7 +44,6 @@ async function cleanTestData(client: pg.PoolClient) {
     "games_id_seq",
     "users_id_seq",
     "news_id_seq",
-    "analytics_id_seq",
     "game_of_the_week_id_seq",
     "ratings_id_seq",
   ];

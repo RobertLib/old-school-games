@@ -7,24 +7,33 @@ export const validateComment = (
 ): void => {
   const { nick, content, gameId } = req.body;
 
+  const referer = req.get("Referer") || "/";
+  const safeRedirect = (() => {
+    try {
+      return new URL(referer, "http://localhost").pathname;
+    } catch {
+      return "/";
+    }
+  })();
+
   if (nick && nick.length > 255) {
     req.flash("error", "Nick is too long");
-    return res.redirect(req.get("Referer") || "/");
+    return res.redirect(safeRedirect);
   }
 
   if (!content || content.trim().length === 0) {
     req.flash("error", "Content is required");
-    return res.redirect(req.get("Referer") || "/");
+    return res.redirect(safeRedirect);
   }
 
   if (content.length > 1000) {
     req.flash("error", "Content is too long");
-    return res.redirect(req.get("Referer") || "/");
+    return res.redirect(safeRedirect);
   }
 
   if (content && /<script|javascript:|data:/i.test(content)) {
     req.flash("error", "Invalid content detected");
-    return res.redirect(req.get("Referer") || "/");
+    return res.redirect(safeRedirect);
   }
 
   const numericGameId = parseInt(gameId, 10);
@@ -34,7 +43,7 @@ export const validateComment = (
     numericGameId > Number.MAX_SAFE_INTEGER
   ) {
     req.flash("error", "Invalid game ID");
-    return res.redirect(req.get("Referer") || "/");
+    return res.redirect(safeRedirect);
   }
 
   next();

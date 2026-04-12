@@ -49,6 +49,7 @@
   <div class="flex" style="gap: 5px; justify-content: end; width: 100%; margin-top: 5px">
     <a class="btn btn-outline btn-sm" href="/games/<%= game.id %>/edit">Edit</a>
     <form action="/games/<%= game.id %>/delete" method="POST">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
       <button class="btn btn-outline btn-sm" onclick="return confirm('Are you sure?')" type="submit">
         Delete
       </button>

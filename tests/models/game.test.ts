@@ -94,18 +94,7 @@ describe("Game Model", () => {
   });
 
   describe("getGenres", () => {
-    it("should return cached genres if available", async () => {
-      (Game as any).cachedGenres = ["ACTION", "STRATEGY"];
-
-      const genres = await Game.getGenres();
-
-      expect(genres).toEqual(["ACTION", "STRATEGY"]);
-      expect(mockDb.query).not.toHaveBeenCalled();
-    });
-
-    it("should fetch and cache genres from database", async () => {
-      (Game as any).cachedGenres = null;
-
+    it("should fetch genres from database", async () => {
       const mockResult = {
         rows: [{ genres: "{ACTION,STRATEGY,RPG}" }],
       };
@@ -118,7 +107,6 @@ describe("Game Model", () => {
         "SELECT enum_range(NULL::GAME_GENRE) AS genres",
       );
       expect(genres).toEqual(["ACTION", "STRATEGY", "RPG"]);
-      expect((Game as any).cachedGenres).toEqual(["ACTION", "STRATEGY", "RPG"]);
     });
   });
 
@@ -141,12 +129,14 @@ describe("Game Model", () => {
         deletedAt: null,
       };
 
-      (mockDb.query as any).mockResolvedValueOnce({ rows: [mockGameData] });
+      (mockDb.query as any).mockResolvedValueOnce({
+        rows: [{ ...mockGameData, averageRating: "0", ratingCount: "0" }],
+      });
 
       const result = await Game.findById(1);
 
       expect(mockDb.query).toHaveBeenCalledWith(
-        'SELECT * FROM "games" WHERE "id" = $1',
+        expect.stringContaining('WHERE g."id" = $1'),
         [1],
       );
       expect(result).toBeInstanceOf(Game);
@@ -159,7 +149,7 @@ describe("Game Model", () => {
       const result = await Game.findById(999);
 
       expect(mockDb.query).toHaveBeenCalledWith(
-        'SELECT * FROM "games" WHERE "id" = $1',
+        expect.stringContaining('WHERE g."id" = $1'),
         [999],
       );
       expect(result).toBeNull();
@@ -185,21 +175,15 @@ describe("Game Model", () => {
         deletedAt: null,
       };
 
-      (mockDb.query as any)
-        .mockResolvedValueOnce({ rows: [mockGameData] })
-        .mockResolvedValueOnce({ rows: [{ averageRating: 4.5 }] });
+      (mockDb.query as any).mockResolvedValueOnce({
+        rows: [{ ...mockGameData, averageRating: "4.5", ratingCount: "1" }],
+      });
 
       const result = await Game.findBySlug("slug-game");
 
-      expect(mockDb.query).toHaveBeenNthCalledWith(
-        1,
-        'SELECT * FROM "games" WHERE "slug" = $1',
+      expect(mockDb.query).toHaveBeenCalledWith(
+        expect.stringContaining('WHERE g."slug" = $1'),
         ["slug-game"],
-      );
-      expect(mockDb.query).toHaveBeenNthCalledWith(
-        2,
-        'SELECT AVG("rating") as "averageRating" FROM "ratings" WHERE "gameId" = $1',
-        [1],
       );
       expect(result).toBeInstanceOf(Game);
       expect(result?.averageRating).toBe(4.5);
@@ -697,7 +681,7 @@ describe("Game Model", () => {
       expect(mockDb.query).toHaveBeenCalledTimes(2);
       expect(mockDb.query).toHaveBeenNthCalledWith(
         1,
-        'SELECT * FROM "games" WHERE "id" = $1',
+        expect.stringContaining('WHERE g."id" = $1'),
         [1],
       );
       expect(mockDb.query).toHaveBeenNthCalledWith(

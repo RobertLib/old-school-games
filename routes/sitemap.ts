@@ -1,8 +1,39 @@
 import express from "express";
-import { SitemapStream, streamToPromise } from "sitemap";
+import logger from "../utils/logger.ts";
 import Game from "../models/game.ts";
 import News from "../models/news.ts";
 import { LISTS } from "./lists.ts";
+
+interface SitemapEntry {
+  url: string;
+  changefreq?: string;
+  priority?: number;
+  lastmod?: string;
+}
+
+const HOSTNAME = "https://oldschoolgames.eu";
+
+function buildSitemapXml(entries: SitemapEntry[]): Buffer {
+  const escape = (s: string) =>
+    s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+  const urlTags = entries.map((e) => {
+    let tag = `  <url>\n    <loc>${escape(HOSTNAME + e.url)}</loc>\n`;
+    if (e.changefreq) tag += `    <changefreq>${e.changefreq}</changefreq>\n`;
+    if (e.priority !== undefined)
+      tag += `    <priority>${e.priority.toFixed(1)}</priority>\n`;
+    if (e.lastmod) tag += `    <lastmod>${e.lastmod}</lastmod>\n`;
+    return tag + `  </url>`;
+  });
+
+  const xml =
+    `<?xml version="1.0" encoding="UTF-8"?>\n` +
+    `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n` +
+    urlTags.join("\n") +
+    `\n</urlset>`;
+
+  return Buffer.from(xml, "utf-8");
+}
 
 const router = express.Router();
 
@@ -28,86 +59,45 @@ router.get("/sitemap-index.xml", async (req, res) => {
   try {
     const LIMIT = 25; // Same limit as used in routes
 
-    const smStream = new SitemapStream({
-      hostname: "https://oldschoolgames.eu",
-      xmlns: {
-        news: false,
-        xhtml: false,
-        image: false,
-        video: false,
-      },
-    });
+    const entries: SitemapEntry[] = [];
+    const add = (entry: SitemapEntry) => entries.push(entry);
 
-    smStream.write({ url: "/", changefreq: "daily", priority: 1.0 });
+    add({ url: "/", changefreq: "daily", priority: 1.0 });
 
     // Add paginated pages for main index
     const totalGamesCount = await Game.count();
     const totalPages = Math.ceil(totalGamesCount / LIMIT);
 
     for (let page = 2; page <= totalPages; page++) {
-      smStream.write({
+      add({
         url: `/?page=${page}`,
         changefreq: "daily",
         priority: 0.8,
       });
     }
 
-    smStream.write({
-      url: `/developers`,
-      changefreq: "weekly",
-      priority: 0.8,
-    });
-
-    smStream.write({
-      url: `/publishers`,
-      changefreq: "weekly",
-      priority: 0.8,
-    });
-
-    smStream.write({
-      url: `/years`,
-      changefreq: "weekly",
-      priority: 0.8,
-    });
+    add({ url: `/developers`, changefreq: "weekly", priority: 0.8 });
+    add({ url: `/publishers`, changefreq: "weekly", priority: 0.8 });
+    add({ url: `/years`, changefreq: "weekly", priority: 0.8 });
 
     // Add curated game list pages
-    smStream.write({
-      url: `/game-lists`,
-      changefreq: "monthly",
-      priority: 0.9,
-    });
+    add({ url: `/game-lists`, changefreq: "monthly", priority: 0.9 });
 
     for (const list of LISTS) {
-      smStream.write({
-        url: `/${list.slug}`,
-        changefreq: "weekly",
-        priority: 0.9,
-      });
+      add({ url: `/${list.slug}`, changefreq: "weekly", priority: 0.9 });
     }
 
-    smStream.write({
-      url: `/profile`,
-      changefreq: "monthly",
-      priority: 0.5,
-    });
+    add({ url: `/profile`, changefreq: "monthly", priority: 0.5 });
 
     // Add news pages
-    smStream.write({
-      url: `/news`,
-      changefreq: "daily",
-      priority: 0.8,
-    });
+    add({ url: `/news`, changefreq: "daily", priority: 0.8 });
 
     // Add paginated pages for news
     const newsCount = await News.count();
     const newsPages = Math.ceil(newsCount / 10); // News uses limit of 10
 
     for (let page = 2; page <= newsPages; page++) {
-      smStream.write({
-        url: `/news?page=${page}`,
-        changefreq: "daily",
-        priority: 0.7,
-      });
+      add({ url: `/news?page=${page}`, changefreq: "daily", priority: 0.7 });
     }
 
     const alphabet = "abcdefghijklmnopqrstuvwxyz".split("");
@@ -192,17 +182,13 @@ router.get("/sitemap-index.xml", async (req, res) => {
 
     // Add letter pages
     for (const letter of alphabet) {
-      smStream.write({
-        url: `/letter/${letter}`,
-        changefreq: "weekly",
-        priority: 0.8,
-      });
+      add({ url: `/letter/${letter}`, changefreq: "weekly", priority: 0.8 });
 
       const letterCount = countMap.get(`letter:${letter}`) || 0;
       const letterPages = Math.ceil(letterCount / LIMIT);
 
       for (let page = 2; page <= letterPages; page++) {
-        smStream.write({
+        add({
           url: `/letter/${letter}?page=${page}`,
           changefreq: "weekly",
           priority: 0.7,
@@ -212,7 +198,7 @@ router.get("/sitemap-index.xml", async (req, res) => {
 
     // Add genre pages
     for (const genre of gameGenres) {
-      smStream.write({
+      add({
         url: `/${genre.toLowerCase()}`,
         changefreq: "weekly",
         priority: 0.8,
@@ -222,7 +208,7 @@ router.get("/sitemap-index.xml", async (req, res) => {
       const genrePages = Math.ceil(genreCount / LIMIT);
 
       for (let page = 2; page <= genrePages; page++) {
-        smStream.write({
+        add({
           url: `/${genre.toLowerCase()}?page=${page}`,
           changefreq: "weekly",
           priority: 0.7,
@@ -232,7 +218,7 @@ router.get("/sitemap-index.xml", async (req, res) => {
 
     // Add developer pages
     for (const developer of developers) {
-      smStream.write({
+      add({
         url: `/developer/${encodeURIComponent(developer)}`,
         changefreq: "weekly",
         priority: 0.7,
@@ -242,7 +228,7 @@ router.get("/sitemap-index.xml", async (req, res) => {
       const developerPages = Math.ceil(developerCount / LIMIT);
 
       for (let page = 2; page <= developerPages; page++) {
-        smStream.write({
+        add({
           url: `/developer/${encodeURIComponent(developer)}?page=${page}`,
           changefreq: "weekly",
           priority: 0.6,
@@ -252,7 +238,7 @@ router.get("/sitemap-index.xml", async (req, res) => {
 
     // Add publisher pages
     for (const publisher of publishers) {
-      smStream.write({
+      add({
         url: `/publisher/${encodeURIComponent(publisher)}`,
         changefreq: "weekly",
         priority: 0.7,
@@ -262,7 +248,7 @@ router.get("/sitemap-index.xml", async (req, res) => {
       const publisherPages = Math.ceil(publisherCount / LIMIT);
 
       for (let page = 2; page <= publisherPages; page++) {
-        smStream.write({
+        add({
           url: `/publisher/${encodeURIComponent(publisher)}?page=${page}`,
           changefreq: "weekly",
           priority: 0.6,
@@ -272,17 +258,13 @@ router.get("/sitemap-index.xml", async (req, res) => {
 
     // Add year pages
     for (const year of years) {
-      smStream.write({
-        url: `/year/${year}`,
-        changefreq: "weekly",
-        priority: 0.7,
-      });
+      add({ url: `/year/${year}`, changefreq: "weekly", priority: 0.7 });
 
       const yearCount = countMap.get(`year:${year}`) || 0;
       const yearPages = Math.ceil(yearCount / LIMIT);
 
       for (let page = 2; page <= yearPages; page++) {
-        smStream.write({
+        add({
           url: `/year/${year}?page=${page}`,
           changefreq: "weekly",
           priority: 0.6,
@@ -298,7 +280,7 @@ router.get("/sitemap-index.xml", async (req, res) => {
         ? new Date(game.updatedAt).toISOString().split("T")[0]
         : new Date().toISOString().split("T")[0];
 
-      smStream.write({
+      add({
         url: `/${game.slug}`,
         changefreq: "monthly",
         priority: 0.7,
@@ -306,15 +288,13 @@ router.get("/sitemap-index.xml", async (req, res) => {
       });
     });
 
-    smStream.end();
-
-    const generatedSitemap = await streamToPromise(smStream);
+    const generatedSitemap = buildSitemapXml(entries);
     sitemap = generatedSitemap;
     sitemapGeneratedAt = now;
 
     res.send(sitemap);
   } catch (error) {
-    console.error("Sitemap generation error:", error);
+    logger.error("Sitemap generation error:", error);
     res
       .status(500)
       .header("Content-Type", "text/plain")

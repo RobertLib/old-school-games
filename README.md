@@ -12,11 +12,12 @@ A web application for browsing and playing classic MS-DOS games directly in your
   - Text search by game title
 - **Game Rating**: User rating system for games
 - **Game of the Week**: Automatically selected weekly featured game
+- **Curated Lists**: Predefined thematic game lists (top games, genres, eras, etc.)
+- **News**: News section with admin-managed articles
 - **Favorite Games**: Save favorite games in localStorage
 - **Recently Played**: History of recently played games
 - **Comments**: Comment system for individual games
-- **Administration**: Admin interface for managing games and content
-- **Analytics**: Visitor tracking and statistics
+- **Administration**: Admin interface for managing games, news, and content
 - **Responsive Design**: Fully responsive web interface
 - **Sitemap**: Automatic sitemap generation for SEO
 - **IndexNow**: Automatic search engine notification for content changes
@@ -39,20 +40,26 @@ A web application for browsing and playing classic MS-DOS games directly in your
 ├── db.ts                 # Database connection
 ├── migrate.ts            # Migration script
 ├── models/               # Database models
+│   ├── model.ts         # Base model class
 │   ├── game.ts          # Game model
 │   ├── user.ts          # User model
 │   ├── comment.ts       # Comment model
 │   ├── game-of-the-week.ts # Game of the week model
-│   └── analytics.ts     # Analytics model
-├── routes/               # API endpoints
+│   └── news.ts          # News model
+├── routes/               # Express routes
 │   ├── auth.ts          # Authentication
 │   ├── games.ts         # Game management
 │   ├── home.ts          # Home page
 │   ├── comments.ts      # Comments
-│   ├── indexnow.ts      # IndexNow integration
-│   └── analytics.ts     # Analytics
+│   ├── lists.ts         # Curated game lists
+│   ├── news.ts          # News
+│   ├── sitemap.ts       # Sitemap
+│   └── indexnow.ts      # IndexNow integration
 ├── utils/                # Utility functions
-│   └── indexnow.ts      # IndexNow API client
+│   ├── indexnow.ts      # IndexNow API client
+│   ├── internal-links.ts # Internal link helpers
+│   ├── logger.ts        # Logger
+│   └── password.ts      # Password hashing
 ├── views/                # EJS templates
 ├── public/               # Static files
 ├── middlewares/          # Express middlewares
@@ -153,6 +160,12 @@ The application will run on `http://localhost:3000`
 - `ipAddress` - Rater's IP address
 - `rating` - Rating 1-5
 
+### News
+
+- `title` - Article title
+- `content` - Article content (HTML)
+- `userId` - Reference to author
+
 ## 🔧 Configuration
 
 The application uses the following environment variables:
@@ -231,10 +244,9 @@ Deployment configuration files:
 
 ### For Administrators
 
-- Add new games
-- Edit existing games
+- Add and edit games
 - Manage comments
-- View analytics
+- Create and manage news articles
 
 ## 🤝 Contributing
 

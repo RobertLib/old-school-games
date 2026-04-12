@@ -1,4 +1,3 @@
-import "dotenv/config";
 import express, {
   type Request,
   type Response,
@@ -6,15 +5,14 @@ import express, {
 } from "express";
 import { fileURLToPath } from "url";
 import path from "path";
-import winston from "winston";
+import logger from "./utils/logger.ts";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import compression from "compression";
-import cookieParser from "cookie-parser";
 import session, { type SessionOptions } from "express-session";
 import connectPg from "connect-pg-simple";
 import pool from "./db.ts";
-import flash from "connect-flash";
+import { flash } from "./middlewares/flash.ts";
 import Game from "./models/game.ts";
 import GameOfTheWeek from "./models/game-of-the-week.ts";
 
@@ -26,30 +24,12 @@ import commentsRoutes from "./routes/comments.ts";
 import newsRoutes from "./routes/news.ts";
 import indexnowRoutes from "./routes/indexnow.ts";
 import listsRoutes from "./routes/lists.ts";
-// import analyticsMiddleware from "./middlewares/analytics.ts";
-// import analyticsRoutes from "./routes/analytics.ts";
+import { csrfToken, validateCsrf } from "./middlewares/csrf.ts";
 
 const app = express();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
-const logger = winston.createLogger({
-  level: "info",
-  format: winston.format.json(),
-  transports: [
-    new winston.transports.File({ filename: "error.log", level: "error" }),
-    new winston.transports.File({ filename: "combined.log" }),
-  ],
-});
-
-if (process.env.NODE_ENV !== "production") {
-  logger.add(
-    new winston.transports.Console({
-      format: winston.format.simple(),
-    }),
-  );
-}
 
 app.use((req, res, next) => {
   if (process.env.NODE_ENV === "production") {
@@ -113,15 +93,19 @@ app.use(compression());
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(express.static(path.join(__dirname, "public")));
+app.use(express.static(path.join(__dirname, "public"), { maxAge: "1d" }));
 
 app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views"));
 
-app.use(cookieParser());
-
 if (process.env.NODE_ENV === "production") {
   app.set("trust proxy", 1);
+}
+
+if (process.env.NODE_ENV === "production" && !process.env.SESSION_SECRET) {
+  throw new Error(
+    "SESSION_SECRET environment variable is required in production",
+  );
 }
 
 const pgSession = connectPg(session);
@@ -132,7 +116,7 @@ const sessionOptions: SessionOptions = {
   resave: false,
   saveUninitialized: false,
   cookie: {
-    maxAge: 365 * 24 * 60 * 60 * 1000,
+    maxAge: 30 * 24 * 60 * 60 * 1000,
     sameSite: "strict",
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
@@ -141,7 +125,10 @@ const sessionOptions: SessionOptions = {
 
 app.use(session(sessionOptions));
 
-app.use(flash());
+app.use(flash);
+
+app.use(csrfToken);
+app.use(validateCsrf);
 
 const cache = new Map();
 const cacheTimers = new Map();
@@ -198,8 +185,46 @@ app.use(async (req, res, next) => {
     }
 
     res.locals.recentlyAddedGames = recentGames;
-    res.locals.topRatedGames = await Game.findTopRated();
-    res.locals.gameOfTheWeek = await GameOfTheWeek.getOrSelectCurrent();
+
+    let topRatedGames = cache.get("top-rated-games");
+    if (!topRatedGames) {
+      topRatedGames = await Game.findTopRated();
+      cache.set("top-rated-games", topRatedGames);
+
+      if (cacheTimers.has("top-rated-games")) {
+        clearTimeout(cacheTimers.get("top-rated-games"));
+      }
+
+      const topRatedTimer = setTimeout(() => {
+        cache.delete("top-rated-games");
+        cacheTimers.delete("top-rated-games");
+      }, 300000);
+
+      cacheTimers.set("top-rated-games", topRatedTimer);
+    }
+
+    res.locals.topRatedGames = topRatedGames;
+
+    let gameOfTheWeek;
+    if (!cache.has("game-of-the-week")) {
+      gameOfTheWeek = await GameOfTheWeek.getOrSelectCurrent();
+      cache.set("game-of-the-week", gameOfTheWeek);
+
+      if (cacheTimers.has("game-of-the-week")) {
+        clearTimeout(cacheTimers.get("game-of-the-week"));
+      }
+
+      const gameOfTheWeekTimer = setTimeout(() => {
+        cache.delete("game-of-the-week");
+        cacheTimers.delete("game-of-the-week");
+      }, 3600000);
+
+      cacheTimers.set("game-of-the-week", gameOfTheWeekTimer);
+    } else {
+      gameOfTheWeek = cache.get("game-of-the-week");
+    }
+
+    res.locals.gameOfTheWeek = gameOfTheWeek;
   } catch (error) {
     logger.error("Error loading common data:", error);
     res.locals.recentlyAddedGames = [];
@@ -229,11 +254,20 @@ app.use(async (req, res, next) => {
       cache.set("popular-publishers", popularPublishers);
       cache.set("popular-developers", popularDevelopers);
 
+      if (cacheTimers.has("popular-publishers")) {
+        clearTimeout(cacheTimers.get("popular-publishers"));
+      }
+
       // Cache for 6 hours
       const timer = setTimeout(() => {
         cache.delete("popular-publishers");
         cache.delete("popular-developers");
+        cacheTimers.delete("popular-publishers");
+        cacheTimers.delete("popular-developers");
       }, 21600000);
+
+      cacheTimers.set("popular-publishers", timer);
+      cacheTimers.set("popular-developers", timer);
     }
 
     res.locals.popularPublishers = popularPublishers;
@@ -253,8 +287,6 @@ app.use((req, res, next) => {
   next();
 });
 
-// app.use(analyticsMiddleware);
-
 app.use("/", authRoutes);
 app.use("/", sitemapRoutes);
 app.use("/", listsRoutes);
@@ -263,28 +295,32 @@ app.use("/games", gamesRoutes);
 app.use("/comments", commentsRoutes);
 app.use("/news", newsRoutes);
 app.use("/", indexnowRoutes);
-// app.use("/", analyticsRoutes);
 
 app.use((req, res, next) => {
   res.status(404).render("404");
 });
 
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
-  logger.error(err.stack);
+  logger.error(err.stack ?? err.message);
 
   res.status(500).render("500");
 });
 
 const PORT = process.env.PORT || 3000;
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   logger.info(`Server is running on port ${PORT}`);
 });
 
 process.on("SIGTERM", () => {
-  logger.info("SIGTERM received, clearing timers...");
-  cacheTimers.forEach((timer) => clearTimeout(timer));
-  cacheTimers.clear();
-  cache.clear();
-  process.exit(0);
+  logger.info("SIGTERM received, shutting down gracefully...");
+  server.close(() => {
+    cacheTimers.forEach((timer) => clearTimeout(timer));
+    cacheTimers.clear();
+    cache.clear();
+    pool.end(() => {
+      logger.info("Database pool closed.");
+      process.exit(0);
+    });
+  });
 });

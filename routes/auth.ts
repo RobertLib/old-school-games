@@ -1,15 +1,24 @@
 import express from "express";
-import bcrypt from "bcrypt";
+import { hashPassword, verifyPassword } from "../utils/password.ts";
+import rateLimit from "express-rate-limit";
 import User from "../models/user.ts";
 import "../types/session.ts";
 
 const router = express.Router();
 
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  message: "Too many login attempts, please try again later.",
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 router.get("/login", async (req, res) => {
   res.render("auth/login");
 });
 
-router.post("/login", async (req, res, next) => {
+router.post("/login", loginLimiter, async (req, res, next) => {
   const { email, password } = req.body;
 
   if (!email || !password) {
@@ -26,7 +35,7 @@ router.post("/login", async (req, res, next) => {
     });
   }
 
-  const valid = await bcrypt.compare(password, user.password);
+  const valid = await verifyPassword(password, user.password);
 
   if (!valid) {
     return res.render("auth/login", {
@@ -34,13 +43,14 @@ router.post("/login", async (req, res, next) => {
     });
   }
 
-  req.session.user = {
-    id: user.id,
-    email: user.email,
-    role: user.role,
-  };
+  const userData = { id: user.id, email: user.email, role: user.role };
 
-  res.redirect("/");
+  req.session.regenerate((err) => {
+    if (err) return next(err);
+
+    req.session.user = userData;
+    res.redirect("/");
+  });
 });
 
 router.get("/logout", (req, res) => {
@@ -81,7 +91,7 @@ router.post("/register", async (req, res, next) => {
       });
     }
 
-    const hash = await bcrypt.hash(password, 12);
+    const hash = await hashPassword(password);
 
     await User.create({ email, password: hash });
 

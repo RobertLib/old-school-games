@@ -1,5 +1,6 @@
 import Model, { type ModelData } from "./model.ts";
 import db from "../db.ts";
+import logger from "../utils/logger.ts";
 import IndexNow from "../utils/indexnow.ts";
 import { clearSitemapCache } from "../routes/sitemap.ts";
 
@@ -67,8 +68,6 @@ export default class Game extends Model {
   averageRating?: number;
   ratingCount?: number;
 
-  private static cachedGenres: string[];
-
   constructor(data: GameData) {
     super(data);
 
@@ -79,17 +78,11 @@ export default class Game extends Model {
   }
 
   static async getGenres(): Promise<string[]> {
-    if (this.cachedGenres) {
-      return this.cachedGenres;
-    }
-
     const { rows } = await db.query(
       "SELECT enum_range(NULL::GAME_GENRE) AS genres",
     );
 
-    this.cachedGenres = rows[0].genres.slice(1, -1).split(",");
-
-    return this.cachedGenres;
+    return rows[0].genres.slice(1, -1).split(",");
   }
 
   static createSlug(title: string): string {
@@ -127,6 +120,20 @@ export default class Game extends Model {
     page?: number;
     search?: string;
   } = {}): Promise<Game[]> {
+    const VALID_ORDER_BY_FIELDS = ["createdAt", "release", "title"];
+    const VALID_ORDER_DIRS = ["ASC", "DESC"];
+
+    if (
+      orderBy &&
+      orderBy !== "rating" &&
+      !VALID_ORDER_BY_FIELDS.includes(orderBy)
+    ) {
+      throw new Error(`Invalid orderBy field: ${orderBy}`);
+    }
+    if (orderDir && !VALID_ORDER_DIRS.includes(orderDir)) {
+      throw new Error(`Invalid orderDir: ${orderDir}`);
+    }
+
     let query = `
       SELECT g.*, COALESCE(AVG(r.rating), 0) as "averageRating"
       FROM "games" g
@@ -266,7 +273,7 @@ export default class Game extends Model {
       FROM "games" g
       LEFT JOIN "ratings" r ON g.id = r."gameId"
       GROUP BY g.id
-      HAVING AVG(r.rating) >= 3.5 OR AVG(r.rating) IS NULL
+      HAVING AVG(r.rating) >= 3.5
       ORDER BY RANDOM()
       LIMIT $1
     `,
@@ -281,39 +288,39 @@ export default class Game extends Model {
   }
 
   static async findById(id: string | number): Promise<Game | null> {
-    const { rows } = await db.query('SELECT * FROM "games" WHERE "id" = $1', [
-      id,
-    ]);
+    const { rows } = await db.query(
+      `SELECT g.*, COALESCE(AVG(r."rating"), 0) as "averageRating", COUNT(r."rating") as "ratingCount"
+       FROM "games" g
+       LEFT JOIN "ratings" r ON g."id" = r."gameId"
+       WHERE g."id" = $1
+       GROUP BY g.id`,
+      [id],
+    );
 
-    const game = rows[0] ? new Game(rows[0]) : null;
+    if (!rows[0]) return null;
 
-    if (game) {
-      const { rows: ratingRows } = await db.query(
-        'SELECT COALESCE(AVG("rating"), 0) as "averageRating", COUNT(*) as "ratingCount" FROM "ratings" WHERE "gameId" = $1',
-        [game.id],
-      );
-      game.averageRating = parseFloat(ratingRows[0]?.averageRating) || 0;
-      game.ratingCount = parseInt(ratingRows[0]?.ratingCount, 10) || 0;
-    }
+    const game = new Game(rows[0]);
+    game.averageRating = parseFloat(rows[0].averageRating) || 0;
+    game.ratingCount = parseInt(rows[0].ratingCount, 10) || 0;
 
     return game;
   }
 
   static async findBySlug(slug: string): Promise<Game | null> {
-    const { rows } = await db.query('SELECT * FROM "games" WHERE "slug" = $1', [
-      slug,
-    ]);
+    const { rows } = await db.query(
+      `SELECT g.*, COALESCE(AVG(r."rating"), 0) as "averageRating", COUNT(r."rating") as "ratingCount"
+       FROM "games" g
+       LEFT JOIN "ratings" r ON g."id" = r."gameId"
+       WHERE g."slug" = $1
+       GROUP BY g.id`,
+      [slug],
+    );
 
-    const game = rows[0] ? new Game(rows[0]) : null;
+    if (!rows[0]) return null;
 
-    if (game) {
-      const { rows: ratingRows } = await db.query(
-        'SELECT COALESCE(AVG("rating"), 0) as "averageRating", COUNT(*) as "ratingCount" FROM "ratings" WHERE "gameId" = $1',
-        [game.id],
-      );
-      game.averageRating = parseFloat(ratingRows[0]?.averageRating) || 0;
-      game.ratingCount = parseInt(ratingRows[0]?.ratingCount, 10) || 0;
-    }
+    const game = new Game(rows[0]);
+    game.averageRating = parseFloat(rows[0].averageRating) || 0;
+    game.ratingCount = parseInt(rows[0].ratingCount, 10) || 0;
 
     return game;
   }
@@ -326,6 +333,7 @@ export default class Game extends Model {
     year,
     releaseFrom,
     releaseTo,
+    search,
   }: {
     genre?: string;
     letter?: string;
@@ -334,6 +342,7 @@ export default class Game extends Model {
     year?: number;
     releaseFrom?: number;
     releaseTo?: number;
+    search?: string;
   } = {}): Promise<number> {
     let query = 'SELECT COUNT(*) as total FROM "games" g';
     const values: any[] = [];
@@ -377,7 +386,10 @@ export default class Game extends Model {
       );
       values.push(publisher);
     }
-
+    if (search) {
+      whereConditions.push(`g."title" ILIKE $${values.length + 1}`);
+      values.push(`%${search.trim()}%`);
+    }
     if (whereConditions.length > 0) {
       query += ` WHERE ${whereConditions.join(" AND ")}`;
     }
@@ -415,7 +427,7 @@ export default class Game extends Model {
       gameData.publisher,
       gameData.release || undefined,
     ).catch((error) => {
-      console.error("IndexNow submission failed for created game:", error);
+      logger.error("IndexNow submission failed for created game:", error);
     });
 
     return rows[0];
@@ -457,7 +469,7 @@ export default class Game extends Model {
       gameData.publisher,
       gameData.release || undefined,
     ).catch((error) => {
-      console.error("IndexNow submission failed for updated game:", error);
+      logger.error("IndexNow submission failed for updated game:", error);
     });
 
     return rows[0];
@@ -475,7 +487,7 @@ export default class Game extends Model {
     // Submit to IndexNow if game existed (async, don't await to avoid blocking)
     if (game) {
       IndexNow.submitGameDeletedUrls(game.slug).catch((error) => {
-        console.error("IndexNow submission failed for deleted game:", error);
+        logger.error("IndexNow submission failed for deleted game:", error);
       });
     }
   }

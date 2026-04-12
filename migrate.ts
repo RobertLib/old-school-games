@@ -1,4 +1,3 @@
-import "dotenv/config";
 import { fileURLToPath } from "url";
 import path from "path";
 import fs from "fs";
@@ -40,8 +39,17 @@ async function runMigrations() {
           "utf-8",
         );
 
-        await db.query(migrationSQL);
-        await db.query('INSERT INTO "migrations" ("name") VALUES ($1)', [file]);
+        await db.query("BEGIN");
+        try {
+          await db.query(migrationSQL);
+          await db.query('INSERT INTO "migrations" ("name") VALUES ($1)', [
+            file,
+          ]);
+          await db.query("COMMIT");
+        } catch (error) {
+          await db.query("ROLLBACK");
+          throw error;
+        }
       }
     }
 
@@ -51,4 +59,4 @@ async function runMigrations() {
   }
 }
 
-runMigrations();
+await runMigrations();

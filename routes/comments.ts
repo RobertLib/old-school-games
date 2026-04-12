@@ -1,4 +1,5 @@
 import express from "express";
+import logger from "../utils/logger.ts";
 import Comment from "../models/comment.ts";
 import DOMPurify from "dompurify";
 import rateLimit from "express-rate-limit";
@@ -33,7 +34,7 @@ router.post("/", commentRateLimit, validateComment, async (req, res, next) => {
 
     res.render("comments/comment-item", { comment });
   } catch (error) {
-    console.error("Error creating comment:", error);
+    logger.error("Error creating comment:", error);
     res.status(500).json({ error: "Failed to create comment" });
   }
 });

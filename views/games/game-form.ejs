@@ -1,4 +1,5 @@
 <form action="/games/<%= game?.id %>" method="POST">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
   <p>
     <label class="form-label" for="title">Title *</label><br />
     <input class="form-control" id="title" maxlength="255" name="title" required style="max-width: 480px; width: 100%" type="text" value="<%= game?.title %>" />

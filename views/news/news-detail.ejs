@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <%- include('../head') %>
+  <meta name="description" content="<%= description %>" />
+  <title><%= title %></title>
+  <link rel="canonical" href="<%= canonicalUrl %>" />
+  <!-- Open Graph -->
+  <meta property="og:title" content="<%= newsItem.title %>" />
+  <meta property="og:description" content="<%= description %>" />
+  <meta property="og:url" content="<%= canonicalUrl %>" />
+  <meta property="og:type" content="article" />
+  <meta property="og:site_name" content="OldSchoolGames" />
+  <meta property="og:image" content="https://oldschoolgames.eu/images/navbar.webp" />
+</head>
+
+<body class="layout">
+  <%- include('../navbar') %>
+  <%- include('../left-sidebar') %>
+  <main>
+    <div class="container">
+      <%- include('../flash') %>
+      <section>
+        <nav aria-label="Breadcrumb" style="margin-bottom: 16px;">
+          <a href="/">Home</a> &rsaquo; <a href="/news">News</a> &rsaquo; <%= newsItem.title %>
+        </nav>
+        <article>
+          <h1 class="text-xl" style="margin: 0 0 8px;"><%= newsItem.title %></h1>
+          <div class="news-meta" style="margin-bottom: 20px;">
+            <time datetime="<%= new Date(newsItem.createdAt).toISOString() %>">
+              <%= new Date(newsItem.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }) %>
+            </time>
+          </div>
+          <div class="news-content"><%- newsItem.content %></div>
+        </article>
+        <div style="margin-top: 24px;">
+          <a href="/news" class="btn btn-outline">&larr; Back to News</a>
+        </div>
+      </section>
+    </div>
+  </main>
+  <%- include('../right-sidebar') %>
+  <%- include('../footer') %>
+</body>
+
+</html>

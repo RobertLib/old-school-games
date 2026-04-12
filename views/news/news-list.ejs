@@ -33,7 +33,7 @@
         </p>
         <% } else { %> <% news.forEach((newsItem, index) => { %>
         <article class="news-item <% if (index > 0) { %>news-item-bordered<% } %>">
-          <h2 class="news-title"><%= newsItem.title %></h2>
+          <h2 class="news-title"><a href="/news/<%= newsItem.id %>"><%= newsItem.title %></a></h2>
           <div class="news-meta">
             <time datetime="<%= new Date(newsItem.createdAt).toISOString() %>">
               <%= new Date(newsItem.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }) %>
