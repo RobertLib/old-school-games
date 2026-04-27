@@ -274,6 +274,22 @@ export const LISTS: ListDefinition[] = [
 
 const LIST_BY_SLUG = new Map(LISTS.map((l) => [l.slug, l]));
 
+router.get("/most-played", async (req, res, next) => {
+  try {
+    const games = await Game.findMostPlayed(100);
+
+    res.render("lists/most-played", {
+      title: "100 Most Played Classic MS-DOS Games | OldSchoolGames",
+      description:
+        "Discover the 100 most played classic MS-DOS games on OldSchoolGames.eu — ranked by total plays. Find out which retro DOS games are most popular right now.",
+      canonicalUrl: "https://oldschoolgames.eu/most-played",
+      games,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 router.get("/game-lists", (req, res) => {
   res.render("lists/lists-index", {
     title: "Classic DOS Game Lists & Top Picks | OldSchoolGames",

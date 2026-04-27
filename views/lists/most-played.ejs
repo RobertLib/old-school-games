@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <%- include('../head') %>
+  <meta name="description" content="<%= description %>" />
+  <title><%= title %></title>
+  <link rel="canonical" href="<%= canonicalUrl %>" />
+  <!-- Open Graph -->
+  <meta property="og:title" content="<%= title %>" />
+  <meta property="og:description" content="<%= description %>" />
+  <meta property="og:url" content="<%= canonicalUrl %>" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="OldSchoolGames" />
+  <script src="/js/rating-stars.js"></script>
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "ItemList",
+      "name": "100 Most Played Classic MS-DOS Games",
+      "description": "<%= description.replace(/"/g, '&quot;') %>",
+      "url": "<%= canonicalUrl %>",
+      "numberOfItems": <%= games.length %>,
+      "itemListElement": [
+        <% games.slice(0, 10).forEach((game, index) => { %>
+        {
+          "@type": "ListItem",
+          "position": <%= index + 1 %>,
+          "item": {
+            "@type": "VideoGame",
+            "name": "<%= game.title.replace(/"/g, '&quot;') %>",
+            "genre": "<%= game.genre %>",
+            "gamePlatform": "MS-DOS",
+            "url": "https://oldschoolgames.eu/<%= game.slug %>"
+          }
+        }<%= index < Math.min(games.length - 1, 9) ? ',' : '' %>
+        <% }); %>
+      ]
+    }
+  </script>
+</head>
+
+<body class="layout">
+  <%- include('../navbar') %>
+  <%- include('../left-sidebar') %>
+  <main>
+    <div class="container">
+      <%- include('../flash') %>
+
+      <!-- Breadcrumb -->
+      <nav aria-label="breadcrumb" style="margin-bottom: 1em; font-size: 0.85em;">
+        <a href="/">Home</a>
+        &rsaquo;
+        <a href="/game-lists">Game Lists</a>
+        &rsaquo;
+        <span>100 Most Played Games</span>
+      </nav>
+
+      <section>
+        <h1 class="text-xl" style="margin: 0 0 12px">100 Most Played Classic MS-DOS Games</h1>
+
+        <div style="margin-bottom: 1.5em; padding: 1em; background: rgba(var(--border-rgb), 0.15); border-left: 3px solid rgb(var(--primary-rgb)); border-radius: var(--border-radius);">
+          <p style="margin: 0; line-height: 1.7; color: rgb(var(--color-rgb))">Which classic DOS games do players keep coming back to? This ranking is based on actual play data from OldSchoolGames.eu — the games listed here are the ones our community has played the most. Whether it's nostalgia-fueled replays or first-time discoveries, these titles have proven their staying power. All games run directly in your browser, no downloads required.</p>
+        </div>
+
+        <% if (games.length) { %>
+        <ol class="game-list" style="list-style: none; padding: 0; counter-reset: ranking;">
+          <% games.forEach((game, index) => { %>
+          <li style="counter-increment: ranking; position: relative;">
+            <div style="position: absolute; top: 0.6em; left: 0.6em; font-size: 1.4em; font-weight: bold; color: rgb(var(--primary-rgb)); opacity: 0.6; line-height: 1; min-width: 2ch; text-align: right;">#<%= index + 1 %></div>
+            <article class="game-item card" style="padding-left: 3.2em;">
+              <div>
+                <a class="color-primary font-bold" href="/<%= game.slug %>">
+                  <h2 class="text-lg" style="margin: 0"><%= game.title %></h2>
+                </a>
+                <div class="clearfix">
+                  <a class="game-item-initial" href="/<%= game.slug %>">
+                    <img alt="<%= game.title %>" loading="lazy" src="<%= game.images[0] %>" width="100" />
+                  </a>
+                  <div><%= game.description?.replaceAll("<br />", "").slice(0, 250) %>...</div>
+                </div>
+                <div class="text-sm">
+                  <strong>Genre</strong>:
+                  <% if (game.genre) { %>
+                  <a class="underline color-primary" href="/<%= game.genre.toLowerCase() %>"><%= game.genre %></a>
+                  <% } else { %>
+                  -
+                  <% } %><br />
+                  <strong>Release</strong>:
+                  <% if (game.release) { %>
+                  <a class="underline color-primary" href="/year/<%= game.release %>"><%= game.release %></a>
+                  <% } else { %>
+                  -
+                  <% } %><br />
+                  <strong>Developer</strong>:
+                  <% if (game.developer) { %>
+                  <a class="underline" href="/developer/<%= encodeURIComponent(game.developer) %>"><%= game.developer %></a>
+                  <% } else { %>
+                  -
+                  <% } %><br />
+                  <strong>Plays</strong>: <%= game.playCount.toLocaleString() %>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: baseline; width: 100%">
+                  <rating-stars gameId="<%= game.id %>" rating="<%= game.averageRating %>">
+                  </rating-stars>
+                  <button aria-label="Add <%= game.title %> to favorites" class="favorite-btn" data-game-id="<%= game.id %>" data-game-title="<%= game.title %>" data-game-slug="<%= game.slug %>" data-game-image="<%= game.images[0] %>" data-game-description="<%= game.description?.replaceAll('<br />', '').slice(0, 250) %>..." title="Favorite" type="button">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="16" height="16">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              <% if (req.session?.user?.role === "ADMIN") { %>
+              <div class="flex" style="gap: 5px; justify-content: end; width: 100%; margin-top: 5px">
+                <a class="btn btn-outline btn-sm" href="/games/<%= game.id %>/edit">Edit</a>
+              </div>
+              <% } %>
+            </article>
+          </li>
+          <% }); %>
+        </ol>
+        <% } else { %>
+        <p>No games found</p>
+        <% } %>
+
+        <!-- Link back to all lists -->
+        <div style="margin-top: 1.5em; text-align: center;">
+          <a href="/game-lists" class="btn btn-outline">Browse all game lists &rarr;</a>
+        </div>
+      </section>
+    </div>
+  </main>
+  <%- include('../right-sidebar') %>
+  <%- include('../footer') %>
+</body>
+
+</html>

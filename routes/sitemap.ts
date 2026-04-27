@@ -76,6 +76,8 @@ router.get("/sitemap-index.xml", async (req, res) => {
       });
     }
 
+    add({ url: `/most-played`, changefreq: "daily", priority: 0.9 });
+
     add({ url: `/developers`, changefreq: "weekly", priority: 0.8 });
     add({ url: `/publishers`, changefreq: "weekly", priority: 0.8 });
     add({ url: `/years`, changefreq: "weekly", priority: 0.8 });
