@@ -989,4 +989,122 @@ describe("Game Model", () => {
       expect(query).toContain('ORDER BY g."title" ASC');
     });
   });
+
+  describe("recordPlay", () => {
+    it("should insert a play record for a given game id", async () => {
+      (mockDb.query as any).mockResolvedValueOnce({});
+
+      await Game.recordPlay(42);
+
+      expect(mockDb.query).toHaveBeenCalledWith(
+        'INSERT INTO "plays" ("gameId") VALUES ($1)',
+        [42],
+      );
+    });
+
+    it("should accept a string game id", async () => {
+      (mockDb.query as any).mockResolvedValueOnce({});
+
+      await Game.recordPlay("7");
+
+      expect(mockDb.query).toHaveBeenCalledWith(
+        'INSERT INTO "plays" ("gameId") VALUES ($1)',
+        ["7"],
+      );
+    });
+  });
+
+  describe("findMostPlayed", () => {
+    it("should return games ordered by play count", async () => {
+      const mockRows = [
+        {
+          id: 1,
+          title: "Popular Game",
+          slug: "popular-game",
+          description: "Very popular",
+          genre: "ACTION",
+          release: 1993,
+          developer: "Dev",
+          publisher: "Pub",
+          images: [],
+          stream: "",
+          manual: "",
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          deletedAt: null,
+          averageRating: "4.2",
+          playCount: "15",
+        },
+        {
+          id: 2,
+          title: "Less Popular Game",
+          slug: "less-popular-game",
+          description: "Less popular",
+          genre: "STRATEGY",
+          release: 1995,
+          developer: "Dev2",
+          publisher: "Pub2",
+          images: [],
+          stream: "",
+          manual: "",
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          deletedAt: null,
+          averageRating: "3.0",
+          playCount: "5",
+        },
+      ];
+      (mockDb.query as any).mockResolvedValueOnce({ rows: mockRows });
+
+      const result = await Game.findMostPlayed(5);
+
+      expect(mockDb.query).toHaveBeenCalledWith(
+        expect.stringContaining('ORDER BY "playCount" DESC'),
+        [5],
+      );
+      expect(result).toHaveLength(2);
+      expect(result[0]).toBeInstanceOf(Game);
+      expect(result[0].title).toBe("Popular Game");
+      expect(result[0].playCount).toBe(15);
+      expect(result[0].averageRating).toBe(4.2);
+      expect(result[1].playCount).toBe(5);
+    });
+
+    it("should use default limit of 5", async () => {
+      (mockDb.query as any).mockResolvedValueOnce({ rows: [] });
+
+      await Game.findMostPlayed();
+
+      expect(mockDb.query).toHaveBeenCalledWith(expect.any(String), [5]);
+    });
+
+    it("should handle zero play count", async () => {
+      const mockRows = [
+        {
+          id: 1,
+          title: "Unplayed Game",
+          slug: "unplayed-game",
+          description: "Never played",
+          genre: "PUZZLE",
+          release: 1992,
+          developer: "Dev",
+          publisher: "Pub",
+          images: [],
+          stream: "",
+          manual: "",
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          deletedAt: null,
+          averageRating: null,
+          playCount: "0",
+        },
+      ];
+      (mockDb.query as any).mockResolvedValueOnce({ rows: mockRows });
+
+      const result = await Game.findMostPlayed();
+
+      expect(result[0].playCount).toBe(0);
+      expect(result[0].averageRating).toBe(0);
+    });
+  });
 });

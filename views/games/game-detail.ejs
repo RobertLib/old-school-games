@@ -168,6 +168,7 @@
               iframe.dataset.gameImage,
               iframe.dataset.gameDescription
             );
+            fetch(`/games/${iframe.dataset.gameId}/play`, { method: 'POST', headers: { 'x-csrf-token': '<%= csrfToken %>' } }).catch(() => {});
           });
         </script>
       </section>

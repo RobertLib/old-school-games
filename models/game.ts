@@ -602,4 +602,30 @@ export default class Game extends Model {
 
     return { prevGame, nextGame };
   }
+
+  static async recordPlay(gameId: string | number): Promise<void> {
+    await db.query('INSERT INTO "plays" ("gameId") VALUES ($1)', [gameId]);
+  }
+
+  static async findMostPlayed(
+    limit: number = 5,
+  ): Promise<(Game & { playCount: number })[]> {
+    const { rows } = await db.query(
+      `SELECT g.*, COALESCE(AVG(r.rating), 0) as "averageRating", COUNT(p.id) as "playCount"
+       FROM "games" g
+       INNER JOIN "plays" p ON g.id = p."gameId"
+       LEFT JOIN "ratings" r ON g.id = r."gameId"
+       GROUP BY g.id
+       ORDER BY "playCount" DESC
+       LIMIT $1`,
+      [limit],
+    );
+
+    return rows.map((row) => {
+      const game = new Game(row) as Game & { playCount: number };
+      game.averageRating = parseFloat(row.averageRating) || 0;
+      game.playCount = parseInt(row.playCount, 10) || 0;
+      return game;
+    });
+  }
 }

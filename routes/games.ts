@@ -97,4 +97,22 @@ router.get("/:id", async (req, res, next) => {
   res.redirect(`/${req.params.id}`);
 });
 
+const playLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 5,
+  message: "Too many play requests, please try again later.",
+});
+
+router.post("/:id/play", playLimiter, async (req, res) => {
+  const id = req.params.id as string;
+
+  try {
+    await Game.recordPlay(id);
+    res.status(204).send();
+  } catch (error) {
+    logger.error("Error recording play:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 export default router;

@@ -205,6 +205,25 @@ app.use(async (req, res, next) => {
 
     res.locals.topRatedGames = topRatedGames;
 
+    let mostPlayedGames = cache.get("most-played-games");
+    if (!mostPlayedGames) {
+      mostPlayedGames = await Game.findMostPlayed();
+      cache.set("most-played-games", mostPlayedGames);
+
+      if (cacheTimers.has("most-played-games")) {
+        clearTimeout(cacheTimers.get("most-played-games"));
+      }
+
+      const mostPlayedTimer = setTimeout(() => {
+        cache.delete("most-played-games");
+        cacheTimers.delete("most-played-games");
+      }, 300000);
+
+      cacheTimers.set("most-played-games", mostPlayedTimer);
+    }
+
+    res.locals.mostPlayedGames = mostPlayedGames;
+
     let gameOfTheWeek;
     if (!cache.has("game-of-the-week")) {
       gameOfTheWeek = await GameOfTheWeek.getOrSelectCurrent();
@@ -229,6 +248,7 @@ app.use(async (req, res, next) => {
     logger.error("Error loading common data:", error);
     res.locals.recentlyAddedGames = [];
     res.locals.topRatedGames = [];
+    res.locals.mostPlayedGames = [];
     res.locals.gameOfTheWeek = null;
   }
 

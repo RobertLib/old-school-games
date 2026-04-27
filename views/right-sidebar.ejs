@@ -31,6 +31,19 @@
 
   <br />
 
+  <header>Most played</header>
+  <ul class="nav nav-column">
+    <% mostPlayedGames.map(game => { %>
+    <li>
+      <a class="nav-link text-truncate" href="/<%= game.slug %>">
+        <%= game.title %>
+      </a>
+    </li>
+    <% }); %>
+  </ul>
+
+  <br />
+
   <header>Browse by</header>
   <ul class="nav nav-column">
     <li>

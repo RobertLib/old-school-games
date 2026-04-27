@@ -77,6 +77,7 @@ describe("Games Routes", () => {
     await pool.query('DELETE FROM "ratings"');
     await pool.query('DELETE FROM "comments"');
     await pool.query('DELETE FROM "game_of_the_week"');
+    await pool.query('DELETE FROM "plays"');
     await pool.query('DELETE FROM "games"');
     await pool.query('DELETE FROM "news"');
     await pool.query('DELETE FROM "users"');
@@ -392,6 +393,62 @@ describe("Games Routes", () => {
 
       expect(response.status).toBe(302);
       expect(response.headers.location).toBe("/123");
+    });
+  });
+
+  describe("POST /games/:id/play", () => {
+    it("should record a play and return 204", async () => {
+      const gameResult = await pool.query(
+        'INSERT INTO "games" ("title", "slug", "description", "genre", "developer") VALUES ($1, $2, $3, $4, $5) RETURNING "id"',
+        [
+          "Test Game",
+          "test-game",
+          "Test Description",
+          "ACTION",
+          "Test Developer",
+        ],
+      );
+      const gameId = gameResult.rows[0].id;
+
+      const response = await request(app).post(`/games/${gameId}/play`);
+
+      expect(response.status).toBe(204);
+
+      const result = await pool.query(
+        'SELECT COUNT(*) as count FROM "plays" WHERE "gameId" = $1',
+        [gameId],
+      );
+      expect(parseInt(result.rows[0].count)).toBe(1);
+    });
+
+    it("should record multiple plays for the same game", async () => {
+      const gameResult = await pool.query(
+        'INSERT INTO "games" ("title", "slug", "description", "genre", "developer") VALUES ($1, $2, $3, $4, $5) RETURNING "id"',
+        [
+          "Test Game",
+          "test-game",
+          "Test Description",
+          "ACTION",
+          "Test Developer",
+        ],
+      );
+      const gameId = gameResult.rows[0].id;
+
+      await request(app).post(`/games/${gameId}/play`);
+      await request(app).post(`/games/${gameId}/play`);
+      await request(app).post(`/games/${gameId}/play`);
+
+      const result = await pool.query(
+        'SELECT COUNT(*) as count FROM "plays" WHERE "gameId" = $1',
+        [gameId],
+      );
+      expect(parseInt(result.rows[0].count)).toBe(3);
+    });
+
+    it("should return 500 for non-existent game", async () => {
+      const response = await request(app).post("/games/99999/play");
+
+      expect(response.status).toBe(500);
     });
   });
 });
