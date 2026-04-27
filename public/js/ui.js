@@ -2,7 +2,14 @@ document.addEventListener("DOMContentLoaded", function () {
   initExpandedDescriptions();
   initHoverEffects();
   initLoadingStates();
+  initLocalDates();
 });
+
+function initLocalDates() {
+  document.querySelectorAll("[data-date]").forEach((el) => {
+    el.textContent = new Date(el.dataset.date).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+  });
+}
 
 function initExpandedDescriptions() {
   document.querySelectorAll(".description .more-btn").forEach((moreBtn) => {

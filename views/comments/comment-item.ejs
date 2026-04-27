@@ -1,4 +1,5 @@
 <article>
   <h3 class="text-md" style="margin: 0"><%= comment.nick || "anonymous" %></h3>
+  <small data-date="<%= comment.createdAt %>"></small>
   <%= comment.content %>
 </article>
