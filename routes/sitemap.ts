@@ -89,8 +89,6 @@ router.get("/sitemap-index.xml", async (req, res) => {
       add({ url: `/${list.slug}`, changefreq: "weekly", priority: 0.9 });
     }
 
-    add({ url: `/profile`, changefreq: "monthly", priority: 0.5 });
-
     // Add news pages
     add({ url: `/news`, changefreq: "daily", priority: 0.8 });
 

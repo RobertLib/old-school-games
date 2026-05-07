@@ -1,6 +1,10 @@
 User-agent: *
 Allow: /
 Disallow: /login
-Disallow: /analytics
+Disallow: /logout
+Disallow: /profile
+Disallow: /games/new
+Disallow: /games/*/edit
+Disallow: /news/new
 
 Sitemap: https://oldschoolgames.eu/sitemap-index.xml
