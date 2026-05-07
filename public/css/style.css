@@ -616,6 +616,11 @@ body::before {
     }
   }
 
+  .dropdown-toggle-sm {
+    font-size: 14px;
+    padding: 6px 12px;
+  }
+
   .dropdown-menu {
     background: linear-gradient(
       135deg,
