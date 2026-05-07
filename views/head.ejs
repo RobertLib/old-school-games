@@ -36,6 +36,9 @@
 </style>
 <link rel="stylesheet" href="/css/style.css" />
 <link rel="canonical" href="<%= locals.canonicalUrl || ('https://oldschoolgames.eu' + req.path) %>" />
+<% if (req.query.orderBy || req.query.orderDir) { %>
+<meta name="robots" content="noindex, follow" />
+<% } %>
 <% if (locals.prevPageUrl) { %>
 <link rel="prev" href="<%= locals.prevPageUrl %>" />
 <% } %>
