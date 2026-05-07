@@ -40,6 +40,10 @@ app.use((req, res, next) => {
     if (req.headers.host === "old-school-games.fly.dev") {
       return res.redirect(301, `https://oldschoolgames.eu${req.originalUrl}`);
     }
+
+    if (req.headers.host === "www.oldschoolgames.eu") {
+      return res.redirect(301, `https://oldschoolgames.eu${req.originalUrl}`);
+    }
   }
 
   next();
