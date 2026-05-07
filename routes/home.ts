@@ -387,10 +387,13 @@ router.get("/:slug/gallery/:index", async (req, res, next) => {
     : `a classic ${game.genre.toLowerCase()} MS-DOS game by ${game.developer}`;
   const description = `${game.title} screenshot gallery - ${descSnippet}. Browse all screenshots and play ${game.title} for free online on OldSchoolGames.`;
 
+  const image = validImages[currentIndex];
+
   res.render("games/game-gallery", {
     game,
     currentIndex,
     description,
+    image,
   });
 });
 

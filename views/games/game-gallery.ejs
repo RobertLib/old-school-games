@@ -5,6 +5,13 @@
   <%- include('../head') %>
   <meta name="description" content="<%= description %>" />
   <title><%= game.title %> - Gallery - OldSchoolGames</title>
+  <!-- Open Graph -->
+  <meta property="og:title" content="<%= game.title %> - Gallery - OldSchoolGames" />
+  <meta property="og:description" content="<%= description %>" />
+  <meta property="og:image" content="<%= locals.image %>" />
+  <meta property="og:url" content="<%= req.protocol + '://' + req.get('host') + req.originalUrl %>" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="OldSchoolGames" />
   <style>
     .gallery-container {
       position: fixed;
