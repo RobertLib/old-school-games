@@ -6,5 +6,9 @@ Disallow: /profile
 Disallow: /games/new
 Disallow: /games/*/edit
 Disallow: /news/new
+Disallow: /*/gallery/
+Disallow: /*?*orderBy=
+Disallow: /*?*orderDir=
+Disallow: /*?*search=
 
 Sitemap: https://oldschoolgames.eu/sitemap-index.xml

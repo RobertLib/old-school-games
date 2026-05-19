@@ -249,19 +249,6 @@
       nextImg.src = images[galleryIndex + 1];
     }
   </script>
-
-  <!-- SEO content: below the fixed overlay, visible to crawlers -->
-  <section style="padding: 40px 20px; max-width: 900px; margin: 100vh auto 0;">
-    <h2 style="font-size:1.4em; margin-bottom: 12px;"><%= game.title %> — Screenshot Gallery</h2>
-    <p style="margin-bottom:8px; font-size:0.9em; color:#888;">
-      Screenshot <%= currentIndex + 1 %> of <%= game.images.filter(Boolean).length %>
-      <% if (game.genre) { %> &middot; Genre: <a href="/<%= game.genre.toLowerCase() %>" style="color:inherit"><%= game.genre %></a><% } %>
-      <% if (game.developer) { %> &middot; Developer: <a href="/developer/<%= encodeURIComponent(game.developer) %>" style="color:inherit"><%= game.developer %></a><% } %>
-      <% if (game.release) { %> &middot; Released: <%= game.release %><% } %>
-    </p>
-    <% if (game.description) { %><p><%- game.description %></p><% } %>
-    <p><a href="/<%= game.slug %>">Play <%= game.title %> online for free</a> on OldSchoolGames.</p>
-  </section>
 </body>
 
 </html>
