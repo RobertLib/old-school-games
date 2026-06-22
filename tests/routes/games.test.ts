@@ -387,15 +387,6 @@ describe("Games Routes", () => {
     });
   });
 
-  describe("GET /games/:id", () => {
-    it("should redirect to /:id", async () => {
-      const response = await request(app).get("/games/123");
-
-      expect(response.status).toBe(302);
-      expect(response.headers.location).toBe("/123");
-    });
-  });
-
   describe("POST /games/:id/play", () => {
     it("should record a play and return 204", async () => {
       const gameResult = await pool.query(

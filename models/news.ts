@@ -3,20 +3,31 @@ import Model, { type ModelData } from "./model.ts";
 
 export interface NewsData extends ModelData {
   title: string;
+  slug: string;
   content: string;
   userId?: number | null;
 }
 
 export default class News extends Model {
   title: string;
+  slug: string;
   content: string;
   userId?: number | null;
 
   constructor(data: NewsData) {
     super(data);
     this.title = data.title;
+    this.slug = data.slug;
     this.content = data.content;
     this.userId = data.userId;
+  }
+
+  static createSlug(title: string): string {
+    return title
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, "-")
+      .replace(/-+/g, "-")
+      .replace(/^-|-$/g, "");
   }
 
   static async create(data: {
@@ -24,9 +35,10 @@ export default class News extends Model {
     content: string;
     userId: number;
   }): Promise<News> {
+    const slug = News.createSlug(data.title);
     const result = await pool.query(
-      `INSERT INTO "news" ("title", "content", "userId") VALUES ($1, $2, $3) RETURNING *`,
-      [data.title, data.content, data.userId],
+      `INSERT INTO "news" ("title", "slug", "content", "userId") VALUES ($1, $2, $3, $4) RETURNING *`,
+      [data.title, slug, data.content, data.userId],
     );
 
     return new News(result.rows[0]);
@@ -94,9 +106,48 @@ export default class News extends Model {
     return parseInt(result.rows[0].total, 10);
   }
 
-  static async findForSitemap(): Promise<{ id: number; updatedAt: Date }[]> {
+  static async update(
+    id: number,
+    data: { title: string; content: string },
+  ): Promise<News | null> {
+    const slug = News.createSlug(data.title);
     const result = await pool.query(
-      `SELECT "id", "updatedAt" FROM "news" WHERE "deletedAt" IS NULL ORDER BY "id"`,
+      `UPDATE "news" SET "title" = $1, "slug" = $2, "content" = $3, "updatedAt" = NOW()
+       WHERE "id" = $4 AND "deletedAt" IS NULL RETURNING *`,
+      [data.title, slug, data.content, id],
+    );
+
+    if (result.rows.length === 0) {
+      return null;
+    }
+
+    return new News(result.rows[0]);
+  }
+
+  static async delete(id: number): Promise<void> {
+    await pool.query(`UPDATE "news" SET "deletedAt" = NOW() WHERE "id" = $1`, [
+      id,
+    ]);
+  }
+
+  static async findBySlug(slug: string): Promise<News | null> {
+    const result = await pool.query(
+      `SELECT * FROM "news" WHERE "slug" = $1 AND "deletedAt" IS NULL`,
+      [slug],
+    );
+
+    if (result.rows.length === 0) {
+      return null;
+    }
+
+    return new News(result.rows[0]);
+  }
+
+  static async findForSitemap(): Promise<
+    { id: number; slug: string; updatedAt: Date }[]
+  > {
+    const result = await pool.query(
+      `SELECT "id", "slug", "updatedAt" FROM "news" WHERE "deletedAt" IS NULL ORDER BY "id"`,
     );
 
     return result.rows;

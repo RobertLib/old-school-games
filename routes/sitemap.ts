@@ -329,7 +329,7 @@ router.get("/sitemap-index.xml", async (req, res) => {
       const lastmod = new Date(news.updatedAt).toISOString().split("T")[0];
 
       add({
-        url: `/news/${news.id}`,
+        url: `/news/${news.slug}`,
         changefreq: "monthly",
         priority: 0.7,
         lastmod,

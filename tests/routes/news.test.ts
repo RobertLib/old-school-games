@@ -145,12 +145,12 @@ describe("News Routes", () => {
     it("should return list of news items", async () => {
       // Create test data
       await pool.query(
-        'INSERT INTO "news" ("title", "content", "userId") VALUES ($1, $2, $3)',
-        ["Test News 1", "Content 1", 1],
+        'INSERT INTO "news" ("title", "slug", "content", "userId") VALUES ($1, $2, $3, $4)',
+        ["Test News 1", "test-news-1", "Content 1", 1],
       );
       await pool.query(
-        'INSERT INTO "news" ("title", "content", "userId") VALUES ($1, $2, $3)',
-        ["Test News 2", "Content 2", 1],
+        'INSERT INTO "news" ("title", "slug", "content", "userId") VALUES ($1, $2, $3, $4)',
+        ["Test News 2", "test-news-2", "Content 2", 1],
       );
 
       const response = await request(app).get("/news");
@@ -166,8 +166,8 @@ describe("News Routes", () => {
       // Create more test data
       for (let i = 1; i <= 15; i++) {
         await pool.query(
-          'INSERT INTO "news" ("title", "content", "userId") VALUES ($1, $2, $3)',
-          [`Test News ${i}`, `Content ${i}`, 1],
+          'INSERT INTO "news" ("title", "slug", "content", "userId") VALUES ($1, $2, $3, $4)',
+          [`Test News ${i}`, `test-news-${i}`, `Content ${i}`, 1],
         );
       }
 
@@ -200,8 +200,8 @@ describe("News Routes", () => {
       // Create more test data
       for (let i = 1; i <= 15; i++) {
         await pool.query(
-          'INSERT INTO "news" ("title", "content", "userId") VALUES ($1, $2, $3)',
-          [`Test News ${i}`, `Content ${i}`, 1],
+          'INSERT INTO "news" ("title", "slug", "content", "userId") VALUES ($1, $2, $3, $4)',
+          [`Test News ${i}`, `test-news-${i}`, `Content ${i}`, 1],
         );
       }
 
@@ -214,6 +214,122 @@ describe("News Routes", () => {
       expect(response.body.locals.prevPageUrl).toBe(
         "https://oldschoolgames.eu/news",
       );
+    });
+  });
+
+  describe("GET /news/:slug", () => {
+    it("should render news detail for valid slug", async () => {
+      await pool.query(
+        'INSERT INTO "news" ("title", "slug", "content", "userId") VALUES ($1, $2, $3, $4)',
+        ["Test Article", "test-article", "<p>Content here</p>", 1],
+      );
+
+      const response = await request(app).get("/news/test-article");
+
+      expect(response.status).toBe(200);
+      expect(response.body.view).toBe("news/news-detail");
+      expect(response.body.locals.newsItem.title).toBe("Test Article");
+      expect(response.body.locals.canonicalUrl).toBe(
+        "https://oldschoolgames.eu/news/test-article",
+      );
+    });
+
+    it("should return 404 for non-existent slug", async () => {
+      const response = await request(app).get("/news/does-not-exist");
+
+      expect(response.status).toBe(404);
+    });
+
+    it("should return 404 for invalid slug characters", async () => {
+      const response = await request(app).get("/news/!!invalid!!");
+
+      expect(response.status).toBe(404);
+    });
+  });
+
+  describe("GET /news/:id/edit", () => {
+    it("should render edit form for existing news item", async () => {
+      await pool.query(
+        'INSERT INTO "news" ("title", "slug", "content", "userId") VALUES ($1, $2, $3, $4)',
+        ["Test Article", "test-article", "<p>Content here</p>", 1],
+      );
+
+      const response = await request(app).get("/news/1/edit");
+
+      expect(response.status).toBe(200);
+      expect(response.body.view).toBe("news/edit-news");
+      expect(response.body.locals.newsItem.title).toBe("Test Article");
+    });
+
+    it("should return 404 for non-existent news item", async () => {
+      const response = await request(app).get("/news/999/edit");
+
+      expect(response.status).toBe(404);
+    });
+  });
+
+  describe("POST /news/:id (update)", () => {
+    it("should update news item with valid data", async () => {
+      await pool.query(
+        'INSERT INTO "news" ("title", "slug", "content", "userId") VALUES ($1, $2, $3, $4)',
+        ["Original Title", "original-title", "Original content", 1],
+      );
+
+      const response = await request(app).post("/news/1").send({
+        title: "Updated Title",
+        content: "Updated content",
+      });
+
+      expect(response.status).toBe(302);
+      expect(response.headers.location).toBe("/news/updated-title");
+
+      const result = await pool.query('SELECT * FROM "news" WHERE "id" = 1');
+      expect(result.rows[0].title).toBe("Updated Title");
+      expect(result.rows[0].slug).toBe("updated-title");
+      expect(result.rows[0].content).toBe("Updated content");
+    });
+
+    it("should return validation errors for invalid data", async () => {
+      await pool.query(
+        'INSERT INTO "news" ("title", "slug", "content", "userId") VALUES ($1, $2, $3, $4)',
+        ["Original Title", "original-title", "Original content", 1],
+      );
+
+      const response = await request(app).post("/news/1").send({
+        title: "",
+        content: "",
+      });
+
+      expect(response.status).toBe(200);
+      expect(response.body.view).toBe("news/edit-news");
+      expect(response.body.locals.errors).toBeDefined();
+      expect(response.body.locals.errors.length).toBeGreaterThan(0);
+    });
+
+    it("should return 404 for non-existent news item", async () => {
+      const response = await request(app).post("/news/999").send({
+        title: "Title",
+        content: "Content",
+      });
+
+      expect(response.status).toBe(404);
+    });
+  });
+
+  describe("POST /news/:id/delete", () => {
+    it("should soft-delete news item and redirect to /news", async () => {
+      await pool.query(
+        'INSERT INTO "news" ("title", "slug", "content", "userId") VALUES ($1, $2, $3, $4)',
+        ["To Delete", "to-delete", "Content", 1],
+      );
+
+      const response = await request(app).post("/news/1/delete");
+
+      expect(response.status).toBe(302);
+      expect(response.headers.location).toBe("/news");
+
+      const result = await pool.query('SELECT * FROM "news" WHERE "id" = 1');
+      expect(result.rows[0].deletedAt).not.toBeNull();
     });
   });
 });

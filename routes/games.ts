@@ -93,10 +93,6 @@ router.post(
   },
 );
 
-router.get("/:id", async (req, res, next) => {
-  res.redirect(`/${req.params.id}`);
-});
-
 const playLimiter = rateLimit({
   windowMs: 60 * 1000,
   limit: 5,

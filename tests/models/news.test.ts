@@ -40,6 +40,7 @@ describe("News", () => {
 
       expect(news).toBeInstanceOf(News);
       expect(news.title).toBe(newsData.title);
+      expect(news.slug).toBe("test-news");
       expect(news.content).toBe(newsData.content);
       expect(news.userId).toBe(newsData.userId);
       expect(news.id).toBe(1);
@@ -142,6 +143,28 @@ describe("News", () => {
     });
   });
 
+  describe("findBySlug", () => {
+    it("should return news item by slug", async () => {
+      const createdNews = await News.create({
+        title: "Test News",
+        content: "Test content",
+        userId: 1,
+      });
+
+      const foundNews = await News.findBySlug(createdNews.slug);
+
+      expect(foundNews).toBeInstanceOf(News);
+      expect(foundNews!.slug).toBe("test-news");
+      expect(foundNews!.title).toBe("Test News");
+    });
+
+    it("should return null for non-existent slug", async () => {
+      const foundNews = await News.findBySlug("non-existent");
+
+      expect(foundNews).toBeNull();
+    });
+  });
+
   describe("count", () => {
     it("should return count of news items", async () => {
       // Initially should be 0
@@ -162,6 +185,63 @@ describe("News", () => {
 
       count = await News.count();
       expect(count).toBe(2);
+    });
+  });
+
+  describe("update", () => {
+    it("should update title, slug and content", async () => {
+      const created = await News.create({
+        title: "Original Title",
+        content: "Original content",
+        userId: 1,
+      });
+
+      const updated = await News.update(created.id, {
+        title: "Updated Title",
+        content: "Updated content",
+      });
+
+      expect(updated).toBeInstanceOf(News);
+      expect(updated!.title).toBe("Updated Title");
+      expect(updated!.slug).toBe("updated-title");
+      expect(updated!.content).toBe("Updated content");
+    });
+
+    it("should return null for non-existent id", async () => {
+      const updated = await News.update(999, {
+        title: "Title",
+        content: "Content",
+      });
+
+      expect(updated).toBeNull();
+    });
+  });
+
+  describe("delete", () => {
+    it("should soft-delete a news item", async () => {
+      const created = await News.create({
+        title: "To Delete",
+        content: "Content",
+        userId: 1,
+      });
+
+      await News.delete(created.id);
+
+      const found = await News.findById(created.id);
+      expect(found).toBeNull();
+    });
+
+    it("should not include deleted items in count", async () => {
+      const created = await News.create({
+        title: "To Delete",
+        content: "Content",
+        userId: 1,
+      });
+
+      await News.delete(created.id);
+
+      const count = await News.count();
+      expect(count).toBe(0);
     });
   });
 });

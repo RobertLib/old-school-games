@@ -38,8 +38,11 @@
           </div>
           <div class="news-content"><%- newsItem.content %></div>
         </article>
-        <div style="margin-top: 24px;">
+        <div style="margin-top: 24px; display: flex; gap: 8px; align-items: center;">
           <a href="/news" class="btn btn-outline">&larr; Back to News</a>
+          <% if (req.session?.user?.role === 'ADMIN') { %>
+          <a href="/news/<%= newsItem.id %>/edit" class="btn btn-outline">Edit</a>
+          <% } %>
         </div>
       </section>
     </div>

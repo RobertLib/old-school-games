@@ -11,6 +11,82 @@ router.get("/new", isAuth, isAdmin, async (req, res) => {
   res.render("news/new-news", { title: "Add New News" });
 });
 
+// Admin route - display edit form
+router.get("/:id/edit", isAuth, isAdmin, async (req, res, next) => {
+  try {
+    const id = parseInt(String(req.params.id), 10);
+    if (isNaN(id) || id <= 0) {
+      return next();
+    }
+
+    const newsItem = await News.findById(id);
+    if (!newsItem) {
+      return next();
+    }
+
+    res.render("news/edit-news", {
+      title: "Edit News - OldSchoolGames",
+      newsItem,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Admin route - update news
+router.post("/:id", isAuth, isAdmin, async (req, res, next) => {
+  try {
+    const id = parseInt(String(req.params.id), 10);
+    if (isNaN(id) || id <= 0) {
+      return next();
+    }
+
+    const errors = validateNews(req.body);
+
+    if (errors.length > 0) {
+      const newsItem = await News.findById(id);
+      if (!newsItem) {
+        return next();
+      }
+      return res.render("news/edit-news", {
+        title: "Edit News - OldSchoolGames",
+        newsItem,
+        errors,
+        formData: req.body,
+      });
+    }
+
+    const sanitizedData = sanitizeNews(req.body);
+    const updated = await News.update(id, sanitizedData);
+
+    if (!updated) {
+      return next();
+    }
+
+    req.flash("success", "News updated successfully!");
+    res.redirect(`/news/${updated.slug}`);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Admin route - delete news
+router.post("/:id/delete", isAuth, isAdmin, async (req, res, next) => {
+  try {
+    const id = parseInt(String(req.params.id), 10);
+    if (isNaN(id) || id <= 0) {
+      return next();
+    }
+
+    await News.delete(id);
+
+    req.flash("success", "News deleted successfully!");
+    res.redirect("/news");
+  } catch (error) {
+    next(error);
+  }
+});
+
 // Admin route - create new news
 router.post("/", isAuth, isAdmin, async (req, res, next) => {
   try {
@@ -73,14 +149,14 @@ router.get("/", async (req, res, next) => {
 });
 
 // Public route - single news item
-router.get("/:id", async (req, res, next) => {
+router.get("/:slug", async (req, res, next) => {
   try {
-    const id = parseInt(req.params.id, 10);
-    if (isNaN(id) || id <= 0) {
+    const { slug } = req.params;
+    if (!slug || !/^[a-z0-9-]+$/.test(slug)) {
       return next();
     }
 
-    const newsItem = await News.findById(id);
+    const newsItem = await News.findBySlug(slug);
     if (!newsItem) {
       return next();
     }
@@ -91,7 +167,7 @@ router.get("/:id", async (req, res, next) => {
       .trim();
 
     const description = plainContent.slice(0, 160);
-    const canonicalUrl = `https://oldschoolgames.eu/news/${newsItem.id}`;
+    const canonicalUrl = `https://oldschoolgames.eu/news/${newsItem.slug}`;
     const datePublished = new Date(newsItem.createdAt).toISOString();
     const dateModified = new Date(newsItem.updatedAt).toISOString();
 

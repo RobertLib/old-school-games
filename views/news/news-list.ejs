@@ -26,7 +26,7 @@
           "item": {
             "@type": "NewsArticle",
             "headline": <%- JSON.stringify(item.title) %>,
-            "url": "https://oldschoolgames.eu/news/<%= item.id %>",
+            "url": "https://oldschoolgames.eu/news/<%= item.slug %>",
             "datePublished": "<%= new Date(item.createdAt).toISOString() %>"
           }
         }<%= index < news.length - 1 ? ',' : '' %>
@@ -58,7 +58,7 @@
         </p>
         <% } else { %> <% news.forEach((newsItem, index) => { %>
         <article class="news-item <% if (index > 0) { %>news-item-bordered<% } %>">
-          <h2 class="news-title"><a href="/news/<%= newsItem.id %>"><%= newsItem.title %></a></h2>
+          <h2 class="news-title"><a href="/news/<%= newsItem.slug %>"><%= newsItem.title %></a></h2>
           <div class="news-meta">
             <time datetime="<%= new Date(newsItem.createdAt).toISOString() %>">
               <%= new Date(newsItem.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }) %>

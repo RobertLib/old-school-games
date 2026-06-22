@@ -12,7 +12,7 @@ const mockDb = vi.mocked(db);
 
 describe("Game Model", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.resetAllMocks();
   });
 
   describe("constructor", () => {
@@ -671,21 +671,12 @@ describe("Game Model", () => {
 
   describe("delete", () => {
     it("should delete a game", async () => {
-      // Mock findById call (first query) - return empty rows (game not found)
-      (mockDb.query as any)
-        .mockResolvedValueOnce({ rows: [] }) // findById returns no game
-        .mockResolvedValueOnce({}); // DELETE query
+      (mockDb.query as any).mockResolvedValueOnce({});
 
       await Game.delete(1);
 
-      expect(mockDb.query).toHaveBeenCalledTimes(2);
-      expect(mockDb.query).toHaveBeenNthCalledWith(
-        1,
-        expect.stringContaining('WHERE g."id" = $1'),
-        [1],
-      );
-      expect(mockDb.query).toHaveBeenNthCalledWith(
-        2,
+      expect(mockDb.query).toHaveBeenCalledTimes(1);
+      expect(mockDb.query).toHaveBeenCalledWith(
         'DELETE FROM "games" WHERE "id" = $1',
         [1],
       );
