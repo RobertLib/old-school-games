@@ -52,7 +52,7 @@ jobs:
       TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/old_school_games_test
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           # From .nvmrc rather than repeated here, so the version this runs
           # on cannot drift from the one a developer's `nvm use` picks. The
