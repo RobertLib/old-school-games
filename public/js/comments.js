@@ -207,6 +207,28 @@
     });
   }
 
+  /**
+   * Adds one to the count in the "Comments (12)" heading.
+   *
+   * The number is read back out of the heading rather than counted from the
+   * DOM: the list is paginated ("load more"), so what is on the page is not
+   * the total. A heading with no count yet — the template omits the span
+   * when the game has no comments — is left alone; there is nothing to
+   * correct, and inventing the element would put it outside the <h2> text
+   * the server writes.
+   */
+  function bumpCommentCount() {
+    const countElement = document.querySelector(".comment-count");
+
+    if (!countElement) return;
+
+    const current = Number(countElement.textContent.replace(/\D/g, ""));
+
+    if (!Number.isFinite(current)) return;
+
+    countElement.textContent = `(${current + 1})`;
+  }
+
   form.addEventListener("submit", function (event) {
     event.preventDefault();
 
@@ -262,6 +284,11 @@
         }
 
         document.getElementById("no-comments")?.remove();
+
+        // The "Comments (12)" heading counts root comments (see
+        // views/games/game-detail.ejs), so a new one leaves it a comment
+        // behind until the next page load. A reply does not change it.
+        if (!parentId) bumpCommentCount();
 
         // Not form.reset(), which also wipes the nick — so anyone posting a
         // second comment had to type their name again, and most did not,

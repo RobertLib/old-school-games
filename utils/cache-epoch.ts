@@ -2,6 +2,7 @@ import { type NextFunction, type Request, type Response } from "express";
 import db from "../db.ts";
 import logger from "./logger.ts";
 import { clearAllCaches } from "./cache.ts";
+import { LATEST_COMMENTS_KEY, sidebarCache } from "./sidebar-cache.ts";
 
 /**
  * Cross-machine cache invalidation.
@@ -16,13 +17,24 @@ import { clearAllCaches } from "./cache.ts";
  * linking to a 404. Rate limits had the same bug and moved to Postgres in
  * 0028_rate_limits.sql; this is the same fix applied to the caches.
  *
- * The mechanism is a single counter in the database — "cache_epochs", from
- * 0033. A write bumps it. Every process reads it at most once every
- * EPOCH_CHECK_INTERVAL_MS, on the first request that arrives after the
- * interval, and drops every cache it holds when the number has moved since
- * it last looked. LISTEN/NOTIFY would be quicker, but it needs a connection
- * held open outside the pool and does not work through a transaction-mode
- * pooler, which is what the Supabase URL in .env.example points at.
+ * The mechanism is a counter per scope in the database — "cache_epochs", from
+ * 0033 and 0039. A write bumps the scope it invalidated. Every process reads
+ * them all at most once every EPOCH_CHECK_INTERVAL_MS, on the first request
+ * that arrives after the interval, and applies the effect of every scope whose
+ * number has moved since it last looked. LISTEN/NOTIFY would be quicker, but
+ * it needs a connection held open outside the pool and does not work through a
+ * transaction-mode pooler, which is what the Supabase URL in .env.example
+ * points at.
+ *
+ * Scopes exist because a single counter made the cheapest write the most
+ * expensive invalidation on the site. A posted comment deletes one sidebar
+ * entry locally and used to make every other machine drop *everything* — the
+ * sitemap held for a day included — so the busiest write on the site threw
+ * away the most expensive cache in it, several times an hour. The invariant is
+ * that a remote machine drops exactly what the writing machine dropped
+ * locally, which means the effect below has to be kept in step with what the
+ * caller deletes by hand: see clearGameCaches in models/game.ts and the
+ * deletes in models/comment.ts.
  *
  * Failures are logged and dropped, like every other cache failure here: a
  * database that cannot answer this must not be what takes a page down, and
@@ -58,19 +70,33 @@ export const FAILURE_BACKOFF_MS = 1_000;
  */
 export const SYNC_TIMEOUT_MS = 2_000;
 
-let lastSeen: number | null = null;
-// Negative infinity rather than 0, so the very first check happens whatever
-// clock the caller passes — the suite passes small ones.
-let lastChecked = Number.NEGATIVE_INFINITY;
-let inflight: Promise<void> | null = null;
+/**
+ * What a write says it invalidated, and what a machine that hears about it
+ * has to drop in answer.
+ *
+ * "all" is the broad scope the game and news writes use: those drop the
+ * sitemap, both feeds, the rankings, the featured pool and four sidebar
+ * widgets, which is near enough everything that clearing the lot is the
+ * honest description of it.
+ *
+ * "comments" is the narrow one, and the reason scopes exist at all: a posted
+ * or deleted comment deletes one sidebar entry and nothing else, so that is
+ * all a remote machine should drop for it.
+ *
+ * A scope added here needs a row in "cache_epochs" — see 0039 — because a
+ * bump is an UPDATE and a missing row would silently invalidate nothing.
+ */
+const SCOPE_EFFECTS = {
+  all: clearAllCaches,
+  comments: () => sidebarCache.delete(LATEST_COMMENTS_KEY),
+} satisfies Record<string, () => void>;
+
+export type CacheScope = keyof typeof SCOPE_EFFECTS;
+
+const SCOPES = Object.keys(SCOPE_EFFECTS) as CacheScope[];
 
 /**
- * Advances the shared counter so every other process drops its caches on
- * its next check. The process that bumps adopts the new value at once, so it
- * does not throw away the caches it has just rebuilt when it next looks.
- */
-/**
- * The counter this process has seen, never going backwards.
+ * The counters this process has seen, never going backwards.
  *
  * A bump and a concurrent read are two statements on two connections, and
  * nothing orders them: a SELECT issued before the UPDATE can resolve after
@@ -80,33 +106,57 @@ let inflight: Promise<void> | null = null;
  * the very machine that had just rebuilt them. Only ever going up makes the
  * two orders equivalent; a counter that genuinely went backwards would mean
  * the row had been recreated, which nothing here does.
+ *
+ * A scope this process has never read is absent rather than zero, so the
+ * first read of it adopts whatever it finds instead of reporting a move.
  */
-function highestSeen(epoch: number): number {
-  return lastSeen === null ? epoch : Math.max(lastSeen, epoch);
+const lastSeen = new Map<CacheScope, number>();
+// Negative infinity rather than 0, so the very first check happens whatever
+// clock the caller passes — the suite passes small ones.
+let lastChecked = Number.NEGATIVE_INFINITY;
+let inflight: Promise<void> | null = null;
+
+function adopt(scope: CacheScope, epoch: number): void {
+  const seen = lastSeen.get(scope);
+
+  lastSeen.set(scope, seen === undefined ? epoch : Math.max(seen, epoch));
 }
 
-export async function bumpCacheEpoch(): Promise<void> {
+/**
+ * Advances one scope's counter so every other process applies that scope's
+ * effect on its next check. The process that bumps adopts the new value at
+ * once, so it does not throw away the caches it has just rebuilt when it next
+ * looks.
+ */
+export async function bumpCacheEpoch(
+  scope: CacheScope = "all",
+): Promise<void> {
   try {
     const { rows } = await db.query(
       `UPDATE "cache_epochs"
        SET "epoch" = "epoch" + 1, "bumpedAt" = NOW()
-       WHERE "id" = 1
+       WHERE "scope" = $1
        RETURNING "epoch"`,
+      [scope],
     );
 
     // Monotonic, like the adoption in syncCacheEpoch and for the same
     // reason: a read that started before this UPDATE can land after it, and
     // it carries the older number.
-    if (rows[0]) lastSeen = highestSeen(Number(rows[0].epoch));
+    if (rows[0]) adopt(scope, Number(rows[0].epoch));
   } catch (error) {
     logger.error("Could not bump the cache epoch:", error);
   }
 }
 
 /**
- * Reads the shared counter if it has not been read for the last interval,
- * and clears every in-memory cache when it has moved. Concurrent callers
- * share one query; a caller inside the interval returns at once.
+ * Reads the counters if they have not been read for the last interval, and
+ * applies the effect of every scope that has moved. Concurrent callers share
+ * one query; a caller inside the interval returns at once.
+ *
+ * Still one query for every scope, not one per scope: the whole table is four
+ * short rows, and the cost this middleware is allowed to add per process per
+ * interval is one round trip.
  */
 export function syncCacheEpoch(now: number = Date.now()): Promise<void> {
   if (inflight) return inflight;
@@ -116,7 +166,7 @@ export function syncCacheEpoch(now: number = Date.now()): Promise<void> {
   inflight = (async () => {
     try {
       const { rows } = await db.query(
-        'SELECT "epoch" FROM "cache_epochs" WHERE "id" = 1',
+        'SELECT "scope", "epoch" FROM "cache_epochs"',
       );
 
       // Recorded here rather than before the query, so only a read that
@@ -126,21 +176,39 @@ export function syncCacheEpoch(now: number = Date.now()): Promise<void> {
       // went unnoticed for the rest of the window.
       lastChecked = now;
 
-      if (!rows[0]) return;
+      const moved: CacheScope[] = [];
 
-      const epoch = Number(rows[0].epoch);
+      for (const row of rows) {
+        const scope = String(row.scope) as CacheScope;
 
-      // Greater, not merely different: see highestSeen. A number below the
-      // one this process holds is a read that overtook its own bump, and
-      // clearing on it would drop caches nothing has invalidated.
-      if (lastSeen !== null && epoch > lastSeen) {
-        logger.info(
-          `Cache epoch moved from ${lastSeen} to ${epoch}; dropping every cache.`,
-        );
-        clearAllCaches();
+        // A scope this build does not know about is another version of the
+        // app writing to the same database — mid-deploy, which is exactly
+        // when two machines disagree. Nothing here can apply an effect it has
+        // no code for, and pretending to have seen it would mean the effect
+        // is never applied once this build does learn it, so it is skipped.
+        if (!SCOPES.includes(scope)) continue;
+
+        const epoch = Number(row.epoch);
+        const seen = lastSeen.get(scope);
+
+        // Greater, not merely different: see adopt. A number below the one
+        // this process holds is a read that overtook its own bump, and
+        // clearing on it would drop caches nothing has invalidated.
+        if (seen !== undefined && epoch > seen) moved.push(scope);
+
+        adopt(scope, epoch);
       }
 
-      lastSeen = highestSeen(epoch);
+      if (moved.length > 0) {
+        logger.info(
+          `Cache epoch moved for ${moved.join(", ")}; dropping what those writes dropped.`,
+        );
+
+        // "all" subsumes every narrower scope, so a check that saw both move
+        // runs one clear rather than a clear and then a redundant delete.
+        if (moved.includes("all")) SCOPE_EFFECTS.all();
+        else for (const scope of moved) SCOPE_EFFECTS[scope]();
+      }
     } catch (error) {
       // A short backoff instead of a whole interval — enough to keep a busy
       // moment from firing one doomed query per request, not enough to keep
@@ -196,7 +264,7 @@ export async function cacheEpochSync(
 
 /** For the suite: forget what this process has seen. */
 export function resetCacheEpochForTests(): void {
-  lastSeen = null;
+  lastSeen.clear();
   lastChecked = Number.NEGATIVE_INFINITY;
   inflight = null;
 }

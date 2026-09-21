@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { isMissingGameError } from "../../utils/pg-errors.ts";
+import {
+  COMMENT_CONSTRAINTS,
+  isMissingGameError,
+  isMissingParentCommentError,
+} from "../../utils/pg-errors.ts";
 
 /**
  * A game can be deleted while someone still has its page open, so the row a
@@ -27,5 +31,68 @@ describe("isMissingGameError", () => {
     expect(isMissingGameError(null)).toBe(false);
     expect(isMissingGameError(undefined)).toBe(false);
     expect(isMissingGameError("23503")).toBe(false);
+  });
+
+  /**
+   * The two violations a comment insert can lose a race on share one
+   * SQLSTATE, so the constraint name is the only thing that tells them apart —
+   * and a reply whose parent a moderator had just deleted was being reported
+   * as "Game not found", sending the visitor to look for a page that is fine.
+   */
+  it("does not claim the game is gone for a vanished parent comment", () => {
+    expect(
+      isMissingGameError({
+        code: "23503",
+        constraint: COMMENT_CONSTRAINTS.parent,
+      }),
+    ).toBe(false);
+  });
+
+  it("still recognises the comment's own game key", () => {
+    expect(
+      isMissingGameError({
+        code: "23503",
+        constraint: COMMENT_CONSTRAINTS.game,
+      }),
+    ).toBe(true);
+  });
+
+  /**
+   * An unnamed violation is read as a missing game, which is what every
+   * caller got before constraint names were looked at at all: the other keys
+   * reachable from here — "ratings" and "plays" — both point at "games".
+   */
+  it("reads an unnamed foreign-key violation as a missing game", () => {
+    expect(isMissingGameError({ code: "23503" })).toBe(true);
+  });
+});
+
+describe("isMissingParentCommentError", () => {
+  it("recognises the parent key by name", () => {
+    expect(
+      isMissingParentCommentError({
+        code: "23503",
+        constraint: COMMENT_CONSTRAINTS.parent,
+      }),
+    ).toBe(true);
+  });
+
+  it.each([
+    ["the game key", COMMENT_CONSTRAINTS.game],
+    ["no constraint at all", undefined],
+  ])("refuses a violation naming %s", (_label, constraint) => {
+    expect(isMissingParentCommentError({ code: "23503", constraint })).toBe(
+      false,
+    );
+  });
+
+  it("refuses anything that is not a foreign-key violation", () => {
+    expect(
+      isMissingParentCommentError({
+        code: "23505",
+        constraint: COMMENT_CONSTRAINTS.parent,
+      }),
+    ).toBe(false);
+    expect(isMissingParentCommentError(null)).toBe(false);
   });
 });

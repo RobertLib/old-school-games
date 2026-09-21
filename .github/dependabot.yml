@@ -15,9 +15,18 @@ updates:
   # changelog read — come separately.
   #
   # `typescript` is held back deliberately: see "A note on the TypeScript
-  # version" in README.md. typescript-eslint cannot load against the TS 7 API,
-  # so a TS 7 bump breaks `npm run lint` and therefore every build. Remove the
-  # ignore once typescript-eslint supports >= 7.1.
+  # version" in README.md. typescript-eslint declares
+  # `typescript: ">=4.8.4 <6.1.0"`, so the ceiling is 6.1 rather than 7 — and
+  # above it `npm run lint`, and therefore every build, fails outright.
+  #
+  # Minor as well as major, because 6.1 *is* a minor: ignoring only majors let
+  # Dependabot raise the one bump that breaks linting, grouped in with a
+  # week's worth of harmless ones. package.json pins the range itself
+  # (">=6.0.3 <6.1.0") so an `npm install` cannot do it either; this only
+  # keeps the pull request from being opened. Patches still come through,
+  # which is the whole point of not pinning an exact version.
+  #
+  # Widen both once typescript-eslint's peer range does.
   - package-ecosystem: npm
     directory: /
     schedule:
@@ -32,6 +41,7 @@ updates:
       - dependency-name: typescript
         update-types:
           - version-update:semver-major
+          - version-update:semver-minor
 
   # GitHub Actions. superfly/flyctl-actions/setup-flyctl is pinned to a commit
   # SHA on purpose (the reasoning is in fly-deploy.yml, next to the pin);

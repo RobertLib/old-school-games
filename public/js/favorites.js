@@ -258,9 +258,14 @@ function gameThumbnail(game, className) {
 
   const img = element("img", {
     attrs: {
-      alt: game.title,
+      // The same alt and the same box as a server-rendered cover (see
+      // views/games/game-item.ejs): "Doom" alone reads as if the link were
+      // the word, and a width without a height leaves the card to reflow
+      // once the image arrives.
+      alt: `${game.title} – MS-DOS cover art`,
       src: game.image,
       width: "100",
+      height: "127",
       loading: "lazy",
     },
   });
@@ -363,6 +368,10 @@ async function loadFavoriteGames() {
     button.addEventListener("click", () => {
       toggleFavorite(button);
       loadFavoriteGames();
+      // The stats above the list count favourites, so they are stale the
+      // moment one is removed — the recently-played handler below has always
+      // refreshed them and this one did not.
+      renderCollectionStats();
     });
 
     const footer = element("div", {
@@ -793,6 +802,21 @@ function updateFavoritesCount() {
 
   countElement.textContent = count;
   countElement.style.display = count === 0 ? "none" : "inline";
+
+  // The badge is aria-hidden (see views/navbar.ejs): it is the link's only
+  // text, so a screen reader announced the profile link as a bare number.
+  // The count belongs in the link's name instead, where it is announced as
+  // what it counts.
+  const profileLink = countElement.closest("a");
+
+  if (profileLink) {
+    profileLink.setAttribute(
+      "aria-label",
+      count === 0
+        ? "Profile"
+        : `Profile, ${count} favourite${count === 1 ? "" : "s"}`,
+    );
+  }
 }
 
 // ---------------------------------------------------------------------------

@@ -292,11 +292,13 @@ describe("the web manifest", () => {
    * /images/logo.png is the 360x360 mark utils/site.ts already keeps for the
    * Organization node, which clears it.
    *
-   * There is deliberately no 512x512, which is the size a splash screen would
-   * prefer. The artwork is pixel art and utils/site.ts scales it by whole
-   * numbers on purpose — 360 is 2x the 180x180 original — so a 512 would have
-   * to be resampled at 2.84x and would arrive blurred. A browser scales the
-   * 360 down cleanly enough; a blurred source it cannot fix.
+   * The 512x512 beside it is not a resampled copy, which the artwork could
+   * not take: it is pixel art and utils/site.ts scales it by whole numbers on
+   * purpose — 360 is 2x the 180x180 original, and 512 would be 2.84x and
+   * would arrive blurred. /images/icon-512-maskable.png is the same 360 mark
+   * padded out to 512 with the manifest's own background colour, so not a
+   * pixel of it is resampled, and the padding is what the entry is for (see
+   * the maskable check below).
    */
   it("carries an icon large enough for the install prompt", () => {
     const largest = Math.max(
@@ -306,6 +308,47 @@ describe("the web manifest", () => {
     );
 
     expect(largest).toBeGreaterThanOrEqual(192);
+  });
+
+  /**
+   * Android crops a launcher icon to whatever shape the device uses — a
+   * circle, a squircle, a rounded square. An icon declared "any" is placed
+   * inside that shape untouched, which leaves it floating in a white or grey
+   * plate; one declared "maskable" is scaled to fill it and cropped, and the
+   * platform guarantees only the middle 80% survives.
+   *
+   * So the two purposes want different artwork and the manifest has to offer
+   * both. The maskable copy is the logo on its own background with the
+   * remaining 20% as padding, so the crop takes padding rather than the mark.
+   */
+  it("offers a maskable icon as well as a plain one", () => {
+    const purposes = manifest.icons.map(
+      (icon: { purpose?: string }) => icon.purpose,
+    );
+
+    expect(purposes).toContain("any");
+    expect(purposes).toContain("maskable");
+  });
+
+  it("gives the maskable icon room for the crop", () => {
+    const maskable = manifest.icons.find(
+      (icon: { purpose?: string }) => icon.purpose === "maskable",
+    );
+
+    expect(maskable).toBeDefined();
+
+    // At least 512, because the safe area is 80% of the box: a maskable icon
+    // smaller than this has no room to pad the mark and still be sharp.
+    expect(Number(maskable.sizes.split("x")[0])).toBeGreaterThanOrEqual(512);
+    // Its own file, not the "any" icon declared twice — an unpadded mark
+    // declared maskable is the cropped-logo bug this is about.
+    const plain = manifest.icons.filter(
+      (icon: { purpose?: string }) => icon.purpose === "any",
+    );
+
+    expect(plain.map((icon: { src: string }) => icon.src)).not.toContain(
+      maskable.src,
+    );
   });
 
   it("opens in a window with a way back", () => {

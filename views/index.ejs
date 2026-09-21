@@ -9,7 +9,7 @@
   <meta property="og:title" content="<%= locals.title || siteTitle %>" />
   <meta property="og:description" content="<%= locals.description || siteDescription %>" />
   <%- include('og-image') %>
-  <meta property="og:url" content="<%= locals.ogUrl || locals.canonicalUrl || (siteUrl + req.path) %>" />
+  <meta property="og:url" content="<%= locals.ogUrl || locals.canonicalUrl || (siteUrl + req.originalUrl.split('?')[0]) %>" />
   <meta property="og:type" content="website" />
   <meta property="og:site_name" content="<%= siteName %>" />
   <script defer src="<%= asset('/js/rating-stars.js') %>"></script>
@@ -40,7 +40,7 @@
     "@type": "WebPage",
     name: locals.title || siteTitle,
     description: locals.description || siteDescription,
-    url: locals.ogUrl || locals.canonicalUrl || siteUrl + req.path,
+    url: locals.ogUrl || locals.canonicalUrl || siteUrl + req.originalUrl.split('?')[0],
     mainEntity: {
       // The whole listing, not the slice of it on this page: schema.org defines
       // numberOfItems as the size of the list, and a paginated description is
@@ -163,7 +163,12 @@
              first line of the ticker below, which is where it reads better
              anyway. -->
         <h1 class="text-lg" style="margin: 0 0 7px">Play Classic MS-DOS Games Online</h1>
-        <div class="ticker-wrap" aria-hidden="true">
+        <%# Not aria-hidden: the line is the welcome this page's H1 used to be,
+            and it is the only place it is said now — hiding it from a screen
+            reader hid the content, not the decoration. The text does not move
+            for anyone who has asked for less motion (see .ticker under
+            prefers-reduced-motion in public/css/style.css). %>
+        <div class="ticker-wrap">
           <span class="ticker">👋 Welcome to our portal dedicated to the golden age of gaming! Relive the nostalgia and immerse yourself in the magic of classic games from the MS-DOS era that shaped the world of gaming. Here, you can easily play these timeless classics directly in your browser, without any complicated setup. Just click and let yourself be transported back to a time when games were crafted with heart and soul. Get ready for an adventure filled with pixelated graphics, unforgettable music, and a unique atmosphere. Welcome back to the past! 💾🕹️👾</span>
         </div>
 
@@ -240,7 +245,7 @@
         <!-- Contextual Links for filtered pages -->
         <% if (locals.publisher || locals.developer || locals.year) { %>
         <div style="margin: 20px 0; padding: 15px; background: var(--panel-tint); border: 1px solid rgb(var(--border-rgb)); border-radius: var(--border-radius); color: rgb(var(--color-rgb));">
-          <h3 style="margin: 0 0 10px; color: rgb(var(--primary-rgb)); text-shadow: var(--text-shadow);">Related:</h3>
+          <h3 style="margin: 0 0 10px; color: rgb(var(--primary-rgb));">Related:</h3>
           <div style="display: flex; flex-wrap: wrap; gap: 10px;">
             <% if (locals.publisher) { %>
             <a href="/publishers" class="btn btn-sm btn-outline">All Publishers</a>

@@ -97,10 +97,67 @@ function validate(data: Partial<GameData>): void {
   }
 }
 
-// Trigram score above which a title counts as a match even though the query
-// is not a substring of it — this is what makes "moneky island" find
+// Trigram score at or above which a title counts as a match even though the
+// query is not a substring of it — this is what makes "moneky island" find
 // "The Secret of Monkey Island".
 const SEARCH_SIMILARITY_THRESHOLD = 0.28;
+
+/**
+ * The looser threshold behind the "did you mean…" suggestions — see
+ * findTitleSuggestions. A rough guess beats an empty page there, so it is a
+ * long way below the one the search itself applies.
+ */
+const SUGGESTION_SIMILARITY_THRESHOLD = 0.1;
+
+/**
+ * Runs one statement with pg_trgm's similarity threshold set for the length of
+ * a transaction.
+ *
+ * The fuzzy matches below used to be written `similarity(g."title", $n) >
+ * 0.28`, which is correct and unindexable: the GIN trigram index from 0020
+ * serves the `%` operator, and nothing at all serves a call to similarity() in
+ * a WHERE clause. So every search — including the one behind every empty result
+ * page, which then runs a second fuzzy query for suggestions — was a sequential
+ * scan of the whole catalogue with a trigram score computed per row.
+ *
+ * `%` is the indexable form, and it compares against a session setting rather
+ * than taking a threshold of its own, which is why this exists. SET LOCAL
+ * scopes the setting to the transaction, so a pooled connection cannot carry
+ * one request's threshold into the next request to reuse it. set_config with
+ * `is_local` is SET LOCAL as a function call — SET itself takes no parameters,
+ * and interpolating a number into SQL text is the one thing this file does not
+ * do anywhere else.
+ *
+ * `%` is ">=" where the old expression was ">", so a title scoring exactly the
+ * threshold now matches. That is the only behavioural difference, and 0.28 is
+ * not a score any real title lands on precisely.
+ */
+async function queryWithSimilarityThreshold(
+  threshold: number,
+  text: string,
+  values: any[] = [],
+): Promise<{ rows: any[] }> {
+  const client = await db.connect();
+
+  try {
+    await client.query("BEGIN");
+    await client.query(
+      "SELECT set_config('pg_trgm.similarity_threshold', $1, true)",
+      [String(threshold)],
+    );
+
+    const result = await client.query(text, values);
+
+    await client.query("COMMIT");
+
+    return result;
+  } catch (error) {
+    await client.query("ROLLBACK").catch(() => {});
+    throw error;
+  } finally {
+    client.release();
+  }
+}
 
 /**
  * How many votes' worth of doubt the "top rated" ranking applies to every
@@ -132,6 +189,26 @@ const WEIGHTED_RATING = `CASE
             + ${RATING_CONFIDENCE_WEIGHT} * "siteMean"."value")
            / (COUNT(r."rating") + ${RATING_CONFIDENCE_WEIGHT})
     END`;
+
+/**
+ * A game's plain average, as a correlated lookup rather than a joined
+ * aggregate.
+ *
+ * The one ordering that needs the average without *ranking* on it: unsorted
+ * search results are ordered by relevance and use it only to separate equally
+ * relevant titles. find() pages those results before the aggregates are
+ * attached (see the second query shape there), so the tie-break has to be
+ * something the inner query can compute per candidate row. Served by the
+ * unique index on ("gameId", "voterId") from 0020, which leads with the column
+ * this looks up.
+ *
+ * COALESCE, so an unrated game sorts at 0 rather than first — a descending
+ * sort puts NULL at the top — which is where the joined COALESCE(AVG(...), 0)
+ * put it.
+ */
+const PAGE_AVERAGE_RATING = `COALESCE((
+      SELECT AVG(rt."rating") FROM "ratings" rt WHERE rt."gameId" = g."id"
+    ), 0)`;
 
 /**
  * How many games the featured carousel draws its slides from, and how long
@@ -249,16 +326,20 @@ function buildSearchCondition(
 
   values.push(`%${escapedTerm}%`);
   const likeIndex = values.length;
-  // Raw, for similarity() and the exact-title comparison — neither reads its
-  // argument as a pattern.
+  // Raw, for the trigram match, the relevance score and the exact-title
+  // comparison — none of them reads its argument as a pattern.
   values.push(term);
   const termIndex = values.length;
 
   return {
+    // `%` rather than `similarity(...) > 0.28`: same match, but it is the form
+    // the trigram index can answer. The threshold travels with the transaction
+    // — see queryWithSimilarityThreshold, which every caller of this has to go
+    // through.
     sql: `(g."title" ILIKE $${likeIndex}
       OR g."developer" ILIKE $${likeIndex}
       OR g."publisher" ILIKE $${likeIndex}
-      OR similarity(g."title", $${termIndex}) > ${SEARCH_SIMILARITY_THRESHOLD})`,
+      OR g."title" % $${termIndex})`,
     likeIndex,
     termIndex,
     escapedTerm,
@@ -619,15 +700,30 @@ export default class Game extends Model {
     const VALID_ORDER_BY_FIELDS = ["createdAt", "release", "title"];
     const VALID_ORDER_DIRS = ["ASC", "DESC"];
 
+    // The rejected value is deliberately not in the message. These strings
+    // reach a log, and the routes above call this with whatever "?orderBy="
+    // carried — so echoing it wrote an arbitrary visitor-supplied string into
+    // error.log, where nothing escapes it and a log viewer may well render it.
+    // Which field was refused is not the useful half anyway: the caller is the
+    // one line of code that passed it.
     if (
       orderBy &&
       orderBy !== "rating" &&
       !VALID_ORDER_BY_FIELDS.includes(orderBy)
     ) {
-      throw new Error(`Invalid orderBy field: ${orderBy}`);
+      throw new Error("Invalid orderBy field");
     }
     if (orderDir && !VALID_ORDER_DIRS.includes(orderDir)) {
-      throw new Error(`Invalid orderDir: ${orderDir}`);
+      throw new Error("Invalid orderDir");
+    }
+
+    // A page with no page size to measure it against used to be dropped in
+    // silence: OFFSET is only applied inside the `limit` branch below, so
+    // find({ page: 7 }) quietly answered with page 1 — the whole catalogue, in
+    // fact, since there is no LIMIT either. Every caller on the site passes
+    // both; this is for the next one that does not.
+    if (page !== undefined && page > 1 && !limit) {
+      throw new Error("Game.find needs a limit before it can offset a page");
     }
 
     const values: any[] = [];
@@ -652,8 +748,9 @@ export default class Game extends Model {
     );
 
     // Built before the statement around it, because whether the ordering
-    // sorts on the rating is what decides whether the query has to join the
-    // site-wide mean in at all.
+    // sorts on the rating aggregate is what decides the shape of the whole
+    // query: an ordering that reads it has to aggregate before it can page,
+    // and an ordering that does not must page first.
     let ranksByRating = false;
     let orderClause: string;
 
@@ -669,7 +766,7 @@ export default class Game extends Model {
       orderClause = `${buildSearchRelevanceOrder(
         searchCondition,
         values,
-      )}, "averageRating" DESC, g."id" DESC`;
+      )}, ${PAGE_AVERAGE_RATING} DESC, g."id" DESC`;
     } else if (letter || year || developer || publisher) {
       // Default ordering for different page types
       orderClause = `g."title" ${direction}, g."id" ${direction}`;
@@ -678,47 +775,103 @@ export default class Game extends Model {
       orderClause = `${WEIGHTED_RATING} ${direction}, g."id" ${direction}`;
     }
 
-    // The mean is one row over the whole "ratings" table, so it is joined in
-    // only for the orderings that read it — a listing sorted by title or by
-    // date should not pay for an aggregate it never looks at.
-    let query = `
-      ${
-        ranksByRating
-          ? `WITH "siteMean" AS (SELECT AVG("rating") AS "value" FROM "ratings")`
-          : ""
-      }
-      SELECT g.*, COALESCE(AVG(r.rating), 0) as "averageRating",
-             COUNT(r."rating") as "ratingCount"
-      FROM "games" g
-      LEFT JOIN "ratings" r ON g.id = r."gameId"
-      ${ranksByRating ? `CROSS JOIN "siteMean"` : ""}
-    `;
+    const whereClause =
+      whereConditions.length > 0
+        ? ` WHERE ${whereConditions.join(" AND ")}`
+        : "";
 
-    if (whereConditions.length > 0) {
-      query += ` WHERE ${whereConditions.join(" AND ")}`;
-    }
-
-    // The mean joins the group as it does in findTopRated. It is a single-row
-    // cross join, so this changes no grouping — it only lets the ORDER BY
-    // above reference the column outside an aggregate.
-    query += ranksByRating
-      ? ` GROUP BY g.id, "siteMean"."value"`
-      : ` GROUP BY g.id`;
-
-    query += ` ORDER BY ${orderClause}`;
+    let paging = "";
 
     if (limit) {
-      query += ` LIMIT $${values.length + 1}`;
+      paging += ` LIMIT $${values.length + 1}`;
       values.push(limit);
 
       if (page) {
         const offset = (Math.max(1, page) - 1) * limit;
-        query += ` OFFSET $${values.length + 1}`;
+        paging += ` OFFSET $${values.length + 1}`;
         values.push(offset);
       }
     }
 
-    const { rows } = await db.query(query, values);
+    let query: string;
+
+    if (ranksByRating) {
+      /**
+       * The one shape that has to aggregate before it pages, because the
+       * ordering *is* the aggregate: a game's place in a rating ranking is not
+       * known until its votes have been counted, so there is no prefix of the
+       * catalogue the page could be taken from first. The site-wide mean the
+       * weighting pulls towards is one row over the whole "ratings" table, so
+       * it is joined in only here — a listing sorted by title or by date
+       * should not pay for it.
+       *
+       * The mean joins the group as it does in findTopRated. It is a
+       * single-row cross join, so this changes no grouping — it only lets the
+       * ORDER BY reference the column outside an aggregate.
+       */
+      query = `
+        WITH "siteMean" AS (SELECT AVG("rating") AS "value" FROM "ratings")
+        SELECT g.*, COALESCE(AVG(r.rating), 0) as "averageRating",
+               COUNT(r."rating") as "ratingCount"
+        FROM "games" g
+        LEFT JOIN "ratings" r ON g.id = r."gameId"
+        CROSS JOIN "siteMean"
+        ${whereClause}
+        GROUP BY g.id, "siteMean"."value"
+        ORDER BY ${orderClause}${paging}`;
+    } else {
+      /**
+       * Every other ordering pages the games first and attaches the rating
+       * aggregates to just that page.
+       *
+       * This used to join "games" to "ratings" and GROUP BY for *every*
+       * ordering, so "newest first" — the homepage, the sidebar's "Recently
+       * added", the feed-shaped listings — read the whole catalogue and every
+       * vote on it, aggregated the lot, sorted it and then threw all but
+       * twenty-five rows away. The ordering columns here are the game's own,
+       * so a LIMIT/OFFSET over "games" alone can be served straight from an
+       * index (see 0038 for "createdAt"), and the aggregate is then paid for
+       * twenty-five times rather than once per game in the catalogue.
+       *
+       * A LATERAL per row rather than a pre-aggregated subquery — the shape
+       * findMostPlayed uses — because that one aggregates the whole "ratings"
+       * table and this one only has to look up the page's own games, which the
+       * unique index from 0020 leads with. The aggregate always returns exactly
+       * one row, so LEFT JOIN … ON TRUE gives an unrated game a NULL average
+       * and a count of 0.
+       *
+       * The outer ORDER BY repeats the inner one: a subquery's ordering is not
+       * something the join above it has to preserve.
+       */
+      query = `
+        SELECT g.*, COALESCE(r."averageRating", 0) as "averageRating",
+               COALESCE(r."ratingCount", 0) as "ratingCount"
+        FROM (
+          SELECT g."id"
+          FROM "games" g
+          ${whereClause}
+          ORDER BY ${orderClause}${paging}
+        ) p
+        JOIN "games" g ON g."id" = p."id"
+        LEFT JOIN LATERAL (
+          SELECT AVG(rt."rating") AS "averageRating",
+                 COUNT(*) AS "ratingCount"
+          FROM "ratings" rt
+          WHERE rt."gameId" = g."id"
+        ) r ON TRUE
+        ORDER BY ${orderClause}`;
+    }
+
+    // A search matches with pg_trgm's "%", which reads its threshold from the
+    // session — so the statement has to run inside the transaction that sets
+    // it. Everything else is one plain query on the pool.
+    const { rows } = searchCondition
+      ? await queryWithSimilarityThreshold(
+          SEARCH_SIMILARITY_THRESHOLD,
+          query,
+          values,
+        )
+      : await db.query(query, values);
 
     return rows.map(hydrate);
   }
@@ -756,6 +909,13 @@ export default class Game extends Model {
   // "Did you mean…" for searches that found nothing. Uses a much looser
   // trigram threshold than the search itself, because here a rough guess is
   // more useful than an empty page.
+  //
+  // Matched with "%" and scored with similarity(), which is the split that
+  // makes this indexable: the operator picks the candidates through the GIN
+  // index from 0020, and the score then only has to be computed for those.
+  // Written as similarity() > 0.1 in the WHERE clause, it was a sequential
+  // scan — and this runs on exactly the requests that already found nothing,
+  // which is where a crawler walking made-up query strings ends up.
   static async findTitleSuggestions(
     search: string,
     limit: number = 5,
@@ -764,9 +924,10 @@ export default class Game extends Model {
 
     if (!term) return [];
 
-    const { rows } = await db.query(
+    const { rows } = await queryWithSimilarityThreshold(
+      SUGGESTION_SIMILARITY_THRESHOLD,
       `SELECT * FROM "games"
-       WHERE similarity("title", $1) > 0.1
+       WHERE "title" % $1
        ORDER BY similarity("title", $1) DESC, "id" DESC
        LIMIT $2`,
       [term, limit],
@@ -992,13 +1153,27 @@ export default class Game extends Model {
 
     // The very same builder find() uses — not a second copy of it kept in
     // step by hand, which is what these two were. See buildGameFilters.
-    const { conditions: whereConditions } = buildGameFilters(filters, values);
+    const { conditions: whereConditions, searchCondition } = buildGameFilters(
+      filters,
+      values,
+    );
 
     if (whereConditions.length > 0) {
       query += ` WHERE ${whereConditions.join(" AND ")}`;
     }
 
-    const { rows } = await db.query(query, values);
+    // Through the same transaction find() uses when a search is involved, for
+    // the same reason: the "%" in the search condition reads its threshold
+    // from the session. The two must also agree on which rows match, or the
+    // page numbering describes a different listing from the one served.
+    const { rows } = searchCondition
+      ? await queryWithSimilarityThreshold(
+          SEARCH_SIMILARITY_THRESHOLD,
+          query,
+          values,
+        )
+      : await db.query(query, values);
+
     return parseInt(rows[0].total, 10);
   }
 

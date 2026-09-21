@@ -129,6 +129,54 @@ describe("favorites.js — updateFavoritesCount", () => {
   it("does not throw when count element is absent", () => {
     expect(() => window.updateFavoritesCount()).not.toThrow();
   });
+
+  /**
+   * The count is the profile link's only text — the icon beside it is an
+   * <svg> with no title — so once a visitor had a favourite the link was
+   * announced as a bare "3". The badge is aria-hidden in views/navbar.ejs and
+   * the number belongs in the link's own name instead, where it is announced
+   * as what it counts.
+   */
+  function mountProfileLink() {
+    document.body.innerHTML = `
+      <a href="/profile" aria-label="Profile">
+        <span id="favorites-count" aria-hidden="true">0</span>
+      </a>
+    `;
+
+    return document.querySelector("a")!;
+  }
+
+  it("names the link and what the number counts", () => {
+    localStorage.setItem(
+      "favoriteGames",
+      JSON.stringify([{ id: "1" }, { id: "2" }, { id: "3" }]),
+    );
+    const link = mountProfileLink();
+
+    window.updateFavoritesCount();
+
+    expect(link.getAttribute("aria-label")).toBe("Profile, 3 favourites");
+  });
+
+  it("says it in the singular for one", () => {
+    localStorage.setItem("favoriteGames", JSON.stringify([{ id: "1" }]));
+    const link = mountProfileLink();
+
+    window.updateFavoritesCount();
+
+    expect(link.getAttribute("aria-label")).toBe("Profile, 1 favourite");
+  });
+
+  // Nothing to count, so nothing to say about it — the badge is hidden and
+  // the link is just the link.
+  it("leaves the plain name when there are none", () => {
+    const link = mountProfileLink();
+
+    window.updateFavoritesCount();
+
+    expect(link.getAttribute("aria-label")).toBe("Profile");
+  });
 });
 
 describe("favorites.js — updateFavoriteButton", () => {
@@ -469,6 +517,67 @@ describe("favorites.js — loadFavoriteGames", () => {
     expect(container.querySelectorAll("img")).toHaveLength(1);
     expect(container.textContent).toContain("<script>");
     expect(container.textContent).toContain("<img");
+  });
+
+  /**
+   * A cover the script builds and one the server renders are the same
+   * picture on the same page, so they say the same thing about it. "Doom" on
+   * its own reads as if the link were the word rather than the box art, and a
+   * width with no height leaves the card to reflow once the file arrives —
+   * views/games/game-item.ejs has carried both for years.
+   */
+  it("describes and sizes a cover the way the server does", async () => {
+    localStorage.setItem("favoriteGames", JSON.stringify([{ id: "1" }]));
+    mockCollection([DOOM]);
+    document.body.innerHTML = '<div id="favorite-games-container"></div>';
+
+    await window.loadFavoriteGames();
+
+    const img = document
+      .getElementById("favorite-games-container")!
+      .querySelector("img")!;
+
+    expect(img.getAttribute("alt")).toBe("Doom – MS-DOS cover art");
+    expect(img.getAttribute("width")).toBe("100");
+    expect(img.getAttribute("height")).toBe("127");
+  });
+
+  /**
+   * The stats above the list count favourites, so removing one leaves them
+   * stale. The recently-played list has always refreshed them from its own
+   * remove button and this one did not.
+   */
+  it("refreshes the collection stats when a favourite is removed", async () => {
+    localStorage.setItem("favoriteGames", JSON.stringify([{ id: "1" }]));
+    mockCollection([DOOM]);
+    document.body.innerHTML = `
+      <div id="collection-stats"></div>
+      <div id="favorite-games-container"></div>
+    `;
+
+    await window.loadFavoriteGames();
+    await window.renderCollectionStats();
+
+    expect(document.getElementById("collection-stats")!.textContent).toContain(
+      "in favourites",
+    );
+
+    const remove = document
+      .getElementById("favorite-games-container")!
+      .querySelector<HTMLButtonElement>("button")!;
+
+    remove.click();
+
+    // Both re-renders are async; one microtask flush is not enough for the
+    // fetch mock inside either of them.
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(JSON.parse(localStorage.getItem("favoriteGames")!)).toEqual([]);
+    // Nothing played and nothing favourited, so the stats clear themselves —
+    // which they only do if they were asked to re-render at all.
+    expect(document.getElementById("collection-stats")!.children).toHaveLength(
+      0,
+    );
   });
 
   it("does not throw when container element is absent", async () => {

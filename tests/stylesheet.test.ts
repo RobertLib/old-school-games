@@ -441,3 +441,190 @@ describe("gallery.css and rating-stars.css — the two sheets served on their ow
     expect(stylesheet).toMatch(/--nc-title:/);
   });
 });
+
+/**
+ * Contrast, on the two surfaces where it was measurably short of 4.5:1.
+ *
+ * The gallery's Previous/Next buttons were white text on the accent colour at
+ * 80% opacity, which is around 1.9:1 in all three palettes — the accent is a
+ * bright cyan, a bright green and an orange, so white on it is white on
+ * light. They use the same pairing as .btn-outline now: accent text on the
+ * theme's own background, and the site's selected-item pairing on hover and
+ * focus.
+ *
+ * The green theme's --nc-muted was #007700 on a #001400 page, 3.35:1 — and it
+ * is the colour of the form help text, the placeholders and the breadcrumb,
+ * all of which are body copy and have to clear 4.5:1.
+ */
+describe("style.css — contrast on the surfaces that were short of it", () => {
+  const gallery = readFileSync(
+    path.resolve(__dirname, "../public/css/gallery.css"),
+    "utf-8",
+  );
+
+  /** WCAG relative luminance of a #rrggbb colour. */
+  function luminance(hex: string): number {
+    const channel = (pair: string) => {
+      const value = parseInt(pair, 16) / 255;
+
+      return value <= 0.03928
+        ? value / 12.92
+        : Math.pow((value + 0.055) / 1.055, 2.4);
+    };
+
+    const [r, g, b] = [
+      channel(hex.slice(1, 3)),
+      channel(hex.slice(3, 5)),
+      channel(hex.slice(5, 7)),
+    ];
+
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  }
+
+  function contrast(a: string, b: string): number {
+    const [lighter, darker] = [luminance(a), luminance(b)].sort(
+      (x, y) => y - x,
+    );
+
+    return (lighter + 0.05) / (darker + 0.05);
+  }
+
+  /**
+   * The palettes as the stylesheet declares them: :root for the default, and
+   * the html.theme-… block for each of the other two. Read out of the sheet
+   * rather than copied here, so a colour cannot be changed in one place and
+   * checked in the other.
+   */
+  function palette(selector: string): Record<string, string> {
+    const block = stylesheet.match(
+      new RegExp(`${selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")} \\{([^}]*)\\}`),
+    )?.[1];
+
+    expect(block, `${selector} is not in the stylesheet`).toBeDefined();
+
+    return Object.fromEntries(
+      [...block!.matchAll(/(--nc-[a-z-]+):\s*(#[0-9a-f]{6})/g)].map(
+        (match) => [match[1]!, match[2]!],
+      ),
+    );
+  }
+
+  const PALETTES = [
+    [":root", palette(":root")],
+    ["html.theme-retro-green", palette("html.theme-retro-green")],
+    ["html.theme-sunset", palette("html.theme-sunset")],
+  ] as const;
+
+  it("reads all three palettes", () => {
+    for (const [name, colours] of PALETTES) {
+      expect(Object.keys(colours).length, name).toBeGreaterThan(5);
+    }
+  });
+
+  it.each(PALETTES)(
+    "%s keeps the muted text readable on the page it sits on",
+    (_name, colours) => {
+      expect(contrast(colours["--nc-muted"]!, colours["--nc-bg"]!)).toBeGreaterThanOrEqual(4.5);
+    },
+  );
+
+  it.each(PALETTES)(
+    "%s keeps the gallery's nav buttons readable, resting and active",
+    (_name, colours) => {
+      // The declarations, so the test is about what the sheet says rather
+      // than about a pairing remembered here.
+      const resting = gallery.match(/\.gallery-nav-btn \{([^}]*)\}/)?.[1];
+
+      expect(resting).toMatch(/background:\s*var\(--nc-bg\)/);
+      expect(resting).toMatch(/color:\s*var\(--nc-border\)/);
+
+      expect(contrast(colours["--nc-border"]!, colours["--nc-bg"]!)).toBeGreaterThanOrEqual(4.5);
+      expect(
+        contrast(colours["--nc-selected-fg"]!, colours["--nc-selected-bg"]!),
+      ).toBeGreaterThanOrEqual(4.5);
+    },
+  );
+
+  // The placeholder is already --nc-muted, which is picked to clear 4.5:1 on
+  // its own; the 0.8 on top of it put the result back under.
+  it("does not fade the placeholder below the colour it was given", () => {
+    const rule = stylesheet.match(
+      /\.form-control::placeholder \{([^}]*)\}/,
+    )?.[1];
+
+    expect(rule).toMatch(/color:\s*var\(--nc-muted\)/);
+    expect(rule).not.toMatch(/opacity/);
+  });
+});
+
+/**
+ * Printing a page of this site produced either a solid block of ink — the
+ * palette is light text on a dark panel — or, with backgrounds off as most
+ * browsers default, near-white text on white paper. The chrome went on the
+ * page too: both sidebars, the navbar, the ticker, and an emulator frame the
+ * reader cannot use on paper.
+ */
+describe("style.css — print", () => {
+  const block = stylesheet.match(/@media print \{([\s\S]*)\n\}/)?.[1];
+
+  it("has a print stylesheet at all", () => {
+    expect(block).toBeDefined();
+  });
+
+  it("puts black text on white paper", () => {
+    expect(block).toMatch(/background:\s*#ffffff/);
+    expect(block).toMatch(/color:\s*#000000/);
+  });
+
+  it.each([
+    ".navbar",
+    ".left-sidebar",
+    ".right-sidebar",
+    ".nc-funcbar",
+    ".featured-games-carousel",
+    ".game-detail-player",
+    ".game-detail-poster",
+    ".ticker-wrap",
+    ".skip-link",
+  ])("leaves %s off the page", (selector) => {
+    expect(block).toContain(selector);
+  });
+
+  // The grid is three columns with the article in the middle, and two of the
+  // three are now hidden — left as a grid the text would print 220px
+  // narrower on both sides than the paper it is on.
+  it("collapses the layout to a single column", () => {
+    expect(block).toMatch(/\.layout \{[^}]*display:\s*block/);
+  });
+});
+
+/**
+ * A flex item clipped with `overflow: clip` keeps its content-based minimum
+ * width, because `clip` — unlike `hidden` — does not make it a scroll
+ * container. The carousel track container is exactly that item: without an
+ * explicit `min-width: 0` it grew to the sum of every slide's content width,
+ * the 25% slides became a quarter of that enormous track, two cards filled
+ * the whole widget and the "next" button was pushed out of sight. This is
+ * the regression that shipped once; the rule below is what stops it.
+ */
+describe("style.css — overflow: clip on flex items", () => {
+  const blocks = stylesheet.split(/(?=^[^\s@][^{]*\{)/m);
+
+  it("every clipped flex item declares min-width: 0", () => {
+    const offenders = blocks
+      .filter((block) => /overflow:\s*clip/.test(block))
+      .filter((block) => /flex:\s*1|flex-grow|flex:\s*\d/.test(block))
+      .filter((block) => !/min-width:\s*0\b/.test(block))
+      .map((block) => block.split("{")[0].trim());
+
+    expect(offenders).toEqual([]);
+  });
+
+  it("the carousel track container is one of them", () => {
+    const rule = stylesheet.match(/\.carousel-track-container\s*\{([^}]*)\}/);
+
+    expect(rule).not.toBeNull();
+    expect(rule![1]).toMatch(/overflow:\s*clip/);
+    expect(rule![1]).toMatch(/min-width:\s*0\b/);
+  });
+});

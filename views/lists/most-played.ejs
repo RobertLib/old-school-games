@@ -77,9 +77,9 @@
         </div>
 
         <% if (games.length) { %>
-        <ol class="game-list" style="list-style: none; padding: 0; counter-reset: ranking;">
+        <ol class="game-list" style="list-style: none; padding: 0;">
           <% games.forEach((game, index) => { %>
-          <li style="counter-increment: ranking; position: relative;">
+          <li style="position: relative;">
             <div style="position: absolute; top: 0.6em; left: 0.6em; font-size: 1.4em; font-weight: bold; color: rgb(var(--primary-rgb)); opacity: 0.6; line-height: 1; min-width: 2ch; text-align: right;">#<%= index + 1 %></div>
             <article class="game-item card" style="padding-left: 3.2em;">
               <div>

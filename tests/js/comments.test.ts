@@ -20,6 +20,7 @@ const PAGE = `<!doctype html><html><head>
   <meta name="csrf-token" content="tok123" />
 </head><body>
   <section id="comments-section">
+    <h2>Comments <span class="comment-count">(12)</span></h2>
     <div class="comment-load-more" id="comment-load-more-wrap">
       <button id="comment-load-more" data-before="5" data-game-id="7" type="button">
         <span id="comment-load-more-idle">Load earlier comments (<span id="comment-remaining">12</span> more)</span>
@@ -343,6 +344,54 @@ describe("comments.js — showing the posted comment", () => {
     expect(
       doc.querySelector("#comment-list > .comment")!.classList.contains("comment-new"),
     ).toBe(false);
+  });
+});
+
+/**
+ * The heading beside "Comments" counts the game's root comments (see
+ * views/games/game-detail.ejs). It is rendered once, so posting a comment
+ * left it a comment behind until the next page load — the thread said one
+ * thing and the heading above it another.
+ */
+describe("comments.js — the count in the heading", () => {
+  const count = () => doc.querySelector(".comment-count")!.textContent;
+
+  it("goes up by one when a root comment is posted", async () => {
+    submit();
+    await flush();
+
+    expect(count()).toBe("(13)");
+  });
+
+  // A reply is not a root comment, and the number counts roots.
+  it("is left alone when a reply is posted", async () => {
+    clickReply();
+    submit();
+    await flush();
+
+    expect(count()).toBe("(12)");
+  });
+
+  // The number is read back out of the heading rather than counted from the
+  // DOM: the list is paginated, so what is on the page is not the total.
+  it("does not count the comments that happen to be on the page", async () => {
+    doc.querySelector(".comment-count")!.textContent = "(400)";
+
+    submit();
+    await flush();
+
+    expect(count()).toBe("(401)");
+  });
+
+  it("does not break a page whose heading has no count", async () => {
+    doc.querySelector(".comment-count")!.remove();
+
+    submit();
+    await flush();
+
+    expect(doc.querySelector("#comment-error")!.hasAttribute("hidden")).toBe(
+      true,
+    );
   });
 });
 

@@ -12,6 +12,11 @@ import {
 // cannot reach. See utils/cache-epoch.ts; the game and news writes already
 // bumped it and the comment writes were the pair left out, so a comment
 // posted on one machine stayed invisible on the next for the whole TTL.
+//
+// The "comments" scope specifically, not the broad one these writes used to
+// bump: a comment is the most frequent write on the site and it drops exactly
+// one sidebar entry here, so making every other machine throw away the sitemap
+// as well was both wrong and the most expensive invalidation available.
 import { bumpCacheEpoch } from "../utils/cache-epoch.ts";
 
 interface CommentData extends ModelData {
@@ -134,36 +139,58 @@ export default class Comment extends Model {
     const rootIds = roots.map((root) => root.id);
 
     // Recursive so a reply to a reply still travels with its thread, and
-    // windowed so a thread cannot arrive unbounded — see REPLIES_PER_ROOT.
+    // windowed per root so a thread cannot arrive unbounded — see
+    // REPLIES_PER_ROOT.
     //
-    // "rootId" is carried down the recursion rather than derived afterwards,
-    // because the cap has to be per *thread*: partitioning on "parentId"
-    // would cap each immediate parent's own answers and leave the thread as a
-    // whole as unbounded as it was. It is only used for the window — the walk
-    // below still finds the ancestor itself, which is what keeps the shape of
-    // this method's contract unchanged.
+    // A LATERAL per root rather than one ROW_NUMBER over every descendant of
+    // the whole batch. Three things change, and none of them is the result:
     //
-    // "replyTotal" is what the cap hid: the same number on every row of a
-    // partition, so the loop below assigns rather than accumulates it.
+    //   - The walk is one root's own subtree, so it stays inside that root's
+    //     range of "idx_comments_parentId" instead of building a hash of every
+    //     descendant of all twenty roots to partition afterwards.
+    //   - It walks ids, not rows. The recursive term used to carry every
+    //     column of every descendant through the recursion and the two window
+    //     functions, and then throw all but fifty per thread away; only the
+    //     ids and parents are needed to decide *which* rows the page wants,
+    //     and the join below reads the columns for exactly those.
+    //   - The LIMIT is inside the lateral, so the rows the database hands back
+    //     are bounded by the cap times the batch size rather than by how busy
+    //     the threads happen to be.
+    //
+    // What it cannot avoid is visiting the whole thread: "replyTotal" is a
+    // real number in the view ("12 more replies"), so the count has to be
+    // exact, and a count of a thread means reaching all of it. COUNT(*) OVER ()
+    // is evaluated before the LIMIT, which is what makes one query enough.
+    //
+    // "rootId" is carried out of the lateral rather than derived afterwards,
+    // because the cap has to be per *thread*: capping each immediate parent's
+    // own answers would leave the thread as a whole as unbounded as it was. It
+    // is only used for the window — the walk below still finds the ancestor
+    // itself, which is what keeps the shape of this method's contract
+    // unchanged.
     const { rows: replyRows } = await db.query(
-      `WITH RECURSIVE thread AS (
-         SELECT c.*, c."parentId" AS "rootId"
-           FROM "comments" c
-          WHERE c."parentId" = ANY($1)
-         UNION ALL
-         SELECT c.*, t."rootId"
-           FROM "comments" c JOIN thread t ON c."parentId" = t."id"
-       ), ranked AS (
-         SELECT thread.*,
-                ROW_NUMBER() OVER (
-                  PARTITION BY "rootId" ORDER BY "id" ASC
-                ) AS "threadPosition",
-                COUNT(*) OVER (PARTITION BY "rootId") AS "replyTotal"
-           FROM thread
-       )
-       SELECT * FROM ranked
-        WHERE "threadPosition" <= $2
-        ORDER BY "id" ASC`,
+      `SELECT c.*, w."replyTotal"
+         FROM (
+           SELECT r.*
+             FROM unnest($1::int[]) AS roots("rootId")
+            CROSS JOIN LATERAL (
+              WITH RECURSIVE thread AS (
+                SELECT c."id", c."parentId"
+                  FROM "comments" c
+                 WHERE c."parentId" = roots."rootId"
+                 UNION ALL
+                SELECT c."id", c."parentId"
+                  FROM "comments" c JOIN thread t ON c."parentId" = t."id"
+              )
+              SELECT thread."id",
+                     COUNT(*) OVER () AS "replyTotal"
+                FROM thread
+               ORDER BY thread."id" ASC
+               LIMIT $2
+            ) r
+         ) w
+         JOIN "comments" c ON c."id" = w."id"
+        ORDER BY c."id" ASC`,
       [rootIds, REPLIES_PER_ROOT],
     );
 
@@ -187,9 +214,9 @@ export default class Comment extends Model {
       if (ancestor) {
         ancestor.replies.push(reply);
 
-        // Assigned, not added to: every row of this thread's partition
-        // carries the same total. A row from before the window existed has
-        // none, which reads as nothing hidden.
+        // Assigned, not added to: every row of this thread carries the same
+        // total. A row from before the window existed has none, which reads as
+        // nothing hidden.
         const total = Number(row.replyTotal) || 0;
 
         ancestor.hiddenReplies = Math.max(0, total - REPLIES_PER_ROOT);
@@ -311,7 +338,7 @@ export default class Comment extends Model {
     );
 
     sidebarCache.delete(LATEST_COMMENTS_KEY);
-    void bumpCacheEpoch();
+    void bumpCacheEpoch("comments");
 
     return new Comment(rows[0]);
   }
@@ -325,6 +352,6 @@ export default class Comment extends Model {
     await db.query('DELETE FROM "comments" WHERE "id" = $1', [id]);
 
     sidebarCache.delete(LATEST_COMMENTS_KEY);
-    void bumpCacheEpoch();
+    void bumpCacheEpoch("comments");
   }
 }

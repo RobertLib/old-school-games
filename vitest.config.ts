@@ -28,11 +28,20 @@ import { defineConfig } from "vitest/config";
  * it is a behaviour change to that file, not a configuration one.
  *
  * Anything new goes in integration unless it is checked and found not to
- * import db.ts, directly or through a model, a route or app.ts.
+ * import db.ts, directly or through a model, a route or app.ts. That is no
+ * longer only a rule to remember: tests/unit-project-isolation.test.ts
+ * imports this list and walks what every file in it reaches, so a unit test
+ * that picks up db.ts through a model four modules away fails rather than
+ * quietly opening a pool against whatever DATABASE_URL happens to say.
+ *
+ * Exported for that test alone. A second copy of the list over there would
+ * agree with this one on the day it was written and never again.
  */
-const UNIT_TESTS = [
+export const UNIT_TESTS = [
   // Client-side scripts: read from public/js and eval'd into a jsdom window.
   "tests/js/**/*.test.ts",
+  // The guard on this list itself.
+  "tests/unit-project-isolation.test.ts",
   // Pure functions.
   "tests/utils/assets.test.ts",
   "tests/utils/breadcrumbs.test.ts",
@@ -44,6 +53,9 @@ const UNIT_TESTS = [
   "tests/utils/pagination.test.ts",
   "tests/utils/password.test.ts",
   "tests/utils/query.test.ts",
+  // Fakes only: the drain takes its server, pool, logger, timers and way out
+  // of the process as arguments, which is what got it out of index.ts.
+  "tests/utils/shutdown.test.ts",
   "tests/utils/slug.test.ts",
   "tests/utils/xml.test.ts",
 ];
@@ -127,20 +139,30 @@ export default defineConfig({
        *
        * `npm run test:coverage` reported a number and did nothing with it, so
        * coverage could only be watched by hand — and a number nobody is
-       * obliged to read is a number that drifts down. These sit a couple of
-       * points under what the suite covers today (95.3% of statements, 90.3%
-       * of branches, 96.8% of functions, 95.7% of lines), which leaves room
-       * for an ordinary change to add a line or two it does not reach while
-       * still failing on a real regression.
+       * obliged to read is a number that drifts down.
+       *
+       * The figures written here had drifted the other way: they said 95.3%
+       * of statements, 90.3% of branches, 96.8% of functions and 95.7% of
+       * lines, and a measured run says 96.7 / 92.3 / 97.8 / 97.2. A stale
+       * baseline is worse than none, because the gap between it and the
+       * floors below is the only thing telling you how much slack there is —
+       * so re-measure when you move these, and write down what you measured.
+       *
+       * The floors sit a few points under that, which leaves room for an
+       * ordinary change to add a line or two it does not reach while still
+       * failing on a real regression. They are deliberately not set at
+       * measured-minus-one: a floor that tight turns every honest change into
+       * a coverage argument, and the point is to catch a module arriving with
+       * no tests at all, not to hold a percentage still.
        *
        * Raise them when the real figures move up; do not lower them to make a
        * run pass.
        */
       thresholds: {
-        statements: 93,
-        branches: 88,
-        functions: 95,
-        lines: 93,
+        statements: 94,
+        branches: 89,
+        functions: 96,
+        lines: 94,
       },
 
       /**
@@ -154,6 +176,16 @@ export default defineConfig({
        * The excludes are the two entry points that run on import — index.ts
        * listens on a port, migrate.ts applies migrations — plus the suite and
        * config themselves.
+       *
+       * index.ts being unmeasurable is why the drain now lives in
+       * utils/shutdown.ts, which this list does measure: what happens on a
+       * SIGTERM, on a second one, and on an error nobody caught decides
+       * whether a deploy waits for an in-flight request and what exit status
+       * the platform reads — and it was the one part of this app nothing
+       * could exercise, because reaching it meant importing a file that
+       * listens on a port. index.ts is the wiring that names the real
+       * server, pool, logger and timers; everything with a decision in it is
+       * behind a set of arguments now.
        *
        * "content" and "types" were the two source directories left out, which
        * is the very gap this list exists to close: content/blurbs.ts is the

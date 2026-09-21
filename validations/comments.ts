@@ -29,6 +29,34 @@ const NICK_MAX_LENGTH = 255;
 /** What the form asks the writer to stay under. */
 const CONTENT_MAX_LENGTH = 1000;
 
+/**
+ * Names nobody may post under.
+ *
+ * The field is free text and nothing anywhere marks a comment as official, so
+ * "admin" or "Robert Libsansky" beside a comment reads as the site saying it —
+ * which is the whole value of impersonating one. There is no account behind a
+ * comment to check against, so a denylist is all that is available; it is
+ * deliberately short, because every name on it is a name a real visitor cannot
+ * use either.
+ *
+ * Compared lower-cased and with internal whitespace collapsed, so
+ * "Old  School   Games" and " ADMIN " are the same entries — otherwise the
+ * list refuses exactly one spelling of each and advertises the rest.
+ */
+const RESERVED_NICKS = new Set([
+  "admin",
+  "administrator",
+  "moderator",
+  "staff",
+  "oldschoolgames",
+  "old school games",
+  "robert libsansky",
+]);
+
+function isReservedNick(nick: string): boolean {
+  return RESERVED_NICKS.has(nick.toLowerCase().replace(/\s+/g, " "));
+}
+
 export const validateComment = (
   req: Request,
   res: Response,
@@ -70,6 +98,12 @@ export const validateComment = (
 
   if (trimmedNick.length > NICK_MAX_LENGTH) {
     return reject(req, res, "Nick is too long");
+  }
+
+  // Said plainly rather than as "Invalid nick": a visitor who happens to be
+  // called Robert Libsansky deserves to know what the objection is.
+  if (isReservedNick(trimmedNick)) {
+    return reject(req, res, "That nick is reserved — please choose another");
   }
 
   // Content that is nothing but markup — "<iframe></iframe>" — clears the

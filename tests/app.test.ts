@@ -115,6 +115,19 @@ describe("the assembled app", () => {
     });
 
     /**
+     * Nothing may hold this answer. It reports whether *this* machine is
+     * serving right now, and a proxy or browser that caches it for even a few
+     * seconds reports a machine that has since gone away as up. The probe
+     * inside the process is cached deliberately and separately — see the case
+     * below.
+     */
+    it("forbids caching the answer", async () => {
+      const response = await request(server).get("/healthz");
+
+      expect(response.headers["cache-control"]).toBe("no-store");
+    });
+
+    /**
      * The endpoint is mounted above the rate limiter on purpose, so that a
      * check arriving while the site sheds load is still answered — which also
      * leaves it the one route nothing throttles. What keeps that off the
@@ -474,6 +487,69 @@ describe("the assembled app", () => {
      * middleware answered with then arrived back here to be answered again.
      * A loop takes the whole site down, not one page.
      */
+    /**
+     * The regression these two share with the trailing-slash redirect above.
+     * An absolute-form target — "GET http://evil.example/doom HTTP/1.1", which
+     * Node accepts — was appended whole to this site's own origin, so the
+     * Location read "https://oldschoolgames.euhttp://evil.example/doom". A
+     * browser arriving on plain HTTP or under the wrong host would follow it,
+     * and that is every visitor. The path is read parsed now.
+     */
+    it.each([
+      ["a wrong host", { Host: "evil.example" }],
+      [
+        "plain HTTP",
+        { Host: "oldschoolgames.eu", "x-forwarded-proto": "http" },
+      ],
+    ])(
+      "never puts an absolute-form target's host in the Location for %s",
+      async (_label, headers) => {
+        const address = server.address() as AddressInfo;
+
+        const response = await asProduction(
+          () =>
+            new Promise<{ status: number; location: string | undefined }>(
+              (resolve, reject) => {
+                const req = http.request(
+                  {
+                    host: "127.0.0.1",
+                    port: address.port,
+                    path: "http://evil.example/doom",
+                    method: "GET",
+                    headers,
+                  },
+                  (res) => {
+                    res.resume();
+                    resolve({
+                      status: res.statusCode ?? 0,
+                      location: res.headers.location,
+                    });
+                  },
+                );
+                req.on("error", reject);
+                req.end();
+              },
+            ),
+        );
+
+        expect(response.status).toBe(301);
+        expect(response.location).toBe("https://oldschoolgames.eu/doom");
+      },
+    );
+
+    // The ordinary case, and the one the construction must not break: the
+    // query string still travels, exactly as it arrived.
+    it("keeps the query string on the canonical-host redirect", async () => {
+      const response = await asProduction(() =>
+        request(server).get("/action?page=3&orderBy=title").set("Host", "evil.example"),
+      );
+
+      expect(response.status).toBe(301);
+      expect(response.headers.location).toBe(
+        "https://oldschoolgames.eu/action?page=3&orderBy=title",
+      );
+    });
+
     it("reads the first value of a repeated x-forwarded-proto", async () => {
       const response = await asProduction(() =>
         request(server)
@@ -1141,6 +1217,43 @@ describe("the assembled app", () => {
     });
 
     /**
+     * The line a refused request leaves behind.
+     *
+     * It used to be a sentence carrying `req.url` — the whole target, query
+     * string and all — which is the one thing the access log above goes out of
+     * its way to leave out, because it holds what a visitor typed into the
+     * search box. So the only requests this site wrote a search term about
+     * were the ones it had refused. Fields rather than a sentence for the same
+     * reason the access log uses them: a collector can count 4xx per path.
+     */
+    it("logs a refused request by path, with no query string", async () => {
+      const { token, cookie } = await csrfPair();
+      const warn = vi.spyOn(logger, "warn");
+
+      try {
+        await request(server)
+          .post("/comments?search=something+private")
+          .set("Cookie", cookie)
+          .set("x-csrf-token", token)
+          .set("Content-Type", "application/json")
+          .send('{"nick":');
+
+        expect(warn).toHaveBeenCalledWith("client error", {
+          status: 400,
+          method: "POST",
+          path: "/comments",
+          reason: expect.any(String),
+        });
+
+        for (const call of warn.mock.calls) {
+          expect(JSON.stringify(call)).not.toContain("private");
+        }
+      } finally {
+        warn.mockRestore();
+      }
+    });
+
+    /**
      * The other half of the change: only a 4xx is taken from the error. A
      * server fault still answers 500 and still gets logged with its stack,
      * and an error carrying a 5xx of its own cannot buy itself a quieter
@@ -1159,6 +1272,49 @@ describe("the assembled app", () => {
       } finally {
         query.mockRestore();
       }
+    });
+  });
+
+  /**
+   * The coarse global budget is counted in this process's memory, not in
+   * Postgres like the login, comment and rating limiters.
+   *
+   * It sits above every route, so a Postgres store made every request on the
+   * site — cached pages and static assets included — begin with a write to the
+   * database, in series, before anything else could happen. Per-machine
+   * counting is also the right semantics for it: it protects one machine's
+   * ten-connection pool from a flood, and a flood arrives at a machine. The
+   * limiters that guard a person's behaviour still share their counts.
+   */
+  describe("the global rate limiter", () => {
+    async function globalKeys(): Promise<number> {
+      const { rows } = await pool.query(
+        `SELECT COUNT(*)::int AS count FROM "rate_limits" WHERE "key" LIKE 'global:%'`,
+      );
+
+      return rows[0].count as number;
+    }
+
+    it("counts without writing to the rate-limit table", async () => {
+      await pool.query(`DELETE FROM "rate_limits" WHERE "key" LIKE 'global:%'`);
+
+      await request(server).get("/about");
+      await request(server).get("/about");
+
+      expect(await globalKeys()).toBe(0);
+    });
+
+    // The limiters that were the reason the Postgres store exists still use
+    // it — those count a person's attempts, so a count held per machine
+    // doubles the allowance with every machine a deploy leaves running. See
+    // tests/utils/rate-limit-store.ts and the login cases in
+    // tests/routes/auth.test.ts.
+    it("leaves the other limiters' keys alone", async () => {
+      const before = await globalKeys();
+
+      await request(server).get("/about");
+
+      expect(await globalKeys()).toBe(before);
     });
   });
 
@@ -1949,5 +2105,63 @@ describe("the admin flow through the assembled app", () => {
 
     expect(response.status).toBe(302);
     expect(response.headers.location).toBe("/login");
+  });
+});
+
+/**
+ * The boot guards, checked the way tests/db.test.ts checks its own: set the
+ * environment, re-import the module, see whether it refuses.
+ *
+ * Last in the file on purpose. vi.resetModules() gives the import a fresh
+ * module graph — including a fresh db.ts and therefore a fresh pool — so
+ * anything running after it would no longer be talking to the same modules the
+ * server above holds.
+ */
+describe("the SESSION_SECRET production guard", () => {
+  async function boot(secret: string | undefined): Promise<unknown> {
+    const previousEnv = process.env.NODE_ENV;
+    const previousSecret = process.env.SESSION_SECRET;
+
+    process.env.NODE_ENV = "production";
+
+    if (secret === undefined) delete process.env.SESSION_SECRET;
+    else process.env.SESSION_SECRET = secret;
+
+    vi.resetModules();
+
+    try {
+      return await import("../app.ts");
+    } finally {
+      process.env.NODE_ENV = previousEnv;
+
+      if (previousSecret === undefined) delete process.env.SESSION_SECRET;
+      else process.env.SESSION_SECRET = previousSecret;
+
+      vi.resetModules();
+    }
+  }
+
+  it("refuses to boot with no secret at all", async () => {
+    await expect(boot(undefined)).rejects.toThrow(/SESSION_SECRET/);
+  });
+
+  /**
+   * The placeholder is published in this repository, so a deploy that copied
+   * .env.example has a SESSION_SECRET that is set — which is all the guard
+   * used to ask — and signs every session cookie with a value anyone can read
+   * off GitHub. That is a forgeable admin session.
+   */
+  it("refuses the .env.example placeholder", async () => {
+    await expect(boot("change-me-to-a-long-random-secret")).rejects.toThrow(
+      /placeholder/,
+    );
+  });
+
+  it("refuses a secret too short to be worth trusting", async () => {
+    await expect(boot("short")).rejects.toThrow(/at least 32/);
+  });
+
+  it("boots with a real secret", async () => {
+    await expect(boot("a".repeat(64))).resolves.toBeDefined();
   });
 });

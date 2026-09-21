@@ -55,7 +55,13 @@
   const windowStart = totalPages ? Math.max(1, page - WINDOW) : page;
   const windowEnd = totalPages ? Math.min(totalPages, page + WINDOW) : page;
 %>
-<nav class="pagination" aria-label="Pagination">
+<%#
+  views/games/game-list.ejs includes this twice, above and below the list, so
+  the page carried two landmarks with the same name — indistinguishable in a
+  screen reader's list of them. Callers that include it once can leave the
+  label alone.
+%>
+<nav class="pagination" aria-label="<%= locals.paginationLabel || 'Pagination' %>">
   <div class="pagination-summary">
     <% if (totalItems !== null && games.length) { %>
     Showing <strong><%= firstItem %>&ndash;<%= lastItem %></strong>

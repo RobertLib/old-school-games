@@ -110,7 +110,9 @@ A web application for browsing and playing classic MS-DOS games directly in your
 
 - Node.js 24 — the version in `.nvmrc`, so `nvm use` picks it up, and the
   one CI, the Dockerfile and Fly all run (`node-version-file: .nvmrc`,
-  `NODE_VERSION=24`). `package.json` says `>=24` to match. The floor the code
+  `NODE_VERSION=24`). `package.json` says `^24` to match, and `.npmrc` sets
+  `engine-strict=true`, so `npm install` on another major **fails** rather
+  than warning and installing anyway — run `nvm use` first. The floor the code
   itself imposes is lower — 22.18, the first release that strips type
   annotations, which is what `node index.ts` relies on — but 24 is the only
   version anything here is tested against; move all four together.
@@ -220,13 +222,24 @@ The application will run on `http://localhost:3000`
 - `npm run format:ejs` - Format EJS templates (`js-beautify`, a devDependency, so this runs from the lockfile rather than fetching whatever `npx` finds)
 
 CI runs `lint`, `typecheck`, `test:coverage` and `npm audit --omit=dev
---audit-level=high` on every push and pull request, builds the Docker image
-in a job of its own, and only deploys if all of it passes. It is
+--audit-level=high` on every push to `main` and on every pull request (that
+is what the workflow's `on:` triggers say — a push to another branch with no
+pull request open runs nothing), builds the Docker image in a job of its own,
+and only deploys from `main`, and only if all of it passes. It is
 `test:coverage` rather than `test` on purpose: the coverage thresholds are
 only evaluated when coverage is collected, so run as plain `test` they would
-never fail a build. The image is built on every pull request because it is
-what production actually runs — a Dockerfile that no longer builds used to be
-found by `flyctl deploy` failing on main, after the tests had gone green.
+never fail a build.
+
+The image is built because it is what production actually runs — a Dockerfile
+that no longer builds used to be found by `flyctl deploy` failing on main,
+after the tests had gone green — and then it is *started*, with no database
+behind it, and polled for `/healthz` for up to thirty seconds. A build only
+proves the image can be assembled; the two failures it cannot see are a
+container that exits on boot and one that boots but never answers. That check
+needs no Postgres because `/healthz` reports the database rather than letting
+it decide the answer: `{"status":"ok","database":"down"}` with a 200 is the
+correct response to an unreachable one, for the reasons given next to the
+route in `app.ts`. The container's logs are printed either way.
 
 Test runs are grouped per ref and cancelled when a new commit arrives
 (`concurrency: test-<ref>`), so three pushes in a minute no longer hold three
@@ -239,13 +252,39 @@ same checks as anything else, and nothing merges itself.
 
 ### A note on the TypeScript version
 
-`typescript` is deliberately held at 6.x. TypeScript 7 type-checks this
-codebase cleanly, but `typescript-eslint` refuses to load against the TS 7 API
+`typescript` is deliberately held below 6.1, as `">=6.0.3 <6.1.0"` rather
+than a caret range. The ceiling is not TypeScript 7: `typescript-eslint`
+declares `typescript: ">=4.8.4 <6.1.0"` as a peer dependency, so 6.1 is
+already out of range — and above the range it refuses to load against the
+compiler API
 ([typescript-eslint#10940](https://github.com/typescript-eslint/typescript-eslint/issues/10940)),
-so `npm run lint` — and therefore CI — fails outright. The documented
-workaround is installing a second, TS 6 copy of the compiler side by side,
-which is a lot of moving parts to buy nothing: nothing here needs a TS 7
-feature. Raise it once typescript-eslint supports >= 7.1.
+which means `npm run lint`, and therefore CI, fails outright. A caret range
+would let a routine `npm install` walk into that; this one cannot. The
+documented workaround is installing a second, older copy of the compiler side
+by side, which is a lot of moving parts to buy nothing: nothing here needs a
+newer compiler feature.
+
+`.github/dependabot.yml` ignores `typescript` for both major *and* minor
+updates for the same reason — 6.1 is a minor, so ignoring only majors let the
+one breaking bump arrive grouped in with a week of harmless ones. Patches
+still come through. Widen the range and the ignore together, once
+typescript-eslint's peer range does.
+
+### A note on the two pinned `@types` packages
+
+`npm outdated` flags neither of these, and it is worth knowing why before
+somebody "fixes" them:
+
+- **`@types/ejs` 3.x for `ejs` 6.** 3.1.5 is the newest version published.
+  `ejs` ships no types of its own and the `@types` package has not been
+  renumbered alongside it, so the major numbers do not line up and are not
+  meant to.
+- **`@types/connect-pg-simple` 7.x for `connect-pg-simple` 10.** Same story:
+  7.0.3 is the newest published, and the typings still describe the current
+  API.
+
+If either package ever does publish a matching major, Dependabot will raise
+it.
 
 ## 🗄️ Database Models
 
@@ -343,6 +382,7 @@ they are secrets in the process environment and there is no file.
 - `SESSION_SECRET` - Secret key for sessions
 - `NODE_ENV` - Application environment (development/production)
 - `PORT` - Port the server listens on (default: `3000`)
+- `LOG_LEVEL` - The quietest level still written: `error`, `warn` or `info` (default: `info`, i.e. everything). It decides *what* is written, not where — that is `NODE_ENV`'s job. Worth setting to `warn` on a busy deployment, because the access log writes an `info` line per request and an incident's error lines are otherwise buried in them. An unrecognised value warns once and falls back to `info` rather than being read as "off": a typo would otherwise silence the log, and missing lines are the last thing anybody connects to a misspelled variable
 - `CANONICAL_HOST` - The site's own host: what production requests are redirected to, and what every canonical tag, feed link and sitemap entry is built from (default: `oldschoolgames.eu`)
 - `MEDIA_ORIGIN` - Origin serving game artwork and the js-dos bundles (default: the current storage bucket). It is named in the `Content-Security-Policy`, so a deployment pointing at its own bucket must set this — get it wrong and the browser refuses every image and bundle, which is reported nowhere but its console. **Set it in two places:** the player also refuses a game bundle from anywhere but this origin, and `public/js/js-dos-player.js` is a static file that cannot read an environment variable, so it carries its own `MEDIA_ORIGIN` constant. `tests/public-assets.test.ts` asserts that constant matches the default here, the same way it keeps the js-dos release in step across two files
 - `TEST_DATABASE_URL` - Database the test suite runs against (default: `postgresql:///old_school_games_test`, which leaves host, user and password to libpq's defaults and the standard `PG*` variables)
@@ -435,7 +475,11 @@ It is split into two vitest **projects** (see `vitest.config.ts`):
 Membership is decided by what a file reaches, not by where it lives —
 `tests/utils/` is split across both — and the rule for a new file is: it goes
 in `integration` unless it has been checked and found not to import `db.ts`,
-directly or through a model, a route or `app.ts`. `npm test` and
+directly or through a model, a route or `app.ts`. That rule is not left to
+memory: `tests/unit-project-isolation.test.ts` imports the `unit` project's
+own include list and walks what every file in it reaches, so a unit test that
+picks up `db.ts` four modules away fails rather than quietly opening a pool
+against whatever `DATABASE_URL` happens to say. `npm test` and
 `npm run test:coverage` run both projects, and the coverage thresholds are
 measured across them together.
 
@@ -623,6 +667,16 @@ everyone out and resets the counters; neither is worth a recovery plan, and
 3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
 4. Push to the branch (`git push origin feature/AmazingFeature`)
 5. Open a Pull Request
+
+[CONTRIBUTING.md](CONTRIBUTING.md) has the rest of it: what to run before
+opening the pull request (the same three commands CI runs), which vitest
+project a new test belongs in, and what a change is expected to carry.
+
+## 🔒 Security
+
+Found a vulnerability? Please do not open an issue — that is the one channel
+that tells everybody at once. [SECURITY.md](SECURITY.md) has the two private
+ways to report one, what is in scope, and what to expect.
 
 ## 📄 License
 

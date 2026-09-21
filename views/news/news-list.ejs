@@ -8,7 +8,7 @@
   <!-- Open Graph -->
   <meta property="og:title" content="<%= title %>" />
   <meta property="og:description" content="<%= description %>" />
-  <meta property="og:url" content="<%= locals.ogUrl || locals.canonicalUrl || (siteUrl + req.path) %>" />
+  <meta property="og:url" content="<%= locals.ogUrl || locals.canonicalUrl || (siteUrl + req.originalUrl.split('?')[0]) %>" />
   <meta property="og:type" content="website" />
   <meta property="og:site_name" content="<%= siteName %>" />
   <%- include('../og-image') %>
@@ -68,7 +68,17 @@
               <%= new Date(newsItem.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }) %>
             </time>
           </div>
-          <div class="news-content"><%- newsItem.content %></div>
+          <%#
+            The excerpt, not the article — routes/news.ts flattens and cuts it
+            (utils/html-text.ts), so what arrives here is plain prose and goes
+            out escaped. Rendering ten articles' markup in full made this page
+            several times its own weight and read all ten out to a screen
+            reader. views/news/news-preview.ejs does the same on the homepage.
+          %>
+          <div class="news-content"><%= newsItem.excerpt %></div>
+          <p class="news-item-more">
+            <a class="color-primary underline text-sm" href="/news/<%= newsItem.slug %>">Read more &rarr;</a>
+          </p>
         </article>
         <% }); %>
 

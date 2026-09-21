@@ -468,6 +468,16 @@ export function listLastmod(
 }
 
 router.get("/most-played", async (req, res) => {
+  // The same 301 the curated lists below answer a "?page=" with, and for the
+  // same reason: this page was paginated before LIST_SIZE fixed it at a
+  // hundred, so every "/most-played?page=N" is a real address that was linked
+  // and crawled — and it went on serving a byte-identical 200 beside the bare
+  // one, which is two addresses for one page. "?page=1" redirects with the
+  // rest; see paginationUrls for why page 1 is only ever the bare URL.
+  if (req.query.page !== undefined) {
+    return res.redirect(301, "/most-played");
+  }
+
   const games = await mostPlayedCache.get(
     MOST_PLAYED_KEY,
     MOST_PLAYED_TTL,

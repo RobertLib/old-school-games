@@ -3,12 +3,13 @@ import Game from "../models/game.ts";
 import Comment from "../models/comment.ts";
 import News from "../models/news.ts";
 import {
+  isPageBeyondTotal,
   paginatedDescription,
   paginatedTitle,
   paginationUrls,
   parsePageParam,
 } from "../utils/pagination.ts";
-import { firstQueryValue } from "../utils/query.ts";
+import { firstQueryValue, rawQuery } from "../utils/query.ts";
 import { parseId } from "../utils/ids.ts";
 import { SITE_DESCRIPTION, SITE_TITLE, SITE_URL } from "../utils/site.ts";
 import {
@@ -35,22 +36,6 @@ const VALID_ORDER_BY_FIELDS = ["createdAt", "release", "rating", "title"];
  * would otherwise leave no room for the sentence around it.
  */
 const FALLBACK_TITLE_MAX = 80;
-
-/**
- * The query string exactly as it arrived, ready to re-attach to a redirect.
- *
- * Taken off req.originalUrl rather than rebuilt from req.query, which is the
- * parsed form: re-serialising it does not give back what was sent, because
- * repeated keys, arrays and the percent-encoding all shift on the way through.
- * app.ts splits the raw URL for the trailing-slash redirect for the same
- * reason, and a redirect that quietly rewrites the caller's query string is
- * the one thing these are not allowed to do.
- */
-function rawQuery(req: express.Request): string {
-  const query = req.originalUrl.split("?")[1];
-
-  return query ? `?${query}` : "";
-}
 
 router.get("/", async (req, res, next) => {
   const genre = firstQueryValue(req.query.genre);
@@ -85,8 +70,13 @@ router.get("/", async (req, res, next) => {
   const page = parsePageParam(req.query.page);
   const limit = 25;
 
-  const [games, total, recentNews, featuredGames] = await Promise.all([
-    Game.find({ search, page, limit, orderBy, orderDir }),
+  // The count comes first, and the listing query only runs if the page it
+  // would serve is in range — see isPageBeyondTotal. It costs an extra round
+  // trip on a page that exists and saves the whole aggregate on one that does
+  // not, of which parsePageParam admits ten thousand per address. The two
+  // queries that have nothing to do with the page still go in parallel with
+  // it.
+  const [total, recentNews, featuredGames] = await Promise.all([
     Game.count({ search }),
     // Recent news for the homepage, as plain-text excerpts rather than three
     // whole articles: views/news/news-preview.ejs used to render the stored
@@ -104,14 +94,22 @@ router.get("/", async (req, res, next) => {
     Game.findFeatured(10), // Load 10 random featured games for carousel
   ]);
 
+  // An out-of-range page is a 404, not an empty list, and it is refused before
+  // the listing query rather than after it.
+  if (isPageBeyondTotal({ page, limit, total })) {
+    return next();
+  }
+
+  const games = await Game.find({ search, page, limit, orderBy, orderDir });
+
   // A search that found nothing gets close-title suggestions instead of a
   // dead end.
   const suggestions =
     search && total === 0 ? await Game.findTitleSuggestions(search, 5) : [];
 
-  // An out-of-range page is a 404, not an empty list. parsePageParam allows
-  // anything up to 10000, so without this every filter page above had ten
-  // thousand indexable addresses rendering the same nothing.
+  // The count and the listing agree on which rows match (see buildGameFilters),
+  // so this can only be page 1 of a listing with nothing in it — which the
+  // homepage serves rather than refuses.
   if (page > 1 && games.length === 0) {
     return next();
   }
@@ -422,10 +420,7 @@ router.get("/:genre", async (req, res, next) => {
     return next();
   }
 
-  const [games, total] = await Promise.all([
-    Game.find({ genre, page, limit, orderBy, orderDir }),
-    Game.count({ genre }),
-  ]);
+  const total = await Game.count({ genre });
 
   // A page with nothing on it does not exist — whether that is a genre no
   // game is filed under or a ?page= past the end of one that has games.
@@ -433,6 +428,15 @@ router.get("/:genre", async (req, res, next) => {
   // only the second case, so a genre holding no games still answered 200
   // with its own <title>, canonical and blurb around an empty list. The
   // developer, publisher and year pages below have always refused both.
+  //
+  // Both cases are settled from the count, ahead of the listing query — see
+  // isPageBeyondTotal.
+  if (total === 0 || isPageBeyondTotal({ page, limit, total })) {
+    return next();
+  }
+
+  const games = await Game.find({ genre, page, limit, orderBy, orderDir });
+
   if (games.length === 0) {
     return next();
   }
@@ -505,15 +509,18 @@ router.get("/letter/:letter", async (req, res, next) => {
   const page = parsePageParam(req.query.page);
   const limit = 25;
 
-  const [games, total] = await Promise.all([
-    Game.find({ letter, page, limit, orderBy, orderDir }),
-    Game.count({ letter }),
-  ]);
+  const total = await Game.count({ letter });
 
   // As with the genre page above: a letter no title starts with is a 404,
   // not an empty page. All 26 are linked from the alphabet filter and listed
   // in the sitemap, so on a catalogue with gaps this was a standing supply of
   // indexable pages of nothing.
+  if (total === 0 || isPageBeyondTotal({ page, limit, total })) {
+    return next();
+  }
+
+  const games = await Game.find({ letter, page, limit, orderBy, orderDir });
+
   if (games.length === 0) {
     return next();
   }
@@ -600,18 +607,17 @@ router.get("/developer/:developer", async (req, res, next) => {
   const page = parsePageParam(req.query.page);
   const limit = 25;
 
-  const [games, total] = await Promise.all([
-    Game.find({ developer, page, limit, orderBy, orderDir }),
-    Game.count({ developer }),
-  ]);
+  const total = await Game.count({ developer });
 
   // No games under that name — or a page past the end of the list — means the
   // page does not exist. It used to render a complete 200 with its own
   // <title>, canonical and blurb around an empty list, so every misspelling,
   // stale link and out-of-range ?page= was an indexable page of nothing.
-  if (total === 0 || (page > 1 && games.length === 0)) {
+  if (total === 0 || isPageBeyondTotal({ page, limit, total })) {
     return next();
   }
+
+  const games = await Game.find({ developer, page, limit, orderBy, orderDir });
 
   // The developer page is the one that keeps the curated STUDIO_DATA title and
   // blurb as written. Its publisher twin below no longer does — see the
@@ -672,15 +678,14 @@ router.get("/publisher/:publisher", async (req, res, next) => {
   const page = parsePageParam(req.query.page);
   const limit = 25;
 
-  const [games, total] = await Promise.all([
-    Game.find({ publisher, page, limit, orderBy, orderDir }),
-    Game.count({ publisher }),
-  ]);
+  const total = await Game.count({ publisher });
 
   // As with developers above: an unknown name is a 404, not an empty page.
-  if (total === 0 || (page > 1 && games.length === 0)) {
+  if (total === 0 || isPageBeyondTotal({ page, limit, total })) {
     return next();
   }
+
+  const games = await Game.find({ publisher, page, limit, orderBy, orderDir });
 
   /**
    * Why this page does not reuse the curated STUDIO_DATA title and blurb the
@@ -767,17 +772,24 @@ router.get("/year/:year", async (req, res, next) => {
   const page = parsePageParam(req.query.page);
   const limit = 25;
 
-  const [games, total, allYears] = await Promise.all([
-    Game.find({ year: yearNum, page, limit, orderBy, orderDir }),
+  const [total, allYears] = await Promise.all([
     Game.count({ year: yearNum }),
     Game.getYears(),
   ]);
 
   // A year nothing was released in — or a page past the end of one that has
   // games — is a 404 rather than an empty page.
-  if (total === 0 || (page > 1 && games.length === 0)) {
+  if (total === 0 || isPageBeyondTotal({ page, limit, total })) {
     return next();
   }
+
+  const games = await Game.find({
+    year: yearNum,
+    page,
+    limit,
+    orderBy,
+    orderDir,
+  });
 
   // Set canonical URL (without orderBy/orderDir params)
   const { canonicalUrl, prevPageUrl, nextPageUrl } = paginationUrls({

@@ -98,9 +98,9 @@
              wants the exhaustive listing at "/<genre>", which sorts and pages
              for real.
         %>
-        <ol class="game-list" style="list-style: none; padding: 0; counter-reset: ranking;">
+        <ol class="game-list" style="list-style: none; padding: 0;">
           <% games.forEach((game, index) => { %>
-          <li style="counter-increment: ranking; position: relative;">
+          <li style="position: relative;">
             <div style="position: absolute; top: 0.6em; left: 0.6em; font-size: 1.4em; font-weight: bold; color: rgb(var(--primary-rgb)); opacity: 0.6; line-height: 1; min-width: 2ch; text-align: right;">#<%= index + 1 %></div>
             <%- include('../games/game-item', { game, index, rankPadding: true }) %>
           </li>
@@ -110,7 +110,7 @@
         <!-- Related Lists -->
         <% if (relatedLists && relatedLists.length > 0) { %>
         <div style="margin-top: 2em; padding: 1.2em; background: var(--panel-tint); border: 1px solid rgb(var(--border-rgb)); border-radius: var(--border-radius);">
-          <h2 style="margin: 0 0 0.8em; font-size: 1rem; color: rgb(var(--primary-rgb)); text-shadow: var(--text-shadow);">More game lists you might enjoy:</h2>
+          <h2 style="margin: 0 0 0.8em; font-size: 1rem; color: rgb(var(--primary-rgb));">More game lists you might enjoy:</h2>
           <div style="display: flex; flex-wrap: wrap; gap: 0.6em;">
             <% relatedLists.forEach(related => { %>
             <a href="/<%= related.slug %>" class="btn btn-sm btn-outline"><%= related.h1 %></a>

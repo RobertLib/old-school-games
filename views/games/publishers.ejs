@@ -59,7 +59,7 @@
           <%# An <h2>, not an <h3>: the only heading above this is the page <h1>,
               so an h3 here skipped a level and broke the outline a screen reader
               navigates by. font-size is stated so the change is semantic only. %>
-          <h2 style="margin: 0 0 10px; font-size: 1.17em; color: rgb(var(--primary-rgb)); text-shadow: var(--text-shadow);">Quick Navigation:</h2>
+          <h2 style="margin: 0 0 10px; font-size: 1.17em; color: rgb(var(--primary-rgb));">Quick Navigation:</h2>
           <div style="display: flex; flex-wrap: wrap; gap: 10px;">
             <a href="/developers" class="btn btn-sm btn-outline">Browse Developers</a>
             <a href="/years" class="btn btn-sm btn-outline">Browse by Year</a>
@@ -86,7 +86,7 @@
         <!-- Popular Publishers Section -->
         <% if (publishers.length > 5) { %>
         <div style="margin: 30px 0; padding: 20px; background: var(--panel-tint); border: 1px solid rgb(var(--border-rgb)); border-radius: var(--border-radius);">
-          <h3 style="margin: 0 0 15px; color: rgb(var(--primary-rgb)); text-shadow: var(--text-shadow);">Popular Publishers:</h3>
+          <h3 style="margin: 0 0 15px; color: rgb(var(--primary-rgb));">Popular Publishers:</h3>
           <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
             <% publishers.slice(0, 8).forEach(publisher => { %>
             <a href="/publisher/<%= encodeURIComponent(publisher) %>" class="color-primary underline">

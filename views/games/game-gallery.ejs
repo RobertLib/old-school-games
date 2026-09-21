@@ -9,7 +9,7 @@
   <meta property="og:title" content="<%= title %>" />
   <meta property="og:description" content="<%= description %>" />
   <%- include('../og-image') %>
-  <meta property="og:url" content="<%= locals.ogUrl || locals.canonicalUrl || (siteUrl + req.path) %>" />
+  <meta property="og:url" content="<%= locals.ogUrl || locals.canonicalUrl || (siteUrl + req.originalUrl.split('?')[0]) %>" />
   <meta property="og:type" content="website" />
   <meta property="og:site_name" content="<%= siteName %>" />
   <link rel="stylesheet" href="<%= asset('/css/gallery.css') %>" />

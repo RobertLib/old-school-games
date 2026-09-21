@@ -101,6 +101,11 @@ class RatingStars extends HTMLElement {
     this.listenersAttached = true;
 
     this.onShadowClick = (event) => {
+      // A rating already on its way. Five stars a few pixels apart invite a
+      // double click, and each one used to POST — two votes from one visitor,
+      // the second racing the re-render the first triggered.
+      if (this.submitting) return;
+
       const rating = ratingFor(event.target);
 
       if (rating) this.submitRating(gameId, rating);
@@ -123,6 +128,9 @@ class RatingStars extends HTMLElement {
       // " " is the modern name for the space bar; "Spacebar" is what older
       // browsers report.
       if (!["Enter", " ", "Spacebar"].includes(event.key)) return;
+
+      // As on the click path above — Enter held down repeats.
+      if (this.submitting) return;
 
       const rating = ratingFor(event.target);
 
@@ -241,6 +249,11 @@ class RatingStars extends HTMLElement {
   }
 
   async submitRating(gameId, rating) {
+    if (this.submitting) return;
+
+    this.submitting = true;
+    this.setStarsBusy(true);
+
     try {
       const csrfToken = document
         .querySelector('meta[name="csrf-token"]')
@@ -272,6 +285,32 @@ class RatingStars extends HTMLElement {
     } catch (error) {
       console.error("Error submitting rating:", error);
       alert("Error submitting rating.");
+    } finally {
+      // In a finally, so a thrown fetch or a rejected json() cannot leave the
+      // component refusing every further vote.
+      this.submitting = false;
+      this.setStarsBusy(false);
+    }
+  }
+
+  /**
+   * Says so on the stars while a vote is in flight.
+   *
+   * aria-disabled rather than the disabled property: these are <span>s
+   * wearing role="button" (see starMarkup), which has no such property, and
+   * taking the tabindex off would move the visitor's focus somewhere else
+   * mid-vote. render() replaces the markup, so the container — which
+   * survives it — is what carries the state.
+   */
+  setStarsBusy(busy) {
+    const stars = this.shadowRoot?.querySelector(".stars");
+
+    if (!stars) return;
+
+    if (busy) {
+      stars.setAttribute("aria-disabled", "true");
+    } else {
+      stars.removeAttribute("aria-disabled");
     }
   }
 }

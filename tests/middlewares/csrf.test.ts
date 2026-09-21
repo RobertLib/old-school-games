@@ -364,6 +364,100 @@ describe("validateCsrf", () => {
    * message that does not say what to do about it. This is the same trade the
    * rate limiters make by sending message objects.
    */
+  /**
+   * Defence in depth behind the token, and production only: the suite and a
+   * developer's browser run on localhost under any number of ports, and
+   * SITE_URL names the live origin, so comparing against it outside
+   * production would refuse every form post on a developer's machine.
+   */
+  describe("the Origin check", () => {
+    function inProduction<T>(run: () => T): T {
+      const previous = process.env.NODE_ENV;
+      process.env.NODE_ENV = "production";
+
+      try {
+        return run();
+      } finally {
+        process.env.NODE_ENV = previous;
+      }
+    }
+
+    function post(origin?: string): { req: Request; res: Response } {
+      const req = makeReq({
+        method: "POST",
+        body: { _csrf: maskToken(VALID) },
+        headers: origin === undefined ? {} : { origin },
+      });
+      req.csrfToken = VALID;
+
+      return { req, res: makeRes() };
+    }
+
+    it("accepts a valid token from the site's own origin", () => {
+      const { req, res } = post("https://oldschoolgames.eu");
+
+      inProduction(() => validateCsrf(req, res, next));
+
+      expect(next).toHaveBeenCalled();
+    });
+
+    /**
+     * A missing Origin is not evidence of anything. Browsers omit it on
+     * same-origin form posts, which is exactly what the comment form sends
+     * with scripts off, and curl and the health checkers send nothing either
+     * — so requiring it would refuse the very submits this site is built to
+     * accept.
+     */
+    it("accepts a valid token with no Origin at all", () => {
+      const { req, res } = post(undefined);
+
+      inProduction(() => validateCsrf(req, res, next));
+
+      expect(next).toHaveBeenCalled();
+    });
+
+    it("refuses a valid token sent from another origin", () => {
+      const { req, res } = post("https://evil.example");
+
+      inProduction(() => validateCsrf(req, res, next));
+
+      expect(next).not.toHaveBeenCalled();
+      // The same refusal a bad token gets, deliberately: separate answers
+      // would tell a prober which check it tripped.
+      expect(res.status).toHaveBeenCalledWith(403);
+    });
+
+    // Nobody legitimately repeats the header, and an array cannot equal the
+    // canonical origin — which is the right answer for it.
+    it("refuses a repeated Origin header", () => {
+      const req = makeReq({
+        method: "POST",
+        body: { _csrf: maskToken(VALID) },
+        headers: { origin: ["https://oldschoolgames.eu"] as any },
+      });
+      req.csrfToken = VALID;
+      const res = makeRes();
+
+      inProduction(() => validateCsrf(req, res, next));
+
+      expect(next).not.toHaveBeenCalled();
+    });
+
+    /**
+     * Outside production it is not applied at all, which is what keeps the
+     * suite above and every development server working — and is asserted
+     * rather than assumed, because a check that silently started applying
+     * everywhere would refuse every form post on localhost.
+     */
+    it("is not applied outside production", () => {
+      const { req, res } = post("https://evil.example");
+
+      validateCsrf(req, res, next);
+
+      expect(next).toHaveBeenCalled();
+    });
+  });
+
   describe("the shape of the refusal", () => {
     const JSON_ENDPOINTS = [
       ["POST", "/comments"],

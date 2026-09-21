@@ -1,9 +1,9 @@
-import { beforeEach, describe, expect, it, afterAll } from "vitest";
+import { beforeEach, describe, expect, it, afterAll, vi } from "vitest";
 import request from "supertest";
 import express from "express";
 import pool from "../../db.ts";
 import commentsRouter from "../../routes/comments.ts";
-import {
+import Comment, {
   COMMENTS_PAGE_SIZE,
   OVERVIEW_PAGE_SIZE,
 } from "../../models/comment.ts";
@@ -444,6 +444,42 @@ describe("Comments Routes", () => {
 
       expect(response.status).toBe(404);
       expect(response.body.error).toBe("Game not found");
+    });
+
+    /**
+     * A reply whose parent a moderator deleted between the check and the
+     * insert.
+     *
+     * The route reads the parent and confirms it belongs to this game, and
+     * Postgres then refuses the row on "comments_parentId_fkey" — the same
+     * SQLSTATE as a vanished game, which is why this was answered "Game not
+     * found" and sent the visitor to look for a page that is perfectly fine.
+     *
+     * Forced through the read rather than raced for real: the window is
+     * between two statements and nothing in a test can reliably sit inside
+     * it. What is under test is which error the route recognises, and the
+     * error Postgres raises is the same either way.
+     */
+    it("answers 409 when the parent comment vanished mid-request", async () => {
+      const findById = vi
+        .spyOn(Comment, "findById")
+        .mockResolvedValue({ id: 999999, gameId: 1 } as any);
+
+      try {
+        const response = await request(server).post("/comments").send({
+          nick: "TestUser",
+          content: "A reply",
+          gameId: "1",
+          parentId: "999999",
+        });
+
+        expect(response.status).toBe(409);
+        expect(response.body.error).toMatch(/removed/i);
+        // Specifically not the game, which still exists.
+        expect(response.body.error).not.toMatch(/game/i);
+      } finally {
+        findById.mockRestore();
+      }
     });
   });
 

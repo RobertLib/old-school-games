@@ -44,8 +44,17 @@ FROM base AS build
 # whose lockfile barely moved re-downloads almost nothing. It needs BuildKit,
 # which is what the syntax directive at the top of this file asks for; Fly's
 # remote builder and `docker build` on a current daemon both use it.
+#
+# --ignore-scripts because nothing shipped here has one to run. Every
+# production dependency is pure JavaScript (see the note above), and the only
+# package in the lockfile carrying an install script at all is fsevents —
+# devDependency, optional, and macOS-only, so `--omit=dev` on a Linux base
+# never sees it. What the flag buys is that a *future* dependency, or a
+# transitive one moved by a lockfile bump, cannot run arbitrary code as root
+# in the build stage without somebody first noticing that this flag had to
+# come off.
 COPY --link package-lock.json package.json ./
-RUN --mount=type=cache,target=/root/.npm npm ci --omit=dev
+RUN --mount=type=cache,target=/root/.npm npm ci --omit=dev --ignore-scripts
 
 # Copy application code
 COPY --link . .

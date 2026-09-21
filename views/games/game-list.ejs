@@ -1,4 +1,4 @@
-<%- include('../pagination') %>
+<%- include('../pagination', { paginationLabel: 'Pagination (top)' }) %>
 
 <% if (games.length) { %>
 <div class="game-list">
@@ -41,4 +41,4 @@
 <p>No games found</p>
 <% } %>
 
-<%- include('../pagination') %>
+<%- include('../pagination', { paginationLabel: 'Pagination (bottom)' }) %>

@@ -1,29 +1,37 @@
-import { beforeEach, describe, it, expect, beforeAll } from "vitest";
+import { beforeEach, describe, it, expect } from "vitest";
 import pool from "../../db.ts";
 import News from "../../models/news.ts";
 
 describe("News", () => {
-  beforeAll(async () => {
-    // Ensure database is ready
-    await new Promise((resolve) => setTimeout(resolve, 100));
-  });
-
   beforeEach(async () => {
-    // Clean tables before each test - handle foreign keys properly
-    await pool.query('DELETE FROM "ratings"');
-    await pool.query('DELETE FROM "comments"');
-    await pool.query('DELETE FROM "game_of_the_week"');
-    await pool.query('DELETE FROM "games"');
-    await pool.query('DELETE FROM "news"');
-    await pool.query('DELETE FROM "users"');
-
-    // Reset auto-increment sequences
-    await pool.query('ALTER SEQUENCE "news_id_seq" RESTART WITH 1');
-    await pool.query('ALTER SEQUENCE "users_id_seq" RESTART WITH 1');
-
-    // Create test user with explicit ID to avoid conflicts
+    /**
+     * One TRUNCATE, for the reasons written out at length in tests/setup.ts.
+     *
+     * This used to be six DELETEs in hand-maintained foreign-key order
+     * followed by two ALTER SEQUENCEs, which is two lists that had to stay in
+     * step with each other and with the schema — and a DELETE refused by a
+     * foreign key is a cleanup that quietly did not happen, surfacing later as
+     * an assertion failing in an unrelated case. CASCADE follows the keys
+     * itself and reaches the ones nothing named here at all ("news_slugs",
+     * "game_slugs"), and RESTART IDENTITY resets the sequences in the same
+     * statement.
+     *
+     * The 100ms beforeAll sleep that used to sit above this is gone too. It
+     * said "ensure database is ready", but nothing about it waited for
+     * anything: setup.ts has already connected, truncated and migrated before
+     * a line of this file runs, and the first query below would wait for the
+     * pool by itself in any case. All it did was add a tenth of a second to
+     * the run and imply a race that is not there.
+     */
     await pool.query(
-      'INSERT INTO "users" ("id", "email", "password", "role") VALUES ($1, $2, $3, $4) ON CONFLICT (id) DO UPDATE SET email = $2, password = $3, role = $4',
+      'TRUNCATE "news", "games", "users" RESTART IDENTITY CASCADE',
+    );
+
+    // A fixed id, because the cases below reference it. ON CONFLICT is kept
+    // rather than needed — the truncation above leaves nothing to conflict
+    // with — so that a case which inserts a user of its own cannot break this.
+    await pool.query(
+      'INSERT INTO "users" ("id", "email", "password", "role") VALUES ($1, $2, $3, $4) ON CONFLICT ("id") DO UPDATE SET "email" = $2, "password" = $3, "role" = $4',
       [1, "test@example.com", "hashedpassword", "ADMIN"],
     );
   });
@@ -101,7 +109,11 @@ describe("News", () => {
 
       expect(result.news).toEqual([]);
       expect(result.total).toBe(0);
-      expect(result.totalPages).toBe(0);
+      // One page, not none: /news with nothing on it is still page 1 of 1.
+      // Math.ceil(0 / limit) is 0, so the view was handed a page number above
+      // its own total — which is what paginationUrls clamps for the same
+      // reason.
+      expect(result.totalPages).toBe(1);
     });
 
     it("should return paginated news", async () => {

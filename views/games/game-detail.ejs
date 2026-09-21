@@ -1,3 +1,25 @@
+<%
+  /**
+   * A URL that is safe to drop inside a CSS url() in a style attribute.
+   *
+   * EJS escapes for HTML, which is the wrong context here: an apostrophe
+   * comes out as "&#39;", the HTML parser hands CSS back the apostrophe, and
+   * the quoted url() ends early — everything after it is parsed as further
+   * declarations. A cover URL is admin-entered (see validations/game.ts), so
+   * this is not reachable by a visitor, but a template that is only safe
+   * because of what some other file rejects is one bad edit from not being.
+   *
+   * encodeURI first, so a URL that is already valid is unchanged, then the
+   * five characters that still mean something to the CSS tokenizer inside a
+   * quoted url(): both quote marks, the closing paren, the backslash that
+   * would escape the quote, and the opening paren for symmetry.
+   */
+  const cssUrl = (value) =>
+    encodeURI(String(value)).replace(
+      /['"()\\]/g,
+      (character) => "%" + character.charCodeAt(0).toString(16).toUpperCase(),
+    );
+-%>
 <!DOCTYPE html>
 <html lang="en">
 
@@ -25,7 +47,7 @@
   <meta property="og:title" content="<%= locals.title || siteTitle %>" />
   <meta property="og:description" content="<%= locals.description || siteDescription %>" />
   <%- include('../og-image') %>
-  <meta property="og:url" content="<%= locals.ogUrl || locals.canonicalUrl || (siteUrl + req.path) %>" />
+  <meta property="og:url" content="<%= locals.ogUrl || locals.canonicalUrl || (siteUrl + req.originalUrl.split('?')[0]) %>" />
   <meta property="og:type" content="video.game" />
   <meta property="og:site_name" content="<%= siteName %>" />
   <script defer src="<%= asset('/js/rating-stars.js') %>"></script>
@@ -124,14 +146,17 @@
         <div>
           <div class="game-hero">
             <% if (game.cover) { %>
-            <div class="game-hero-background" style="background-image: url('<%= game.cover %>')"></div>
+            <div class="game-hero-background" style="background-image: url('<%= cssUrl(game.cover) %>')"></div>
             <% } %>
             <div class="game-hero-content">
               <div>
                 <h1 class="game-hero-title"><%= game.title %></h1>
                 <p class="game-hero-meta">
                   <span class="badge"><%= game.genre %></span>
+                  <%# An empty badge otherwise: the column is nullable. %>
+                  <% if (game.release) { %>
                   <span class="badge"><%= game.release %></span>
+                  <% } %>
                 </p>
               </div>
               <% if (game.stream) { %>
@@ -271,7 +296,7 @@
           Without JavaScript the frame is there as before.
         -->
         <div class="game-detail-player" data-game-id="<%= game.id %>" data-player-src="<%= playerSrc %>" data-title="<%= game.title %>">
-          <button class="game-detail-poster" type="button"<% if (game.cover) { %> style="background-image: url('<%= game.cover %>')"<% } %>>
+          <button class="game-detail-poster" type="button"<% if (game.cover) { %> style="background-image: url('<%= cssUrl(game.cover) %>')"<% } %>>
             <span class="game-detail-poster-label">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512" fill="currentColor" width="14" height="16" aria-hidden="true">
                 <path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80L0 432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z" />
@@ -343,11 +368,11 @@
         </div>
         <nav style="margin: 15px 0">
           Share on social media:
-          <a class="color-primary underline" href="https://www.facebook.com/sharer/sharer.php?u=<%= encodeURIComponent(locals.ogUrl || locals.canonicalUrl || (siteUrl + req.path)) %>" target="_blank" rel="noopener noreferrer">
+          <a class="color-primary underline" href="https://www.facebook.com/sharer/sharer.php?u=<%= encodeURIComponent(locals.ogUrl || locals.canonicalUrl || (siteUrl + req.originalUrl.split('?')[0])) %>" target="_blank" rel="noopener noreferrer">
             Facebook
           </a>
           |
-          <a class="color-primary underline" href="https://twitter.com/intent/tweet?url=<%= encodeURIComponent(locals.ogUrl || locals.canonicalUrl || (siteUrl + req.path)) %>&text=<%= encodeURIComponent(game.title) %>" target="_blank" rel="noopener noreferrer">
+          <a class="color-primary underline" href="https://twitter.com/intent/tweet?url=<%= encodeURIComponent(locals.ogUrl || locals.canonicalUrl || (siteUrl + req.originalUrl.split('?')[0])) %>&text=<%= encodeURIComponent(game.title) %>" target="_blank" rel="noopener noreferrer">
             Twitter
           </a>
         </nav>
@@ -355,7 +380,7 @@
 
       <!-- Related Links Section -->
       <section style="margin: 25px 0; padding: 20px; background: var(--panel-tint); border: 1px solid rgb(var(--border-rgb)); border-radius: var(--border-radius);">
-        <h3 style="margin: 0 0 15px; color: rgb(var(--primary-rgb)); text-shadow: var(--text-shadow);">Explore More</h3>
+        <h3 style="margin: 0 0 15px; color: rgb(var(--primary-rgb));">Explore More</h3>
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; color: rgb(var(--color-rgb));">
           <% if (game.genre) { %>
           <div>

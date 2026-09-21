@@ -426,7 +426,39 @@ describe("POST /login rate limiting", () => {
   // the response status, so it only counts failures because the route answers
   // 401 for one. On the 200 this route used to send for a rejected login it
   // would have refunded the guess and counted nothing at all.
+  /**
+   * How long a refund actually takes here, provoked rather than guessed at.
+   *
+   * The case below has to assert that something did *not* happen, and the
+   * only way to do that in time is to wait — so the length of the wait had
+   * better come from the mechanism instead of from a number that happened to
+   * work on one machine. A successful login is a refund by definition, so one
+   * is run and the round trip timed; the case then waits out a generous
+   * multiple of it.
+   *
+   * Left in the table by this is nothing: the hit it spends is the one it
+   * then gets back, and the rows are cleared anyway.
+   */
+  async function measureRefundMs(): Promise<number> {
+    vi.mocked(User.findByEmail).mockResolvedValue(mockUser as any);
+    vi.mocked(password.verifyPassword).mockResolvedValue(true);
+
+    const started = performance.now();
+
+    await request(server).post("/login").send(credentials);
+    // The increment is awaited as part of the request; this is the refund.
+    await waitForHits(0);
+
+    const elapsed = performance.now() - started;
+
+    await db.query(`DELETE FROM "rate_limits" WHERE "key" LIKE 'login:%'`);
+
+    return elapsed;
+  }
+
   it("keeps counting the ones that fail", async () => {
+    const refundMs = await measureRefundMs();
+
     vi.mocked(User.findByEmail).mockResolvedValue(null);
 
     const response = await request(server).post("/login").send(credentials);
@@ -434,9 +466,14 @@ describe("POST /login rate limiting", () => {
     expect(response.status).toBe(401);
     expect(await waitForHits(1)).toBe(1);
 
-    // Held, not merely slow to be given back: the refund would have landed
-    // well inside this.
-    await new Promise((resolve) => setTimeout(resolve, 250));
+    // Held, not merely slow to be given back — and the window is ten times a
+    // refund's own measured cost rather than the flat 250ms this used to
+    // sleep. A fixed number is a false pass waiting for a loaded runner: the
+    // refund lands a moment after it, the assertion has already been made,
+    // and the test reports that failures are counted when they are not.
+    await new Promise((resolve) =>
+      setTimeout(resolve, Math.max(refundMs * 10, 250)),
+    );
 
     expect(await loginHits()).toBe(1);
   });
@@ -508,12 +545,31 @@ describe("POST /login per-account rate limiting", () => {
     expect(rows.map((row) => row.hits)).toEqual([1, 1]);
   });
 
+  /**
+   * The absence, asserted through a positive case rather than through a sleep.
+   *
+   * This used to send the anonymous request and then sleep 100ms before
+   * finding the table empty — which passes whether the limiter skipped the
+   * request or merely had not written its row yet, and the second of those is
+   * what a loaded machine produces. So a request that *does* name an account
+   * is sent afterwards and its row polled for: by the time that row is
+   * visible, a write from the earlier request — whose response finished
+   * first — has had at least as long to appear, and the count being one
+   * rather than two is the assertion.
+   */
   it("does not count a request that names no account", async () => {
     const response = await request(server).post("/login").send({ password: "x" });
 
     expect(response.status).toBe(400);
-    await new Promise((resolve) => setTimeout(resolve, 100));
-    expect(await accountRows()).toEqual([]);
+
+    await request(server)
+      .post("/login")
+      .send({ email: "named@example.com", password: "x" });
+
+    const rows = await waitForRows(1);
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0]!.hits).toBe(1);
   });
 
   it("gives the attempt back when the login succeeds", async () => {

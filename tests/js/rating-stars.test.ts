@@ -330,6 +330,156 @@ describe("rating-stars.js — rating submission", () => {
   });
 });
 
+/**
+ * Five stars a few pixels apart invite a double click, and both used to POST
+ * — two votes from one visitor, the second racing the re-render the first
+ * had already triggered. The guard is a flag set for the duration of the
+ * request, in a try/finally so a thrown fetch cannot leave the component
+ * refusing every vote after it.
+ */
+describe("rating-stars.js — one vote at a time", () => {
+  async function mountWithFetch(fetchImpl: typeof global.fetch, gameId = "9") {
+    (global as any).fetch = fetchImpl;
+    vi.spyOn(window, "alert").mockImplementation(() => {});
+
+    const el = document.createElement("rating-stars");
+    el.setAttribute("rating", "0");
+    el.setAttribute("gameId", gameId);
+    document.body.appendChild(el);
+    await Promise.resolve();
+
+    return el;
+  }
+
+  /** A fetch that does not answer until the test lets it. */
+  function heldFetch() {
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const mock = vi.fn().mockImplementation(async () => {
+      await held;
+
+      return { ok: true, json: async () => ({ averageRating: 3, ratingCount: 1 }) };
+    });
+
+    return { mock, release };
+  }
+
+  it("ignores a second click while the first is still in flight", async () => {
+    const { mock, release } = heldFetch();
+    const el = await mountWithFetch(mock as any);
+
+    const stars = () =>
+      el.shadowRoot!.querySelectorAll<HTMLElement>(".star");
+
+    stars()[2].dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    await vi.waitFor(() => expect(mock).toHaveBeenCalledTimes(1));
+
+    stars()[4].dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    await settle();
+
+    expect(mock).toHaveBeenCalledTimes(1);
+
+    release();
+    await settle();
+  });
+
+  it("ignores Enter while the first is still in flight", async () => {
+    const { mock, release } = heldFetch();
+    const el = await mountWithFetch(mock as any);
+
+    const stars = () =>
+      el.shadowRoot!.querySelectorAll<HTMLElement>(".star");
+
+    stars()[1].dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
+    );
+    await vi.waitFor(() => expect(mock).toHaveBeenCalledTimes(1));
+
+    stars()[3].dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
+    );
+    await settle();
+
+    expect(mock).toHaveBeenCalledTimes(1);
+
+    release();
+    await settle();
+  });
+
+  // The stars are <span>s wearing role="button" (starMarkup), which have no
+  // disabled property, and taking the tabindex off would move the visitor's
+  // focus somewhere else mid-vote. aria-disabled says it without either.
+  it("says so on the stars while the vote is in flight", async () => {
+    const { mock, release } = heldFetch();
+    const el = await mountWithFetch(mock as any);
+
+    el.shadowRoot!.querySelectorAll<HTMLElement>(".star")[2].dispatchEvent(
+      new MouseEvent("click", { bubbles: true }),
+    );
+
+    await vi.waitFor(() => {
+      expect(
+        el.shadowRoot!.querySelector(".stars")!.getAttribute("aria-disabled"),
+      ).toBe("true");
+    });
+
+    release();
+
+    await vi.waitFor(() => {
+      expect(
+        el.shadowRoot!.querySelector(".stars")!.hasAttribute("aria-disabled"),
+      ).toBe(false);
+    });
+  });
+
+  it("takes the next vote once the first has finished", async () => {
+    const mock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ averageRating: 3, ratingCount: 1 }),
+    });
+    const el = await mountWithFetch(mock as any);
+
+    el.shadowRoot!.querySelectorAll<HTMLElement>(".star")[2].dispatchEvent(
+      new MouseEvent("click", { bubbles: true }),
+    );
+    await vi.waitFor(() => expect(mock).toHaveBeenCalledTimes(1));
+    await settle();
+
+    el.shadowRoot!.querySelectorAll<HTMLElement>(".star")[4].dispatchEvent(
+      new MouseEvent("click", { bubbles: true }),
+    );
+
+    await vi.waitFor(() => expect(mock).toHaveBeenCalledTimes(2));
+  });
+
+  // In a finally, so the component is not left permanently mute by one
+  // failed request.
+  it("clears the guard when the request throws", async () => {
+    const mock = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("offline"))
+      .mockResolvedValue({
+        ok: true,
+        json: async () => ({ averageRating: 3, ratingCount: 1 }),
+      });
+    const el = await mountWithFetch(mock as any);
+
+    el.shadowRoot!.querySelectorAll<HTMLElement>(".star")[2].dispatchEvent(
+      new MouseEvent("click", { bubbles: true }),
+    );
+    await vi.waitFor(() => expect(mock).toHaveBeenCalledTimes(1));
+    await settle();
+
+    el.shadowRoot!.querySelectorAll<HTMLElement>(".star")[3].dispatchEvent(
+      new MouseEvent("click", { bubbles: true }),
+    );
+
+    await vi.waitFor(() => expect(mock).toHaveBeenCalledTimes(2));
+  });
+});
+
 describe("rating-stars.js — display details", () => {
   async function mount(attrs: Record<string, string>) {
     const el = document.createElement("rating-stars");

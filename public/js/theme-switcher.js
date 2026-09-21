@@ -138,6 +138,13 @@
       // — without it a screen reader announced three radio items and never
       // said which one was in force.
       item.setAttribute("aria-checked", isActive ? "true" : "false");
+
+      // Roving tabindex: one stop for the whole group, on the choice that is
+      // in force, and the arrow keys move within it. That is the model
+      // role="menu" promises, and it is why the markup carries no tabindex of
+      // its own — with the script blocked the three buttons stay natively
+      // focusable and the :focus-within rule still opens the menu for them.
+      item.setAttribute("tabindex", isActive ? "0" : "-1");
     });
   }
 
@@ -177,10 +184,19 @@
   }
 
   /**
-   * Keeps aria-expanded on the toggle honest. The menu itself is opened by
-   * the stylesheet — on :hover and on :focus-within — so this only reports
-   * what the stylesheet is doing, and closes the menu on Escape by dropping
-   * focus out of it.
+   * The menu's open/close model.
+   *
+   * The stylesheet opens the menu on :hover and on :focus-within, and that
+   * stays — it is what keeps the three themes reachable if this script is
+   * blocked. What it cannot do is open on a tap (a touch screen fires no
+   * hover), report state, or close on Escape without throwing focus away, so
+   * the toggle gets a real click handler and the menu an "open" class
+   * (.dropdown.open .dropdown-menu in public/css/style.css).
+   *
+   * The keyboard model is the one role="menu" promises and never had:
+   * ArrowDown/ArrowUp wrap through the items, Home/End jump to the ends,
+   * Escape closes and hands focus back to the toggle, and a click anywhere
+   * else closes.
    */
   function initDropdownState() {
     document.querySelectorAll(".dropdown").forEach((dropdown) => {
@@ -188,27 +204,142 @@
 
       if (!toggle) return;
 
+      const menu = dropdown.querySelector(".dropdown-menu");
+
+      // Tells the stylesheet that this script is in charge of the menu now.
+      // The :focus-within rule is scoped to dropdowns *without* this class
+      // (see style.css): it is the no-JavaScript fallback, and while it
+      // applies, focus on the toggle alone opens the menu — which would make
+      // Escape unable to close it without also throwing focus away, since
+      // closing hands focus back to the toggle.
+      dropdown.classList.add("dropdown-js");
+
+      const isOpen = () => dropdown.classList.contains("open");
+
       const setExpanded = (open) =>
         toggle.setAttribute("aria-expanded", open ? "true" : "false");
 
-      dropdown.addEventListener("focusin", () => setExpanded(true));
-      dropdown.addEventListener("focusout", (event) => {
-        if (!dropdown.contains(event.relatedTarget)) setExpanded(false);
-      });
-      dropdown.addEventListener("mouseenter", () => setExpanded(true));
-      dropdown.addEventListener("mouseleave", () => {
-        if (!dropdown.contains(document.activeElement)) setExpanded(false);
-      });
-      dropdown.addEventListener("keydown", (event) => {
-        if (event.key !== "Escape") return;
+      const items = () =>
+        Array.from(dropdown.querySelectorAll(".dropdown-item"));
 
-        if (dropdown.contains(document.activeElement)) {
+      /**
+       * Focus is moved with tabindex="0" written first: an element with
+       * tabindex="-1" takes focus programmatically, but leaving the group
+       * without a tab stop would strand the next Tab press.
+       */
+      const focusItem = (index) => {
+        const all = items();
+
+        if (all.length === 0) return;
+
+        const wrapped = (index + all.length) % all.length;
+
+        all.forEach((item, i) =>
+          item.setAttribute("tabindex", i === wrapped ? "0" : "-1"),
+        );
+        all[wrapped].focus();
+      };
+
+      const open = () => {
+        dropdown.classList.add("open");
+        setExpanded(true);
+      };
+
+      const close = (returnFocus) => {
+        dropdown.classList.remove("open");
+        setExpanded(false);
+
+        if (returnFocus) {
+          toggle.focus();
+        } else if (dropdown.contains(document.activeElement)) {
           document.activeElement.blur();
         }
+      };
 
-        setExpanded(false);
+      toggle.addEventListener("click", () => {
+        if (isOpen()) {
+          close(false);
+        } else {
+          open();
+        }
+      });
+
+      // Focus inside the menu, not focus anywhere in the dropdown: the menu
+      // is only reachable while it is open, so this reports a menu that is
+      // genuinely on screen. Focus landing on the toggle no longer says
+      // "open" — see the .dropdown-js note above.
+      dropdown.addEventListener("focusin", (event) => {
+        if (!menu || menu.contains(event.target)) setExpanded(true);
+      });
+      dropdown.addEventListener("focusout", (event) => {
+        if (!dropdown.contains(event.relatedTarget)) {
+          dropdown.classList.remove("open");
+          setExpanded(false);
+        }
+      });
+      // Only while the menu is not held open by a click, or moving the
+      // pointer away would report a menu that is still on screen as closed.
+      dropdown.addEventListener("mouseenter", () => {
+        if (!isOpen()) setExpanded(true);
+      });
+      dropdown.addEventListener("mouseleave", () => {
+        if (isOpen()) return;
+
+        if (!dropdown.contains(document.activeElement)) setExpanded(false);
+      });
+
+      dropdown.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") {
+          close(true);
+          return;
+        }
+
+        const all = items();
+        const current = all.indexOf(document.activeElement);
+
+        switch (event.key) {
+          case "ArrowDown":
+            event.preventDefault();
+            open();
+            focusItem(current + 1);
+            break;
+          case "ArrowUp":
+            event.preventDefault();
+            open();
+            focusItem(current < 0 ? -1 : current - 1);
+            break;
+          case "Home":
+            if (current < 0) return;
+            event.preventDefault();
+            focusItem(0);
+            break;
+          case "End":
+            if (current < 0) return;
+            event.preventDefault();
+            focusItem(all.length - 1);
+            break;
+          default:
+            break;
+        }
       });
     });
+
+    // One listener for the page, not one per dropdown: a click that lands
+    // outside every menu closes all of them.
+    if (!document.documentElement.dataset.dropdownOutsideBound) {
+      document.documentElement.dataset.dropdownOutsideBound = "true";
+
+      document.addEventListener("click", (event) => {
+        document.querySelectorAll(".dropdown.open").forEach((dropdown) => {
+          if (dropdown.contains(event.target)) return;
+
+          dropdown.classList.remove("open");
+          dropdown
+            .querySelector(".dropdown-toggle")
+            ?.setAttribute("aria-expanded", "false");
+        });
+      });
+    }
   }
 
   // Apply theme immediately

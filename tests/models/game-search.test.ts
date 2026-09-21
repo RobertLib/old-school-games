@@ -102,4 +102,122 @@ describe("Game search", () => {
       "The Secret of Monkey Island",
     );
   });
+
+  /**
+   * The fuzzy arm is pg_trgm's "%" now rather than "similarity(...) > 0.28",
+   * which says the same thing and cannot be served by the GIN index from
+   * 0020 — so every search was a sequential scan of the catalogue. The
+   * operator compares against a session setting, so the statement runs inside
+   * a transaction that sets it; these cases are what says the threshold
+   * actually arrives.
+   */
+  describe("the trigram threshold", () => {
+    it("still refuses a term too far from any title", async () => {
+      await create("The Secret of Monkey Island");
+
+      // Nothing in common but a few letters: below the threshold, so no
+      // match — a default threshold of 0.3 or a missing one would be a
+      // different answer here.
+      await expect(Game.count({ search: "xyzzyplugh" })).resolves.toBe(0);
+    });
+
+    /**
+     * Two searches in a row, because the threshold is set with SET LOCAL and
+     * a pooled connection is handed straight back. A setting that leaked would
+     * make the second search behave differently from the first — and a
+     * threshold that never arrived would make the typo case above fail only
+     * sometimes, depending on which connection answered.
+     */
+    it("gives the same answer twice running", async () => {
+      await create("The Secret of Monkey Island");
+
+      await expect(Game.count({ search: "moneky island" })).resolves.toBe(1);
+      await expect(Game.count({ search: "moneky island" })).resolves.toBe(1);
+      await expect(Game.count({ search: "xyzzyplugh" })).resolves.toBe(0);
+    });
+
+    // The suggestions run at a much looser threshold of their own, so a term
+    // the search itself rejects still gets a guess.
+    it("suggests titles at a looser threshold than the search", async () => {
+      await create("The Secret of Monkey Island");
+
+      const suggestions = await Game.findTitleSuggestions("monkey", 5);
+
+      expect(suggestions.map((game) => game.title)).toContain(
+        "The Secret of Monkey Island",
+      );
+    });
+  });
+
+  /**
+   * find() pages the games before it joins the rating aggregates on for every
+   * ordering but the rating one, so the two shapes have to return the same
+   * rows in the same order — and count() has to agree with both, or a listing
+   * advertises pages it then answers with a 404.
+   */
+  describe("paging agrees with counting", () => {
+    beforeEach(async () => {
+      for (let n = 0; n < 5; n++) {
+        await create(`Paged ${n}`, {
+          developer: "Shared Dev",
+          publisher: "Shared Pub",
+          release: 1991,
+        });
+      }
+    });
+
+    it.each([
+      ["genre", { genre: "ACTION" }],
+      ["letter", { letter: "P" }],
+      ["developer", { developer: "Shared Dev" }],
+      ["publisher", { publisher: "Shared Pub" }],
+      ["year", { year: 1991 }],
+      ["release range", { releaseFrom: 1990, releaseTo: 1992 }],
+      ["search", { search: "Paged" }],
+    ])("walks every page of a %s filter exactly once", async (_label, filter) => {
+      const total = await Game.count(filter as any);
+
+      expect(total).toBe(5);
+
+      const seen: number[] = [];
+
+      for (let page = 1; page <= 3; page++) {
+        const games = await Game.find({ ...(filter as any), limit: 2, page });
+
+        seen.push(...games.map((game) => game.id));
+      }
+
+      expect(seen).toHaveLength(total);
+      expect(new Set(seen).size).toBe(total);
+    });
+
+    it("carries the rating aggregates onto the page it returns", async () => {
+      const [first] = await Game.find({ letter: "P", limit: 1 });
+
+      await Game.rate(first!.id, "voter-1", 5, "127.0.0.1");
+
+      const [again] = await Game.find({ letter: "P", limit: 1 });
+
+      expect(again!.averageRating).toBe(5);
+      expect(again!.ratingCount).toBe(1);
+    });
+
+    // An unrated game reads as 0 and 0 rather than as null, which is what the
+    // joined COALESCE(AVG(...), 0) produced and what the views print.
+    it("reads an unrated game as zero, not null", async () => {
+      const [game] = await Game.find({ letter: "P", limit: 1 });
+
+      expect(game!.averageRating).toBe(0);
+      expect(game!.ratingCount).toBe(0);
+    });
+
+    // Same rows, same order, whichever shape the ordering chose.
+    it("orders a rating-ranked page the same way it counts it", async () => {
+      const games = await Game.find({ orderBy: "rating", limit: 3 });
+      const total = await Game.count({});
+
+      expect(total).toBe(5);
+      expect(games).toHaveLength(3);
+    });
+  });
 });

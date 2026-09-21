@@ -147,13 +147,40 @@ describe("Comment Model", () => {
 
       await Comment.findByGameId(42);
 
+      const [sql, values] = (mockDb.query as any).mock.calls[1];
+
+      // One walk per root, with the cap inside it. Capping per immediate
+      // parent would give every parent in a chain its own budget of fifty and
+      // leave the thread as a whole as unbounded as it was, which is the bug
+      // this window exists to close — so the lateral and its LIMIT are the
+      // assertion.
+      expect(sql).toContain("CROSS JOIN LATERAL");
+      expect(sql).toContain("LIMIT $2");
+      expect(values[1]).toBe(REPLIES_PER_ROOT);
+    });
+
+    // The count is what "12 more replies" renders, so it has to be the whole
+    // thread's — evaluated before the LIMIT above cuts the page down.
+    it("counts the whole thread before it applies the cap", async () => {
+      mockBatch([row(1)]);
+
+      await Comment.findByGameId(42);
+
       const [sql] = (mockDb.query as any).mock.calls[1];
 
-      // Partitioning on "parentId" would cap each parent's own answers and
-      // leave the thread as a whole unbounded, which is the bug this window
-      // exists to close — so the partition key is the assertion.
-      expect(sql).toContain('PARTITION BY "rootId"');
-      expect(sql).toContain('"threadPosition" <= $2');
+      expect(sql).toContain('COUNT(*) OVER () AS "replyTotal"');
+    });
+
+    // Only the ids travel through the recursion; the columns are read once,
+    // for the rows that survived the cap.
+    it("walks ids and joins the rows back on afterwards", async () => {
+      mockBatch([row(1)]);
+
+      await Comment.findByGameId(42);
+
+      const [sql] = (mockDb.query as any).mock.calls[1];
+
+      expect(sql).toContain('JOIN "comments" c ON c."id" = w."id"');
     });
   });
   describe("create", () => {

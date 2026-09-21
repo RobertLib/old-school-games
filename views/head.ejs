@@ -247,7 +247,7 @@
      nothing", and which of the two wins is then anybody's guess. Saying
      nothing here leaves the noindex to speak for itself. -->
 <% if (!noindex) { %>
-<link rel="canonical" href="<%= locals.canonicalUrl || (siteUrl + req.path) %>" />
+<link rel="canonical" href="<%= locals.canonicalUrl || (siteUrl + req.originalUrl.split('?')[0]) %>" />
 <% } %>
 <%
   // Built here rather than by each route, so a page cannot have a visible

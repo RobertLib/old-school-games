@@ -131,7 +131,6 @@ function initTicker() {
   // The CSS already lays the text out statically for this preference; running
   // the animation would fight it and burn a frame callback forever.
   if (prefersReducedMotion()) {
-    ticker.style.visibility = "visible";
     return;
   }
 
@@ -141,9 +140,11 @@ function initTicker() {
   let running = false;
   let frame = null;
 
-  // Set initial position before making visible to avoid flash at pos 0
+  // The starting position, written before the loop runs: the text is visible
+  // from the first paint now (the stylesheet no longer hides it, so a visitor
+  // with this script blocked reads it instead of a blank bar), and without
+  // this the first frame would show it at 0 and jump.
   ticker.style.transform = "translateX(" + pos + "px)";
-  ticker.style.visibility = "visible";
 
   function step(ts) {
     if (last !== null) {

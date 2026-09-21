@@ -12,7 +12,10 @@ import {
   parsePageParam,
 } from "../utils/pagination.ts";
 import { parseId } from "../utils/ids.ts";
-import { isMissingGameError } from "../utils/pg-errors.ts";
+import {
+  isMissingGameError,
+  isMissingParentCommentError,
+} from "../utils/pg-errors.ts";
 import { firstQueryValue } from "../utils/query.ts";
 import { validateComment } from "../validations/comments.ts";
 import { SITE_URL } from "../utils/site.ts";
@@ -289,6 +292,23 @@ router.post("/", validateComment, commentRateLimit, async (req, res, next) => {
       isReply: !!resolvedParentId,
     });
   } catch (error) {
+    // The parent first, because it is the narrower claim. The check above
+    // confirms the parent exists and belongs to this game, and a moderator
+    // deleting it between that read and the insert makes Postgres refuse the
+    // row — on "comments_parentId_fkey", which used to be reported as "Game
+    // not found" because both violations share one SQLSTATE. The game is
+    // perfectly fine in that case; the comment being answered is not.
+    //
+    // 409 rather than 404: the address the reply was posted to still exists,
+    // and the client's own remedy is to reload the thread, not to conclude
+    // the page has gone.
+    if (isMissingParentCommentError(error)) {
+      res.status(409).json({
+        error: "That comment was removed — please reload and try again.",
+      });
+      return;
+    }
+
     if (isMissingGameError(error)) {
       res.status(404).json({ error: "Game not found" });
       return;

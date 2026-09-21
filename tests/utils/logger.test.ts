@@ -30,15 +30,21 @@ const MAX_LOG_BYTES = 5 * 1024 * 1024;
 type Logger = typeof import("../../utils/logger.ts").default;
 
 /**
- * A logger whose target was chosen under `env`.
+ * A logger whose target was chosen under `env`, and whose threshold was
+ * chosen under `logLevel`.
  *
- * resetModules first, because the module remembers both its target and how
- * many bytes it has written to each file — state that must not carry from one
- * of these blocks to the next.
+ * resetModules first, because the module remembers its target, its threshold
+ * and how many bytes it has written to each file — state that must not carry
+ * from one of these blocks to the next.
+ *
+ * LOG_LEVEL is stubbed on every call, undefined included, so that a developer
+ * who happens to have it set in their own shell does not change what the
+ * blocks above this assert.
  */
-async function loadLogger(env: string): Promise<Logger> {
+async function loadLogger(env: string, logLevel?: string): Promise<Logger> {
   vi.resetModules();
   vi.stubEnv("NODE_ENV", env);
+  vi.stubEnv("LOG_LEVEL", logLevel);
 
   return (await import("../../utils/logger.ts")).default;
 }
@@ -438,6 +444,99 @@ describe("logger", () => {
       logger.info("request", { status: 404 });
 
       expect(parseLine(appendFile.mock.calls[0]![1]).status).toBe(404);
+    });
+  });
+
+  /**
+   * Turning the volume down, which until LOG_LEVEL existed was impossible:
+   * the access log in app.ts writes an "info" line per request, and the only
+   * lever was the NODE_ENV that also decides *where* a line goes.
+   */
+  describe("LOG_LEVEL", () => {
+    /** Which of the three levels reached stdout or stderr. */
+    async function written(logLevel?: string): Promise<string[]> {
+      const logger = await loadLogger("production", logLevel);
+
+      logger.info("an info line");
+      logger.warn("a warn line");
+      logger.error("an error line");
+
+      return [
+        ...vi.mocked(console.log).mock.calls,
+        ...vi.mocked(console.error).mock.calls,
+      ].map((call) => parseLine(call[0] as string).level);
+    }
+
+    // What every deployment got before this option existed, so adding it
+    // changes nothing for one that does not set it.
+    it("writes all three levels when it is unset", async () => {
+      expect((await written()).sort()).toEqual(["error", "info", "warn"]);
+    });
+
+    it("drops info at warn", async () => {
+      expect((await written("warn")).sort()).toEqual(["error", "warn"]);
+    });
+
+    it("drops everything but errors at error", async () => {
+      expect(await written("error")).toEqual(["error"]);
+    });
+
+    it("writes all three at info", async () => {
+      expect((await written("info")).sort()).toEqual(["error", "info", "warn"]);
+    });
+
+    // A value out of a shell or a Fly secret arrives however somebody typed
+    // it, and "ERROR" is not a different level from "error".
+    it("ignores case and surrounding space", async () => {
+      expect((await written("  WARN  ")).sort()).toEqual(["error", "warn"]);
+    });
+
+    // Unset and set-to-nothing are the same thing; an empty secret is not a
+    // request for silence.
+    it("treats an empty value as unset", async () => {
+      expect((await written("")).sort()).toEqual(["error", "info", "warn"]);
+    });
+
+    /**
+     * The one case where guessing wrong is expensive. Read strictly, a typo
+     * would silence the log — and the missing lines are the last thing
+     * anybody would connect to a misspelled variable. Louder than asked for
+     * is a nuisance; silence is an outage nobody can see.
+     */
+    describe("given a value that is not a level", () => {
+      it("says so once, and at warn level", async () => {
+        await loadLogger("production", "verbose");
+
+        const lines = vi
+          .mocked(console.log)
+          .mock.calls.map((call) => parseLine(call[0] as string));
+
+        expect(lines).toHaveLength(1);
+        expect(lines[0]!.level).toBe("warn");
+        expect(lines[0]!.message).toContain('LOG_LEVEL="verbose"');
+        expect(lines[0]!.message).toContain('using "info"');
+      });
+
+      it("falls back to info rather than to silence", async () => {
+        const logger = await loadLogger("production", "verbose");
+
+        vi.mocked(console.log).mockClear();
+
+        logger.info("still here");
+
+        expect(console.log).toHaveBeenCalledTimes(1);
+      });
+
+      // The complaint goes through the same path as every other line, so
+      // under the test target it is not written either — which is what keeps
+      // it out of every other file's output.
+      it("writes nothing at all under the test target", async () => {
+        await loadLogger("test", "verbose");
+
+        expect(console.log).not.toHaveBeenCalled();
+        expect(console.error).not.toHaveBeenCalled();
+        expect(appendFile).not.toHaveBeenCalled();
+      });
     });
   });
 });

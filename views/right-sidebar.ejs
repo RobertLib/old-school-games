@@ -20,7 +20,7 @@
     </li>
     <% }); %>
     <li>
-      <a class="nav-link <%= req.path === '/comments' ? 'active' : '' %>" href="/comments">All...</a>
+      <a class="nav-link <%= req.originalUrl.split('?')[0] === '/comments' ? 'active' : '' %>" href="/comments">All...</a>
     </li>
   </ul>
 

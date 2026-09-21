@@ -32,7 +32,16 @@ process.env.NODE_ENV = "test";
 
 const { Pool } = pg;
 
-// Create a new pool specifically for tests to ensure it uses the test database
+// A pool of this file's own, so the schema work cannot be pointed at
+// anything but the test database — db.ts reads DATABASE_URL at import time
+// and this file is what sets it.
+//
+// It is ended once the migrations are done, at the bottom of this file.
+// Nothing else here uses it, and setup.ts runs once per *test file*: a pool
+// left open is two idle connections held for the whole run, times however
+// many files the integration project has, against a Postgres that grants a
+// hundred. That is how a suite ends up reporting pool timeouts in whichever
+// test happened to be running when the limit was reached.
 const testDb = new Pool({
   connectionString: process.env.DATABASE_URL,
 });
@@ -253,9 +262,30 @@ async function runTestMigrations() {
       // The lock goes when the session does.
     }
 
+    // The same RESET ALL the real runner does (see migrate.ts), and for the
+    // same reason: release() does not reset session state, so whatever a
+    // migration set at session level outlives the checkout on this pooled
+    // client. 0030 sets the time zone with a non-LOCAL "SET TIME ZONE", and
+    // that is not hypothetical here — every test that reads a timestamp back
+    // would be interpreting it under the migration's zone or the server's
+    // depending on which client it was handed, which is a flake nobody would
+    // trace to a migration. Listing the settings by hand is how that one came
+    // to be missed, so nothing is named.
+    try {
+      await client.query("RESET ALL");
+    } catch {
+      // Housekeeping must not mask a real migration failure. A connection
+      // this cannot reset is already broken.
+    }
+
     client.release();
   }
 }
 
 // Run migrations before any tests start
 await runTestMigrations();
+
+// And then let the connections go. Everything past this point talks to the
+// database through db.ts's pool, which DATABASE_URL above has already pointed
+// at the test database; this one has nothing left to do.
+await testDb.end();

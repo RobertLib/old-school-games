@@ -16,10 +16,30 @@ describe("Game of the week rollover", () => {
     );
   });
 
+  /**
+   * Every game here carries a stream, because the selection only considers
+   * playable games — the widget is a "play this" call to action, so a pick
+   * with nothing to launch is not a pick. See the unplayable cases at the
+   * bottom for the other half of that.
+   */
   async function createGame(title: string): Promise<number> {
     const { rows } = await pool.query(
-      `INSERT INTO "games" ("title", "slug", "genre") VALUES ($1, $2, 'ACTION') RETURNING "id"`,
+      `INSERT INTO "games" ("title", "slug", "genre", "stream")
+       VALUES ($1, $2, 'ACTION', 'bundle.jsdos') RETURNING "id"`,
       [title, title.toLowerCase()],
+    );
+
+    return rows[0].id;
+  }
+
+  async function createUnplayableGame(
+    title: string,
+    stream: string | null,
+  ): Promise<number> {
+    const { rows } = await pool.query(
+      `INSERT INTO "games" ("title", "slug", "genre", "stream")
+       VALUES ($1, $2, 'ACTION', $3) RETURNING "id"`,
+      [title, title.toLowerCase(), stream],
     );
 
     return rows[0].id;
@@ -105,5 +125,38 @@ describe("Game of the week rollover", () => {
     const { rows } = await pool.query('SELECT COUNT(*)::int AS n FROM "game_of_the_week"');
 
     expect(rows[0].n).toBe(1);
+  });
+
+  /**
+   * The pick is the most prominent recommendation on the site, on every page,
+   * for a week. It used to be allowed to land on a game with no stream — a
+   * title catalogued before its bundle exists, which the catalogue holds on
+   * purpose — and then the biggest link on the site led to a page with no
+   * player on it. Game.findRandom has always excluded these; this is the same
+   * rule applied to the widget that had not got it.
+   */
+  it.each([
+    ["no stream at all", null],
+    ["an empty stream", ""],
+  ])("never features a game with %s", async (_label, stream) => {
+    await createUnplayableGame("Broken", stream);
+
+    expect(await GameOfTheWeek.getOrSelectCurrent()).toBeNull();
+  });
+
+  // The fallback is what runs when every playable game has been featured
+  // recently or is poorly rated, and it had the same hole: it picked from the
+  // whole catalogue.
+  it("keeps the stream condition in the fallback too", async () => {
+    const alpha = await createGame("Alpha");
+    await createUnplayableGame("Broken", "");
+    await expiredPick(alpha, 14);
+
+    const pick = await GameOfTheWeek.getOrSelectCurrent();
+
+    // Alpha is the only playable game and it was featured a fortnight ago, so
+    // the eligibility query finds nothing and the fallback has to choose it
+    // again rather than reaching for the game nobody can play.
+    expect(pick?.gameId).toBe(alpha);
   });
 });

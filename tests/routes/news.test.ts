@@ -194,6 +194,40 @@ describe("News Routes", () => {
       expect(response.body.locals.total).toBe(2);
     });
 
+    /**
+     * views/news/news-list.ejs used to render every item's stored HTML in
+     * full, so /news shipped ten whole articles and read all ten out to a
+     * screen reader where the page shows a teaser. The list gets plain-text
+     * excerpts, the same way routes/home.ts feeds the homepage card.
+     */
+    it("hands the list plain-text excerpts rather than the articles", async () => {
+      const content = `<p>${"Guybrush Threepwood wants to be a mighty pirate. ".repeat(20)}</p>`;
+
+      await pool.query(
+        'INSERT INTO "news" ("title", "slug", "content", "userId") VALUES ($1, $2, $3, $4)',
+        ["Long Article", "long-article", content, 1],
+      );
+
+      const response = await request(server).get("/news");
+      const [item] = response.body.locals.news;
+
+      expect(item.excerpt).toBeDefined();
+      expect(item.excerpt).not.toContain("<p>");
+      expect(item.excerpt.length).toBeLessThanOrEqual(241);
+      expect(item.excerpt).toContain("Guybrush Threepwood");
+    });
+
+    it("leaves a short article whole", async () => {
+      await pool.query(
+        'INSERT INTO "news" ("title", "slug", "content", "userId") VALUES ($1, $2, $3, $4)',
+        ["Short", "short", "<p>Two new games today.</p>", 1],
+      );
+
+      const response = await request(server).get("/news");
+
+      expect(response.body.locals.news[0].excerpt).toBe("Two new games today.");
+    });
+
     it("should handle pagination", async () => {
       // Create more test data
       for (let i = 1; i <= 15; i++) {

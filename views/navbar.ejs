@@ -33,11 +33,16 @@
     <ul class="navbar-actions">
       <li>
         <div class="btn-group">
-          <a class="btn btn-outline btn-sm" href="/profile" style="display: flex; align-items: center; gap: 5px" title="Profile">
+          <%# The link's whole text content is the favourites count, so once a
+              visitor had one favourite it was announced as "3, link" — the
+              icon is an <svg> with no title and the count is the only text.
+              aria-label names it, and public/js/favorites.js rewrites that
+              label rather than leaving the number to speak for itself. %>
+          <a class="btn btn-outline btn-sm" href="/profile" style="display: flex; align-items: center; gap: 5px" title="Profile" aria-label="Profile">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
               <path fill-rule="evenodd" d="M7.5 6a4.5 4.5 0 119 0 4.5 4.5 0 01-9 0zM3.751 20.105a8.25 8.25 0 0116.498 0 .75.75 0 01-.437.695A18.683 18.683 0 0112 22.5c-2.786 0-5.433-.608-7.812-1.7a.75.75 0 01-.437-.695z" clip-rule="evenodd" />
             </svg>
-            <span id="favorites-count" style="display: none">0</span>
+            <span id="favorites-count" style="display: none" aria-hidden="true">0</span>
           </a>
         </div>
       </li>
@@ -84,8 +89,11 @@
           <%# A button, not a span: a span cannot take focus, and the menu below
               only opened on :hover, so the three themes could not be reached
               from a keyboard at all. The stylesheet opens it on :focus-within
-              as well; theme-switcher.js keeps aria-expanded in step. %>
-          <button class="dropdown-toggle dropdown-toggle-sm" type="button" aria-haspopup="true" aria-expanded="false">
+              and on :hover as progressive enhancement; theme-switcher.js
+              adds the click handler that opens it on a touch screen, where
+              there is no hover to open it with, and keeps aria-expanded and
+              the .open class in step. aria-controls names what it opens. %>
+          <button class="dropdown-toggle dropdown-toggle-sm" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="theme-menu">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="currentColor" width="15" height="13" style="margin-bottom: -2px">
               <path d="M512 256c0 .9 0 1.8 0 2.7c-.4 36.5-33.6 61.3-70.1 61.3H344c-26.5 0-48 21.5-48 48c0 3.4 .4 6.7 1 9.9c2.1 10.2 6.5 20 10.8 29.9c6.1 13.8 12.1 27.5 12.1 42c0 31.8-21.6 60.7-53.4 62c-3.5 .1-7 .2-10.6 .2C114.6 512 0 397.4 0 256S114.6 0 256 0S512 114.6 512 256zM128 288a32 32 0 1 0 -64 0 32 32 0 1 0 64 0zm0-96a32 32 0 1 0 0-64 32 32 0 1 0 0 64zM288 96a32 32 0 1 0 -64 0 32 32 0 1 0 64 0zm96 96a32 32 0 1 0 0-64 32 32 0 1 0 0 64z" />
             </svg>
@@ -96,22 +104,28 @@
               links a screen reader announced three "#" anchors and nothing
               about which theme was actually applied — the only indication
               was the .active class, which is a colour. theme-switcher.js
-              keeps aria-checked in step with it. %>
-          <ul class="dropdown-menu" role="menu" aria-label="Theme" style="right: 0; left: auto">
+              keeps aria-checked in step with it.
+
+              Buttons, not <a href="#">: an anchor does not activate on
+              Space, and these navigate nowhere — the href was there only to
+              make the element focusable, which a button is by nature. The
+              script moves focus between them with the arrow keys, which is
+              the model role="menu" promises. %>
+          <ul class="dropdown-menu" id="theme-menu" role="menu" aria-label="Theme" style="right: 0; left: auto">
             <li role="none">
-              <a class="dropdown-item theme-option" href="#" role="menuitemradio" aria-checked="false" data-theme="classic">
+              <button class="dropdown-item theme-option" type="button" role="menuitemradio" aria-checked="false" data-theme="classic">
                 [■] NC Blue
-              </a>
+              </button>
             </li>
             <li role="none">
-              <a class="dropdown-item theme-option" href="#" role="menuitemradio" aria-checked="false" data-theme="green">
+              <button class="dropdown-item theme-option" type="button" role="menuitemradio" aria-checked="false" data-theme="green">
                 [■] Phosphor Green
-              </a>
+              </button>
             </li>
             <li role="none">
-              <a class="dropdown-item theme-option" href="#" role="menuitemradio" aria-checked="false" data-theme="sunset">
+              <button class="dropdown-item theme-option" type="button" role="menuitemradio" aria-checked="false" data-theme="sunset">
                 [■] Sunset
-              </a>
+              </button>
             </li>
           </ul>
         </div>

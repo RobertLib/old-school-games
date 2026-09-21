@@ -652,7 +652,6 @@ button.nc-funcbar-item {
 
 .form-control::placeholder {
   color: var(--nc-muted);
-  opacity: 0.8;
 }
 
 .form-control:not(select) {
@@ -1002,7 +1001,6 @@ input[type="radio"] {
   font-family: "VT323", monospace;
   font-size: 17px;
   color: var(--nc-title);
-  visibility: hidden;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1327,7 +1325,15 @@ input[type="radio"] {
      `hidden` above it is the fallback for browsers that do not know it.
      carousel.js also marks the off-screen slides inert, which is what stops
      focus reaching them in the first place — this is the belt to that's
-     braces. */
+     braces.
+
+     min-width: 0 is not optional here. A flex item's automatic minimum size
+     is its content width unless it is a scroll container — and `clip`,
+     unlike `hidden`, does not make one. Without it this box grows to the sum
+     of every slide's content width, each 25% slide becomes a quarter of that
+     enormous track, two cards fill the whole widget and the "next" button is
+     pushed out of view. `hidden` used to give the zero minimum for free. */
+  min-width: 0;
   overflow: hidden;
   overflow: clip;
   position: relative;
@@ -1954,7 +1960,8 @@ input[type="radio"] {
 /* The way out of a truncated excerpt. The card shows a cut-off teaser now
    (see views/news/news-preview.ejs), so the article needs a link of its own
    rather than only the heading above it. */
-.news-item-preview-more {
+.news-item-preview-more,
+.news-item-more {
   margin: 0.3rem 0 0;
 }
 
@@ -2117,10 +2124,6 @@ input[type="radio"] {
 }
 
 /* ─── Breadcrumb ─────────────────────────────────────────── */
-nav[aria-label="breadcrumb"] {
-  margin-bottom: 12px;
-}
-
 .breadcrumb {
   color: var(--nc-muted);
   font-size: 15px;
@@ -2212,7 +2215,7 @@ html.theme-retro-green {
   --nc-title: #aaffaa;
   --nc-selected-bg: #004400;
   --nc-selected-fg: #00ff00;
-  --nc-muted: #007700;
+  --nc-muted: #00aa00;
   --nc-danger: #ff5555;
   --nc-success: #55ff55;
 
@@ -2225,7 +2228,7 @@ html.theme-retro-green {
   --warning-rgb: 255 255 0;
   --danger-rgb: 255 85 85;
   --secondary-rgb: 0 255 0;
-  --muted-rgb: 0 119 0;
+  --muted-rgb: 0 170 0;
 }
 
 /* ─── Theme: Sunset ──────────────────────────────────────── */
@@ -2945,18 +2948,41 @@ main:focus {
   color: var(--nc-text);
 }
 
-/* ─── Dropdown: keyboard ─────────────────────────────────── */
-/* The menu opened on :hover alone, and an element hidden with
-   visibility: hidden is out of the tab order, so nothing inside it could be
-   reached from a keyboard. :focus-within opens it while the toggle or any
-   item has focus. The toggle is a <button> now; these undo the browser's
-   button defaults the .dropdown-toggle rules do not already cover. */
-.dropdown:focus-within .dropdown-menu {
+/* ─── Dropdown: opened by the toggle ────────────────────── */
+/* The click handler in public/js/theme-switcher.js toggles this class. The
+   :hover and :focus-within rules below stay as progressive enhancement, so
+   the menu still works with the script blocked; this one is what makes a tap
+   on a touch screen — which fires no hover — open it, and what lets Escape
+   close it without having to throw focus away. */
+.dropdown.open .dropdown-menu {
   opacity: 1;
   visibility: visible;
 }
 
-.dropdown:focus-within .dropdown-toggle::after {
+.dropdown.open .dropdown-toggle::after {
+  content: " ▲";
+  font-size: 12px;
+}
+
+/* ─── Dropdown: keyboard, without the script ─────────────── */
+/* The menu opened on :hover alone, and an element hidden with
+   visibility: hidden is out of the tab order, so nothing inside it could be
+   reached from a keyboard. :focus-within opens it while the toggle or any
+   item has focus.
+
+   Scoped to dropdowns the script has *not* claimed. theme-switcher.js adds
+   .dropdown-js to each one it wires up, and from then on .open above is what
+   opens the menu — because while this rule applies, focus on the toggle by
+   itself opens the menu, and Escape closes by handing focus back to the
+   toggle. The two cannot both be true. This is what is left when the script
+   is blocked, and then it is the only thing keeping the three themes
+   reachable from a keyboard. */
+.dropdown:not(.dropdown-js):focus-within .dropdown-menu {
+  opacity: 1;
+  visibility: visible;
+}
+
+.dropdown:not(.dropdown-js):focus-within .dropdown-toggle::after {
   content: " ▲";
   font-size: 12px;
 }
@@ -2966,12 +2992,41 @@ button.dropdown-toggle {
   margin: 0;
 }
 
+/* The theme options are <button> elements now (see views/navbar.ejs), which
+   an anchor's rules above do not cover: a button shrinks to its own text and
+   centres it, where the menu wants a full-width row of left-aligned text. */
+button.dropdown-item {
+  cursor: pointer;
+  line-height: inherit;
+  margin: 0;
+  text-align: left;
+  width: 100%;
+}
+
 /* ─── Click-to-play poster ───────────────────────────────── */
 /* The box the emulator frame takes once public/js/game-player.js has
    created it, so the page does not shift when the cover gives way to the
    game. Mirrors .game-detail-stream, including its narrow-viewport size. */
 .game-detail-player {
   display: block;
+}
+
+/* With JavaScript off the <noscript> fallback frame *and* the poster both
+   rendered, so the page showed a "click to play" button above an emulator
+   that was already running — and the button does nothing, because the script
+   that binds it never loaded.
+
+   Done in CSS, and with :has(), because the alternatives do not work here: a
+   <style nonce> in the template is refused by the Content-Security-Policy
+   (style-src is 'self' and the js-dos origin, with no nonce and no
+   'unsafe-inline' — see app.ts), and tests/stylesheet.test.ts forbids an
+   inline <style> anywhere for exactly that reason. This needs nothing added
+   to the policy: a <noscript> element's children are parsed as text while
+   scripting is enabled and as real elements only when it is off, so the
+   fallback <iframe> existing in the DOM at all *is* the "no JavaScript"
+   signal, and :has() is what can ask. */
+.game-detail-player:has(> noscript iframe) .game-detail-poster {
+  display: none;
 }
 
 .game-detail-poster {
@@ -3041,4 +3096,56 @@ button.dropdown-toggle {
 
 .form-fieldset > legend {
   padding: 0;
+}
+
+/* ─── Print ──────────────────────────────────────────────── */
+/* The screen palette is light text on a dark panel, which on paper is either
+   a solid block of ink or — with backgrounds off, as most browsers default —
+   near-white text on white. Everything that is navigation, decoration or an
+   emulator the reader cannot use on paper goes; the grid collapses to one
+   column so the article is not printed 220px narrower on both sides. */
+@media print {
+  :root {
+    --panel-tint: transparent;
+  }
+
+  body,
+  main,
+  .layout {
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+
+  main,
+  .card,
+  .breadcrumb {
+    border: 0 !important;
+  }
+
+  a {
+    color: #000000 !important;
+  }
+
+  .navbar,
+  .left-sidebar,
+  .right-sidebar,
+  .nc-funcbar,
+  .featured-games-carousel,
+  .game-detail-player,
+  .game-detail-poster,
+  .ticker-wrap,
+  .skip-link {
+    display: none !important;
+  }
+
+  .layout {
+    display: block;
+    max-width: none;
+    min-height: 0;
+  }
+
+  main {
+    margin: 0;
+    padding: 0;
+  }
 }

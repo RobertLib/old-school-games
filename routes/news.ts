@@ -193,7 +193,16 @@ router.get("/", async (req, res, next) => {
       "The latest news, additions and updates from OldSchoolGames.eu — new classic MS-DOS games in the catalogue and what is happening on the site.",
       page,
     ),
-    news,
+    // Excerpts, not the articles. views/news/news-list.ejs used to render
+    // every item's stored HTML in full, so /news shipped ten whole articles
+    // — the same thing the homepage teaser was doing before routes/home.ts
+    // started cutting them. 240 characters for the same reason it uses that
+    // figure: it is about what the card shows, so the cut lands just past
+    // what is visible rather than inside it.
+    news: news.map((item) => ({
+      ...item,
+      excerpt: truncateAtWord(htmlToPlainText(item.content), 240),
+    })),
     currentPage: page,
     totalPages,
     total,

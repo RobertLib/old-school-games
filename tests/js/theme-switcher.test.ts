@@ -306,9 +306,11 @@ describe("theme-switcher.js — dropdown state", () => {
   function mountDropdown() {
     document.body.innerHTML = `
       <div class="dropdown">
-        <button class="dropdown-toggle" type="button" aria-haspopup="true" aria-expanded="false">Theme</button>
-        <ul class="dropdown-menu">
-          <li><a class="dropdown-item theme-option" href="#" data-theme="green">Green</a></li>
+        <button class="dropdown-toggle" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="theme-menu">Theme</button>
+        <ul class="dropdown-menu" id="theme-menu" role="menu">
+          <li role="none"><button class="dropdown-item theme-option" type="button" role="menuitemradio" aria-checked="false" data-theme="classic">Classic</button></li>
+          <li role="none"><button class="dropdown-item theme-option" type="button" role="menuitemradio" aria-checked="false" data-theme="green">Green</button></li>
+          <li role="none"><button class="dropdown-item theme-option" type="button" role="menuitemradio" aria-checked="false" data-theme="sunset">Sunset</button></li>
         </ul>
       </div>
       <button id="outside">elsewhere</button>
@@ -318,20 +320,46 @@ describe("theme-switcher.js — dropdown state", () => {
     return {
       dropdown: document.querySelector(".dropdown") as HTMLElement,
       toggle: document.querySelector(".dropdown-toggle") as HTMLButtonElement,
-      item: document.querySelector(".theme-option") as HTMLAnchorElement,
+      item: document.querySelector(".theme-option") as HTMLButtonElement,
+      items: Array.from(
+        document.querySelectorAll<HTMLButtonElement>(".theme-option"),
+      ),
       outside: document.getElementById("outside") as HTMLButtonElement,
     };
   }
 
-  it("reports the menu open while the toggle has focus", () => {
-    const { toggle } = mountDropdown();
+  function arrow(dropdown: HTMLElement, key: string) {
+    // Cancelable, or preventDefault is a no-op and the assertions about it
+    // would pass whatever the script did.
+    const event = new KeyboardEvent("keydown", {
+      key,
+      bubbles: true,
+      cancelable: true,
+    });
+
+    (document.activeElement ?? dropdown).dispatchEvent(event);
+
+    return event;
+  }
+
+  /**
+   * Focus on the toggle alone does not report an open menu, and the
+   * stylesheet's :focus-within rule is scoped away from a dropdown this
+   * script has claimed (.dropdown-js). Both halves of that are the same
+   * point: closing on Escape hands focus back to the toggle, so a toggle
+   * with focus has to be able to mean "closed".
+   */
+  it("claims the dropdown so the stylesheet's fallback stands down", () => {
+    const { dropdown, toggle } = mountDropdown();
+
+    expect(dropdown.classList.contains("dropdown-js")).toBe(true);
 
     toggle.focus();
 
-    expect(toggle.getAttribute("aria-expanded")).toBe("true");
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
   });
 
-  it("keeps it open while focus moves to an item", () => {
+  it("reports it open once focus is inside the menu", () => {
     const { toggle, item } = mountDropdown();
 
     toggle.focus();
@@ -341,25 +369,32 @@ describe("theme-switcher.js — dropdown state", () => {
   });
 
   it("reports it closed once focus leaves the menu", () => {
-    const { toggle, outside } = mountDropdown();
+    const { dropdown, toggle, item, outside } = mountDropdown();
 
-    toggle.focus();
+    toggle.click();
+    item.focus();
     outside.focus();
 
     expect(toggle.getAttribute("aria-expanded")).toBe("false");
+    expect(dropdown.classList.contains("open")).toBe(false);
   });
 
-  it("closes on Escape by dropping focus out of the menu", () => {
+  /**
+   * Escape used to close the menu by blurring whatever had focus, which left
+   * the visitor's place in the document nowhere — the next Tab started again
+   * from the top of the page. The toggle is where they were before they
+   * opened it, so that is where focus goes back to.
+   */
+  it("closes on Escape and hands focus back to the toggle", () => {
     const { dropdown, toggle, item } = mountDropdown();
 
-    toggle.focus();
+    toggle.click();
     item.focus();
-    dropdown.dispatchEvent(
-      new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
-    );
+    arrow(dropdown, "Escape");
 
     expect(toggle.getAttribute("aria-expanded")).toBe("false");
-    expect(dropdown.contains(document.activeElement)).toBe(false);
+    expect(dropdown.classList.contains("open")).toBe(false);
+    expect(document.activeElement).toBe(toggle);
   });
 
   it("follows the pointer the way the stylesheet does", () => {
@@ -370,6 +405,130 @@ describe("theme-switcher.js — dropdown state", () => {
 
     dropdown.dispatchEvent(new Event("mouseleave"));
     expect(toggle.getAttribute("aria-expanded")).toBe("false");
+  });
+
+  /**
+   * The menu opened on :hover and :focus-within alone, which is nothing at
+   * all on a touch screen: a tap fires no hover, and tapping the toggle — a
+   * <button> that had no click handler — did nothing whatsoever. The class
+   * the handler adds is what .dropdown.open .dropdown-menu in
+   * public/css/style.css opens on.
+   */
+  it("opens on a click of the toggle and closes on the next one", () => {
+    const { dropdown, toggle } = mountDropdown();
+
+    toggle.click();
+
+    expect(dropdown.classList.contains("open")).toBe(true);
+    expect(toggle.getAttribute("aria-expanded")).toBe("true");
+
+    toggle.click();
+
+    expect(dropdown.classList.contains("open")).toBe(false);
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
+  });
+
+  it("closes when a click lands outside it", () => {
+    const { dropdown, toggle, outside } = mountDropdown();
+
+    toggle.click();
+    outside.click();
+
+    expect(dropdown.classList.contains("open")).toBe(false);
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
+  });
+
+  it("stays open for a click on one of its own items", () => {
+    const { dropdown, toggle, item } = mountDropdown();
+
+    toggle.click();
+    item.click();
+
+    expect(dropdown.classList.contains("open")).toBe(true);
+  });
+
+  /**
+   * role="menu" promises an arrow-key model and there was none — the three
+   * options were reachable only by Tab, which is the behaviour the role tells
+   * a screen reader not to expect.
+   */
+  it("opens on ArrowDown from the toggle and focuses the first item", () => {
+    const { dropdown, toggle, items } = mountDropdown();
+
+    toggle.focus();
+    const event = arrow(dropdown, "ArrowDown");
+
+    expect(dropdown.classList.contains("open")).toBe(true);
+    expect(document.activeElement).toBe(items[0]);
+    // Or the page scrolls at the same time as the focus moves.
+    expect(event.defaultPrevented).toBe(true);
+  });
+
+  it("walks down the items and wraps round to the first", () => {
+    const { dropdown, toggle, items } = mountDropdown();
+
+    toggle.focus();
+    arrow(dropdown, "ArrowDown");
+    arrow(dropdown, "ArrowDown");
+
+    expect(document.activeElement).toBe(items[1]);
+
+    arrow(dropdown, "ArrowDown");
+    arrow(dropdown, "ArrowDown");
+
+    expect(document.activeElement).toBe(items[0]);
+  });
+
+  it("opens on ArrowUp from the toggle at the last item", () => {
+    const { dropdown, toggle, items } = mountDropdown();
+
+    toggle.focus();
+    arrow(dropdown, "ArrowUp");
+
+    expect(document.activeElement).toBe(items[items.length - 1]);
+  });
+
+  it("jumps to the ends with Home and End", () => {
+    const { dropdown, toggle, items } = mountDropdown();
+
+    toggle.click();
+    items[1].focus();
+
+    arrow(dropdown, "End");
+    expect(document.activeElement).toBe(items[items.length - 1]);
+
+    arrow(dropdown, "Home");
+    expect(document.activeElement).toBe(items[0]);
+  });
+
+  // Home and End belong to the document while focus is on the toggle: the
+  // menu is not where the visitor is yet.
+  it("leaves Home and End alone outside the menu", () => {
+    const { dropdown, toggle } = mountDropdown();
+
+    toggle.focus();
+    const event = arrow(dropdown, "Home");
+
+    expect(event.defaultPrevented).toBe(false);
+    expect(document.activeElement).toBe(toggle);
+  });
+
+  /**
+   * Roving tabindex, so the group is one tab stop rather than three, and the
+   * stop is on the choice that is in force. The markup carries no tabindex
+   * of its own — with this script blocked the buttons stay natively focusable
+   * and the :focus-within rule still opens the menu for them.
+   */
+  it("puts the one tab stop on the chosen theme", () => {
+    const { items } = mountDropdown();
+
+    window.ThemeSwitcher.applyTheme("sunset");
+
+    expect(items.map((item) => item.getAttribute("tabindex"))).toEqual([
+      "-1",
+      "-1",
+      "0",
+    ]);
   });
 
   it("does not throw on a page with no dropdown", () => {
@@ -389,9 +548,9 @@ describe("theme-switcher.js — the chosen theme is announced", () => {
   function mountOptions() {
     document.body.innerHTML = `
       <ul role="menu">
-        <li role="none"><a class="theme-option" role="menuitemradio" aria-checked="false" data-theme="classic">Classic</a></li>
-        <li role="none"><a class="theme-option" role="menuitemradio" aria-checked="false" data-theme="green">Green</a></li>
-        <li role="none"><a class="theme-option" role="menuitemradio" aria-checked="false" data-theme="sunset">Sunset</a></li>
+        <li role="none"><button class="theme-option" type="button" role="menuitemradio" aria-checked="false" data-theme="classic">Classic</button></li>
+        <li role="none"><button class="theme-option" type="button" role="menuitemradio" aria-checked="false" data-theme="green">Green</button></li>
+        <li role="none"><button class="theme-option" type="button" role="menuitemradio" aria-checked="false" data-theme="sunset">Sunset</button></li>
       </ul>
     `;
 

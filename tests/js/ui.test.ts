@@ -477,7 +477,7 @@ describe("ui.js — initTicker", () => {
     return document.querySelector(".ticker") as HTMLElement;
   }
 
-  it("shows the text without animating it under reduced motion", () => {
+  it("leaves the text alone entirely under reduced motion", () => {
     mockMotion(true);
 
     const rafSpy = vi.spyOn(window, "requestAnimationFrame");
@@ -485,14 +485,20 @@ describe("ui.js — initTicker", () => {
 
     (window as any).initTicker();
 
-    expect(ticker.style.visibility).toBe("visible");
     // No transform written, and no frame loop started: the stylesheet lays
     // the text out statically for this preference and the two would fight.
     expect(ticker.style.transform).toBe("");
     expect(rafSpy).not.toHaveBeenCalled();
   });
 
-  it("positions the text off to the right before revealing it", () => {
+  /**
+   * The text is visible from the first paint — the stylesheet no longer
+   * hides it, so a visitor with this script blocked reads the line instead of
+   * a blank bar. What the script still has to do is write the starting
+   * position before the loop runs, or the first frame shows the text at 0 and
+   * it jumps to the right.
+   */
+  it("positions the text off to the right before the first frame", () => {
     mockMotion(false);
 
     const ticker = mountTicker();
@@ -506,7 +512,8 @@ describe("ui.js — initTicker", () => {
     (window as any).initTicker();
 
     expect(ticker.style.transform).toBe("translateX(400px)");
-    expect(ticker.style.visibility).toBe("visible");
+    // Nothing is hidden and then revealed any more, in either branch.
+    expect(ticker.style.visibility).toBe("");
   });
 
   it("does not throw when the page has no ticker", () => {

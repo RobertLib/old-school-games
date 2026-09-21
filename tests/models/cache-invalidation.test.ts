@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import Game from "../../models/game.ts";
 import News from "../../models/news.ts";
+import Comment from "../../models/comment.ts";
 import db from "../../db.ts";
 // From utils, which is where these live now: reaching into the routers for
 // them closed a models -> routes -> models import cycle. Mocking one module
@@ -14,11 +15,13 @@ import {
 import {
   FEATURED_POOL_KEY,
   GAME_OF_THE_WEEK_KEY,
+  LATEST_COMMENTS_KEY,
   MOST_PLAYED_GAMES_KEY,
   RECENTLY_ADDED_KEY,
   TOP_RATED_GAMES_KEY,
   sidebarCache,
 } from "../../utils/sidebar-cache.ts";
+import { bumpCacheEpoch } from "../../utils/cache-epoch.ts";
 
 vi.mock("../../db", () => ({
   default: { query: vi.fn() },
@@ -28,6 +31,10 @@ vi.mock("../../utils/page-cache", () => ({
   clearSitemapCache: vi.fn(),
   clearFeedCache: vi.fn(),
   clearMostPlayedCache: vi.fn(),
+}));
+
+vi.mock("../../utils/cache-epoch", () => ({
+  bumpCacheEpoch: vi.fn(async () => {}),
 }));
 
 const mockDb = vi.mocked(db);
@@ -188,5 +195,60 @@ describe("write-through cache invalidation", () => {
 
     expect(clearSitemapCache).not.toHaveBeenCalled();
     expect(clearFeedCache).not.toHaveBeenCalled();
+  });
+
+  /**
+   * Which scope a write tells the other machines about — see
+   * utils/cache-epoch.ts. There used to be one counter for the whole app, so
+   * the effect on a remote machine was the same whatever had been written: a
+   * posted comment, which is the most frequent write on the site and drops
+   * exactly one sidebar entry locally, made every other machine throw away
+   * everything it held — the sitemap included, which is cached for a day.
+   *
+   * The invariant is that a remote machine drops exactly what the writing
+   * machine dropped locally, so these assertions are the other half of the
+   * local ones above.
+   */
+  describe("what the other machines are told", () => {
+    it.each([
+      ["a comment is created", () =>
+        Comment.create({ nick: "a", content: "b", gameId: 1 })],
+      ["a comment is deleted", () => Comment.delete(1)],
+    ])("bumps only the comments scope when %s", async (_label, write) => {
+      await write();
+
+      expect(bumpCacheEpoch).toHaveBeenCalledWith("comments");
+      expect(bumpCacheEpoch).toHaveBeenCalledTimes(1);
+    });
+
+    // A game or news write legitimately invalidates almost everything, so it
+    // keeps the broad scope — which bumpCacheEpoch takes by default.
+    it.each([
+      ["a game is created", () => Game.create({ title: "Doom", genre: "ACTION" })],
+      ["a game is deleted", () => Game.delete(1)],
+      ["an article is created", () =>
+        News.create({ title: "Hello", content: "Body", userId: 1 })],
+      ["an article is deleted", () => News.delete(1)],
+    ])("bumps the broad scope when %s", async (_label, write) => {
+      await write();
+
+      expect(bumpCacheEpoch).toHaveBeenCalledWith();
+    });
+
+    // And the local half of the comment case, which is what the remote effect
+    // has to mirror: one entry, not the lot.
+    it("drops only the comments widget locally", async () => {
+      sidebarCache.clear();
+
+      for (const key of [LATEST_COMMENTS_KEY, RECENTLY_ADDED_KEY]) {
+        void sidebarCache.get(key, 60_000, async () => []);
+      }
+
+      await Comment.create({ nick: "a", content: "b", gameId: 1 });
+
+      expect(sidebarCache.has(LATEST_COMMENTS_KEY)).toBe(false);
+      expect(sidebarCache.has(RECENTLY_ADDED_KEY)).toBe(true);
+      expect(clearSitemapCache).not.toHaveBeenCalled();
+    });
   });
 });

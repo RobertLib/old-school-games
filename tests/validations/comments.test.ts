@@ -535,5 +535,77 @@ describe("Comment Validations", () => {
         expect(mockNext).not.toHaveBeenCalled();
       }
     });
+
+    /**
+     * Nothing on the site marks a comment as official, so a comment signed
+     * "admin" or with the owner's own name reads as the site saying it — which
+     * is the whole value of writing it. There is no account behind a comment to
+     * check against, so a short denylist is what is available.
+     */
+    describe("reserved nicks", () => {
+      it.each([
+        "admin",
+        "administrator",
+        "moderator",
+        "staff",
+        "oldschoolgames",
+        "old school games",
+        "Robert Libsansky",
+      ])("refuses %s", (nick) => {
+        vi.clearAllMocks();
+        mockReq.body = { nick, content: "Valid content", gameId: "1" };
+
+        validateComment(mockReq as Request, mockRes as Response, mockNext);
+
+        expect(mockRes.status).toHaveBeenCalledWith(400);
+        expect(mockRes.json).toHaveBeenCalledWith({
+          error: "That nick is reserved — please choose another",
+        });
+        expect(mockNext).not.toHaveBeenCalled();
+      });
+
+      // Case and surrounding or repeated whitespace are not a way round it —
+      // otherwise the list refuses exactly one spelling of each name and
+      // advertises the rest.
+      it.each([
+        "ADMIN",
+        "  Admin  ",
+        "Old  School   Games",
+        "robert   libsansky",
+      ])("refuses %s too", (nick) => {
+        vi.clearAllMocks();
+        mockReq.body = { nick, content: "Valid content", gameId: "1" };
+
+        validateComment(mockReq as Request, mockRes as Response, mockNext);
+
+        expect(mockRes.status).toHaveBeenCalledWith(400);
+        expect(mockNext).not.toHaveBeenCalled();
+      });
+
+      // Deliberately narrow: a name that merely contains a reserved word is
+      // somebody's actual nick, and refusing it would be the "Invalid content"
+      // mistake the comment in validations/comments.ts describes.
+      it.each(["administrators", "admin2", "Not Robert Libsansky", "Roberta"])(
+        "leaves %s alone",
+        (nick) => {
+          vi.clearAllMocks();
+          mockReq.body = { nick, content: "Valid content", gameId: "1" };
+
+          validateComment(mockReq as Request, mockRes as Response, mockNext);
+
+          expect(mockNext).toHaveBeenCalled();
+        },
+      );
+
+      // An empty nick is stored as "anonymous" by the route, not refused here.
+      it("leaves an empty nick alone", () => {
+        vi.clearAllMocks();
+        mockReq.body = { nick: "", content: "Valid content", gameId: "1" };
+
+        validateComment(mockReq as Request, mockRes as Response, mockNext);
+
+        expect(mockNext).toHaveBeenCalled();
+      });
+    });
   });
 });

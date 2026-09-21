@@ -44,7 +44,6 @@
 .gallery-title {
   color: rgb(var(--primary-rgb));
   font-size: 1.2em;
-  text-shadow: var(--text-shadow);
   margin: 0;
 }
 
@@ -103,10 +102,17 @@
   background: linear-gradient(to top, rgba(0, 0, 0, 0.8), transparent);
 }
 
+/* The site's .btn-outline pairing (see style.css), not white on the accent:
+   white text on rgb(var(--primary-rgb) / 0.8) is about 1.9:1 in every theme,
+   because the accent is a bright cyan/green/orange. Accent text on the theme
+   background reads at 8:1 or better in all three, and the background is the
+   opaque --nc-bg rather than transparent so the photo underneath cannot eat
+   the contrast. Hover and focus hand over to the --nc-selected-bg /
+   --nc-selected-fg pairing every other button on the site uses. */
 .gallery-nav-btn {
-  background: rgb(var(--primary-rgb) / 0.8);
-  border: 1px solid rgb(var(--primary-rgb));
-  color: white;
+  background: var(--nc-bg);
+  border: 1px solid var(--nc-border);
+  color: var(--nc-border);
   padding: 8px 16px;
   cursor: pointer;
   border-radius: var(--border-radius);
@@ -119,8 +125,16 @@
 }
 
 .gallery-nav-btn:hover:not(:disabled) {
-  background: rgb(var(--primary-rgb));
+  background: var(--nc-selected-bg);
+  color: var(--nc-selected-fg);
   transform: scale(1.05);
+}
+
+.gallery-nav-btn:focus-visible {
+  background: var(--nc-selected-bg);
+  color: var(--nc-selected-fg);
+  outline: 2px solid var(--nc-title);
+  outline-offset: 2px;
 }
 
 .gallery-nav-btn:disabled {

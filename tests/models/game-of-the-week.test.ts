@@ -176,23 +176,18 @@ describe("GameOfTheWeek Model", () => {
 
       const result = await GameOfTheWeek.selectNewGameOfTheWeek();
 
-      expect(mockDb.query).toHaveBeenCalledWith(
-        `SELECT g.id
-       FROM "games" g
-       LEFT JOIN (
-         SELECT "gameId"
-         FROM "game_of_the_week"
-         WHERE "startDate" > NOW() - INTERVAL '60 days'
-       ) recent ON g.id = recent."gameId"
-       LEFT JOIN (
-         SELECT "gameId", AVG(rating) as avg_rating
-         FROM "ratings"
-         GROUP BY "gameId"
-       ) r ON g.id = r."gameId"
-       WHERE recent."gameId" IS NULL
-       AND (r.avg_rating IS NULL OR r.avg_rating >= 4)
-       ORDER BY RANDOM()
-       LIMIT 1`,
+      // The conditions rather than the statement byte for byte: what the
+      // eligibility query has to say is that a game just featured is out, a
+      // badly rated one is out, and — the one that was missing — a game with
+      // nothing to launch is out. See the rollover suite for the rows it
+      // actually returns.
+      const [eligibilitySql] = (mockDb.query as any).mock.calls[0];
+      expect(eligibilitySql).toContain(`WHERE recent."gameId" IS NULL`);
+      expect(eligibilitySql).toContain(
+        `g."stream" IS NOT NULL AND g."stream" <> ''`,
+      );
+      expect(eligibilitySql).toContain(
+        "(r.avg_rating IS NULL OR r.avg_rating >= 4)",
       );
       expect(mockDb.query).toHaveBeenCalledWith(
         `INSERT INTO "game_of_the_week" ("gameId")
@@ -223,29 +218,19 @@ describe("GameOfTheWeek Model", () => {
 
       const result = await GameOfTheWeek.selectNewGameOfTheWeek();
 
-      expect(mockDb.query).toHaveBeenNthCalledWith(
-        1,
-        `SELECT g.id
-       FROM "games" g
-       LEFT JOIN (
-         SELECT "gameId"
-         FROM "game_of_the_week"
-         WHERE "startDate" > NOW() - INTERVAL '60 days'
-       ) recent ON g.id = recent."gameId"
-       LEFT JOIN (
-         SELECT "gameId", AVG(rating) as avg_rating
-         FROM "ratings"
-         GROUP BY "gameId"
-       ) r ON g.id = r."gameId"
-       WHERE recent."gameId" IS NULL
-       AND (r.avg_rating IS NULL OR r.avg_rating >= 4)
-       ORDER BY RANDOM()
-       LIMIT 1`,
+      const [eligibilitySql] = (mockDb.query as any).mock.calls[0];
+      expect(eligibilitySql).toContain(`WHERE recent."gameId" IS NULL`);
+
+      // The fallback keeps the one condition it cannot drop. It exists to pick
+      // *something* when every eligible game has been featured recently, and
+      // it used to reach for the whole catalogue — including the games with no
+      // stream that the query above had just excluded.
+      const [fallbackSql] = (mockDb.query as any).mock.calls[1];
+      expect(fallbackSql).toContain('SELECT id FROM "games"');
+      expect(fallbackSql).toContain(
+        `WHERE "stream" IS NOT NULL AND "stream" <> ''`,
       );
-      expect(mockDb.query).toHaveBeenNthCalledWith(
-        2,
-        `SELECT id FROM "games" ORDER BY RANDOM() LIMIT 1`,
-      );
+      expect(fallbackSql).toContain("ORDER BY RANDOM() LIMIT 1");
       expect(mockDb.query).toHaveBeenNthCalledWith(
         3,
         `INSERT INTO "game_of_the_week" ("gameId")

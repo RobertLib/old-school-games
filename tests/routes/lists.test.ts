@@ -104,6 +104,28 @@ describe("Lists Routes", () => {
       expect(Game.findMostPlayed).toHaveBeenCalledTimes(2);
     });
 
+    /**
+     * This page was paginated before LIST_SIZE fixed it at a hundred, so
+     * every "?page=" is a real address that was linked and crawled — and it
+     * went on serving a byte-identical 200 beside the bare one, which is two
+     * addresses for one page. The curated lists below have always answered
+     * these with a 301; this was the one left serving the duplicate.
+     *
+     * Any page at all, including "?page=1", for the same reason paginationUrls
+     * addresses page 1 as the bare URL.
+     */
+    it.each(["?page=1", "?page=2", "?page=9999", "?page=nonsense"])(
+      "redirects %s onto the page itself",
+      async (query) => {
+        const response = await request(server).get(`/most-played${query}`);
+
+        expect(response.status).toBe(301);
+        expect(response.headers.location).toBe("/most-played");
+        // ...and it costs nothing: the list is never loaded to answer one.
+        expect(Game.findMostPlayed).not.toHaveBeenCalled();
+      },
+    );
+
     it("hands a failed load to the error handler rather than answering", async () => {
       vi.mocked(Game.findMostPlayed).mockRejectedValue(new Error("db down"));
 

@@ -118,6 +118,34 @@ export function paginatedDescription(
   return truncateAtWord(`Page ${page}: ${description}`, META_DESCRIPTION_MAX);
 }
 
+/**
+ * Whether `page` is past the end of a listing that holds `total` rows.
+ *
+ * The listing routes all answer a page with nothing on it with a 404, and they
+ * used to work that out from the page itself: run the query, see no rows, call
+ * next(). parsePageParam admits anything up to MAX_PAGE, so "?page=9999" made
+ * every one of them aggregate the whole filtered set and OFFSET 249950 rows
+ * into it before deciding the address does not exist — ten thousand such
+ * addresses per listing, each one a query a crawler can ask for by following a
+ * link somebody wrote by hand.
+ *
+ * The row count is cheap and the routes already have it, so the guard can come
+ * first and the listing query can be skipped altogether. Page 1 is never out
+ * of range: an empty first page is a listing with nothing in it, which each
+ * route decides about for itself — some of them are a 404 and some are not.
+ */
+export function isPageBeyondTotal({
+  page,
+  limit,
+  total,
+}: {
+  page: number;
+  limit: number;
+  total: number;
+}): boolean {
+  return page > 1 && (page - 1) * limit >= total;
+}
+
 /** The three paging links a listing page puts in its <head>. */
 export interface PaginationUrls {
   canonicalUrl: string;

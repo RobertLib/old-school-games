@@ -60,7 +60,12 @@ jobs:
           # fly.toml — still have to be moved by hand.
           node-version-file: .nvmrc
           cache: npm
-      - run: npm ci
+      # --ignore-scripts for the same reason as the Dockerfile: nothing in
+      # this lockfile needs one. The only package that carries an install
+      # script is fsevents, which is optional and macOS-only and so is never
+      # installed on this runner. It is a guard against a future dependency
+      # running code in the job, not a fix for one that does.
+      - run: npm ci --ignore-scripts
       - run: npm run lint
       - run: npm run typecheck
       # test:coverage rather than test: it runs the same suite and then holds
@@ -92,7 +97,53 @@ jobs:
       - uses: actions/checkout@v4
       # BuildKit explicitly: the Dockerfile uses a `--mount=type=cache` on
       # npm ci, which the legacy builder rejects outright.
-      - run: DOCKER_BUILDKIT=1 docker build .
+      - run: DOCKER_BUILDKIT=1 docker build -t old-school-games:ci .
+      # Then actually start it. A build that succeeds proves the image can be
+      # assembled and nothing more — the two failures this catches are the
+      # ones a build cannot see: a CMD that exits immediately (a missing
+      # module, a guard refusing a bad SESSION_SECRET, a Node too old to strip
+      # the type annotations) and an app that boots but never answers.
+      #
+      # No Postgres. /healthz is deliberately answered above the session, the
+      # rate limiter and the canonical-host redirect, and it reports the
+      # database rather than letting it decide the answer — this app is built
+      # to outlive Postgres being unreachable, so a 200 with
+      # `"database":"down"` is the correct response here and is exactly what
+      # makes the check runnable without a service container. DATABASE_URL
+      # therefore points somewhere that does not resolve, on purpose.
+      #
+      # SESSION_SECRET is a throwaway of its own: production requires a long
+      # one and refuses the placeholder from .env.example, so a short or
+      # obviously-fake value would fail the boot this step exists to prove.
+      - name: Run the image and wait for /healthz
+        run: |
+          docker run -d --name osg-ci -p 3000:3000 \
+            -e NODE_ENV=production \
+            -e SESSION_SECRET=ci-only-throwaway-session-secret-not-used-anywhere-else \
+            -e DATABASE_URL=postgresql://nowhere:5432/db \
+            old-school-games:ci
+          # Polled rather than slept on: a fixed wait is either slower than it
+          # needs to be or too short on a loaded runner, and the whole point
+          # is to distinguish "not up yet" from "not coming up".
+          for attempt in $(seq 1 30); do
+            if curl -fsS localhost:3000/healthz; then
+              echo
+              echo "Answered after ${attempt}s."
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "/healthz did not answer within 30s."
+          exit 1
+      # Runs even when the step above failed, which is when the logs are worth
+      # having — a container that exited on boot says why there and nowhere
+      # else. Also keeps a self-hosted runner from being left holding port
+      # 3000.
+      - name: Container logs and cleanup
+        if: always()
+        run: |
+          docker logs osg-ci || true
+          docker rm -f osg-ci || true
 
   deploy:
     name: Deploy app

@@ -33,6 +33,46 @@ const target =
 const MAX_LOG_BYTES = 5 * 1024 * 1024;
 
 /**
+ * Severity, as a number, so one can be compared with another.
+ *
+ * Three levels rather than the usual half-dozen, because three is what this
+ * app calls: "error" is something to investigate, "warn" is a request
+ * somebody simply sent wrong, "info" is everything else. There is no "debug"
+ * to leave out.
+ */
+const LEVEL_ORDER: Record<LogLevel, number> = { error: 0, warn: 1, info: 2 };
+
+/**
+ * The quietest level that is still written, read once from LOG_LEVEL.
+ *
+ * Until this existed there was no way to turn the volume down at all: the
+ * access log in app.ts writes an "info" line per request, and on the
+ * production target that is every request the site serves going through the
+ * platform's log collector. Somebody watching an incident wants the errors
+ * out of that, and the only lever was the NODE_ENV that also decides *where*
+ * a line goes — so quieting the log meant pretending not to be in production.
+ *
+ * Default "info", i.e. everything, because that is what every deployment got
+ * before this and a configuration option should not change what an existing
+ * one does.
+ *
+ * An unrecognised value falls back to "info" and says so once, rather than
+ * being taken as "off". A typo'd LOG_LEVEL is the one case where guessing
+ * wrong is expensive: read strictly it would silence the log, and the missing
+ * lines are the last thing anybody would connect to a misspelled variable.
+ * Louder-than-asked-for is a nuisance; silence is an outage nobody can see.
+ */
+const requested = process.env.LOG_LEVEL?.trim().toLowerCase();
+const invalidLevel =
+  requested !== undefined && requested !== "" && !(requested in LEVEL_ORDER)
+    ? process.env.LOG_LEVEL
+    : undefined;
+const threshold: LogLevel =
+  requested !== undefined && requested in LEVEL_ORDER
+    ? (requested as LogLevel)
+    : "info";
+
+/**
  * Bytes written to each file since this process started caring, so the size
  * check below costs no syscall per line.
  *
@@ -154,6 +194,10 @@ function fieldValue(value: unknown): unknown {
  */
 function log(level: LogLevel, message: string, ...args: unknown[]): void {
   if (target === "none") return;
+  // Before anything is rendered: a line nobody will read should not cost a
+  // JSON.stringify per argument, which is the point of a threshold on an
+  // access log that runs once per request.
+  if (LEVEL_ORDER[level] > LEVEL_ORDER[threshold]) return;
 
   const rendered: string[] = [];
   const fields: Record<string, unknown> = {};
@@ -196,6 +240,16 @@ function log(level: LogLevel, message: string, ...args: unknown[]): void {
   } else {
     console.log(message, ...args);
   }
+}
+
+// Once, at load, and through the same path as every other line so it lands
+// wherever this process's lines land. It is deliberately not thrown: a
+// misconfigured log level must not be what stops the site from booting.
+if (invalidLevel !== undefined) {
+  log(
+    "warn",
+    `LOG_LEVEL="${invalidLevel}" is not one of error, warn, info — using "info".`,
+  );
 }
 
 export const logger = {

@@ -395,6 +395,10 @@ describe("Home Routes", () => {
       const mockGames = [{ id: 1, title: "Test Game" }];
 
       vi.mocked(Game.find).mockResolvedValue(mockGames as any);
+      // A total that reaches page 2. The listing query is only run for a page
+      // the count says exists — see isPageBeyondTotal — so a catalogue of
+      // nothing would make this a 404 rather than a paged request.
+      vi.mocked(Game.count).mockResolvedValue(30);
       vi.mocked(GameOfTheWeek.getCurrent).mockResolvedValue({ id: 1 } as any);
 
       const response = await request(server).get("/?page=2");
@@ -426,6 +430,51 @@ describe("Home Routes", () => {
       });
       expect(response.status).toBe(200);
     });
+
+    /**
+     * A page past the end of the listing is refused from the count, before the
+     * listing query runs at all.
+     *
+     * parsePageParam admits anything up to 10000, and the check used to be
+     * "run the query, see no rows, 404" — so "?page=9999" aggregated the whole
+     * filtered set and offset 249950 rows into it to discover an address that
+     * does not exist. Ten thousand such addresses per listing, each reachable
+     * from a link anybody can write.
+     */
+    it.each([
+      ["/", () => undefined],
+      ["/action", () => vi.mocked(Game.getGenres).mockResolvedValue(["ACTION"])],
+      ["/letter/a", () => undefined],
+      ["/developer/id%20Software", () => undefined],
+      ["/publisher/Apogee", () => undefined],
+      ["/year/1993", () => undefined],
+    ])("404s %s past the end without running the listing query", async (
+      path,
+      prepare,
+    ) => {
+      prepare();
+      vi.mocked(Game.count).mockResolvedValue(30);
+      vi.mocked(Game.getYears).mockResolvedValue([1993]);
+      vi.mocked(GameOfTheWeek.getCurrent).mockResolvedValue(null);
+
+      const response = await request(server).get(`${path}?page=9999`);
+
+      expect(response.status).toBe(404);
+      expect(Game.find).not.toHaveBeenCalled();
+    });
+
+    // ...and the last page that does exist is still served, which is the line
+    // the guard has to draw in the right place.
+    it("still serves the last page that exists", async () => {
+      vi.mocked(Game.count).mockResolvedValue(30);
+      vi.mocked(Game.find).mockResolvedValue([{ id: 26 }] as any);
+      vi.mocked(GameOfTheWeek.getCurrent).mockResolvedValue(null);
+
+      const response = await request(server).get("/?page=2");
+
+      expect(response.status).toBe(200);
+      expect(Game.find).toHaveBeenCalled();
+    });
   });
 
   describe("GET /:genre", () => {
@@ -434,6 +483,7 @@ describe("Home Routes", () => {
 
       vi.mocked(Game.getGenres).mockResolvedValue(["ACTION", "ADVENTURE"]);
       vi.mocked(Game.find).mockResolvedValue(mockGames as any);
+      vi.mocked(Game.count).mockResolvedValue(1);
 
       const response = await request(server).get("/action");
 
@@ -476,6 +526,7 @@ describe("Home Routes", () => {
 
       vi.mocked(Game.getGenres).mockResolvedValue(["ACTION"]);
       vi.mocked(Game.find).mockResolvedValue(mockGames as any);
+      vi.mocked(Game.count).mockResolvedValue(1);
 
       const response = await request(server).get(
         "/action?orderBy=title&orderDir=ASC",
@@ -541,6 +592,7 @@ describe("Home Routes", () => {
       // redirect — that is the loop this whole rule could become.
       it("leaves the lower-case address alone", async () => {
         vi.mocked(Game.find).mockResolvedValue([{ id: 1 }] as any);
+        vi.mocked(Game.count).mockResolvedValue(1);
 
         const response = await request(server).get("/action");
 
@@ -572,6 +624,7 @@ describe("Home Routes", () => {
       const mockGames = [{ id: 1, title: "Amazing Game" }];
 
       vi.mocked(Game.find).mockResolvedValue(mockGames as any);
+      vi.mocked(Game.count).mockResolvedValue(1);
 
       const response = await request(server).get("/letter/a");
 

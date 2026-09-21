@@ -17,7 +17,7 @@ import { fileURLToPath } from "url";
 import path from "path";
 import logger from "./utils/logger.ts";
 import { createAssetUrl } from "./utils/assets.ts";
-import { firstQueryValue } from "./utils/query.ts";
+import { firstQueryValue, rawQuery } from "./utils/query.ts";
 import { breadcrumbLdJson, buildBreadcrumbs } from "./utils/breadcrumbs.ts";
 import { isNoindex } from "./utils/indexability.ts";
 import {
@@ -56,10 +56,7 @@ import feedRoutes from "./routes/feed.ts";
 import { csrfToken, validateCsrf } from "./middlewares/csrf.ts";
 import { voterId } from "./middlewares/voter-id.ts";
 import { cspNonce, scriptNonce } from "./middlewares/csp-nonce.ts";
-import {
-  PostgresRateLimitStore,
-  rateLimitLogger,
-} from "./utils/rate-limit-store.ts";
+import { rateLimitLogger } from "./utils/rate-limit-store.ts";
 import { expectsJson } from "./utils/expects-json.ts";
 import { TtlCache } from "./utils/cache.ts";
 import {
@@ -397,6 +394,12 @@ app.get("/healthz", async (req, res) => {
     }),
   ]);
 
+  // Never cached, by anything. The whole value of this endpoint is that it
+  // answers for *this* machine at *this* moment: a proxy or a browser holding
+  // the JSON for even a few seconds reports a machine that has since gone away
+  // as up. The probe inside the process is cached deliberately and separately
+  // — see healthCache — which is the caching this endpoint wants.
+  res.setHeader("Cache-Control", "no-store");
   res.json({ status: "ok", database });
 });
 
@@ -411,8 +414,18 @@ app.use((req, res, next) => {
     return next();
   }
 
+  // req.path and the raw query, not req.originalUrl — the same construction
+  // the trailing-slash redirect below uses, and for the same reason it gives
+  // there: req.originalUrl is the request target as it arrived, and Node
+  // accepts the absolute form ("GET http://evil.example/ HTTP/1.1"). Appending
+  // that to this site's own origin produced a Location of
+  // "https://oldschoolgames.euhttp://evil.example/", which is a redirect off
+  // the site that every browser on plain HTTP or the wrong host would follow.
+  // req.path is the parsed path, so it always begins with a slash.
+  const target = `${req.path}${rawQuery(req)}`;
+
   if (req.headers.host !== CANONICAL_HOST) {
-    return res.redirect(301, `${CANONICAL_ORIGIN}${req.originalUrl}`);
+    return res.redirect(301, `${CANONICAL_ORIGIN}${target}`);
   }
 
   // The first value, not the raw header. Node joins a header that arrives
@@ -433,7 +446,7 @@ app.use((req, res, next) => {
     .trim();
 
   if (forwardedProto !== "https") {
-    return res.redirect(301, `${CANONICAL_ORIGIN}${req.originalUrl}`);
+    return res.redirect(301, `${CANONICAL_ORIGIN}${target}`);
   }
 
   next();
@@ -479,9 +492,7 @@ app.use((req, res, next) => {
   // "http://evil.example", an address off this site. The two guards below
   // never saw it, because it does not begin with a slash at all.
   const pathname = req.path;
-  const queryStart = req.originalUrl.indexOf("?");
-  const query =
-    queryStart === -1 ? undefined : req.originalUrl.slice(queryStart + 1);
+  const query = rawQuery(req);
 
   // "/" is the one path that keeps its slash, and the only one shorter than
   // two characters.
@@ -506,7 +517,7 @@ app.use((req, res, next) => {
   // and it 404s today rather than resolving.
   const target = pathname.replace(/\/+$/, "");
 
-  return res.redirect(301, query ? `${target}?${query}` : target);
+  return res.redirect(301, `${target}${query}`);
 });
 
 app.use(compression());
@@ -751,16 +762,30 @@ app.use(
 // session, a CSRF token and a voter id it will never send back.
 app.get("/robots.txt", robotsTxt);
 
-// Counted in Postgres rather than in this process's memory, so the budget is
-// the app's and not each machine's — see utils/rate-limit-store.ts.
+/**
+ * The coarse global budget, counted in this process's memory — the library's
+ * default store — and not in Postgres like every other limiter here.
+ *
+ * Per-machine counting is the correct semantics for this one, and that is the
+ * point rather than a concession. The limits that guard logins and comment
+ * posting are about a *person's* behaviour, so they have to be shared across
+ * machines or they double with every one added; this one exists to keep a
+ * single machine's ten-connection pool and event loop from being flooded, and
+ * a flood arrives at a machine, not at the app.
+ *
+ * The cost of having it in Postgres was that this limiter sits above every
+ * route, so every request on the site — including the ones answered from a
+ * cache, and the static assets — began with a write to the database, in series,
+ * before anything else could happen. A 1000-per-15-minutes ceiling is not worth
+ * an upsert per request, and it was the one limiter whose store could make the
+ * database the bottleneck for requests that would otherwise never touch it.
+ *
+ * With no store of its own the library needs no passOnStoreError either: an
+ * in-memory Map does not fail.
+ */
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 1000,
-  store: new PostgresRateLimitStore("global"),
-  // A database blip should cost the site its rate limiting, not its
-  // availability — which is also what used to happen whenever a machine
-  // holding the counts restarted.
-  passOnStoreError: true,
   // ...and says so through utils/logger.ts rather than the library's
   // own console fallback — see rateLimitLogger.
   logger: rateLimitLogger,
@@ -936,10 +961,42 @@ if (process.env.NODE_ENV === "production") {
   app.set("trust proxy", 1);
 }
 
-if (process.env.NODE_ENV === "production" && !process.env.SESSION_SECRET) {
-  throw new Error(
-    "SESSION_SECRET environment variable is required in production",
-  );
+/**
+ * What .env.example carries in the SESSION_SECRET slot, and the shortest
+ * secret production will start with.
+ *
+ * Presence was the whole of this check, and presence is the easy half. The
+ * placeholder is published in this repository, so a deploy that copied the
+ * example file has a SESSION_SECRET that is set, passes the guard, and signs
+ * every session cookie with a value anyone can read off GitHub — which is a
+ * forgeable admin session, not a configuration wrinkle. A short secret is the
+ * same failure by a slower route: 32 bytes of hex is what the README tells you
+ * to generate, and anything under it is worth refusing at boot rather than
+ * trusting.
+ */
+const SESSION_SECRET_PLACEHOLDER = "change-me-to-a-long-random-secret";
+const SESSION_SECRET_MIN_LENGTH = 32;
+
+if (process.env.NODE_ENV === "production") {
+  const secret = process.env.SESSION_SECRET;
+
+  if (!secret) {
+    throw new Error(
+      "SESSION_SECRET environment variable is required in production",
+    );
+  }
+
+  if (secret === SESSION_SECRET_PLACEHOLDER) {
+    throw new Error(
+      "SESSION_SECRET is still the .env.example placeholder; generate a real one",
+    );
+  }
+
+  if (secret.length < SESSION_SECRET_MIN_LENGTH) {
+    throw new Error(
+      `SESSION_SECRET must be at least ${SESSION_SECRET_MIN_LENGTH} characters in production`,
+    );
+  }
 }
 
 const pgSession = connectPg(session);
@@ -1129,7 +1186,20 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
     // Warn, and no stack: a request somebody sent wrong is not something to
     // investigate. The line is still worth keeping — a sudden run of them
     // says a client is broken — but it does not belong in error.log.
-    logger.warn(`${clientStatus} ${req.method} ${req.url}: ${err.message}`);
+    //
+    // Fields rather than a sentence, and the path rather than the URL. The
+    // access log above deliberately leaves the query string out — it carries
+    // what a visitor typed into the search box — and this line put the whole
+    // of req.url in, so the one request the site wrote a search term about was
+    // the one it had refused. The path is taken the way the access log takes
+    // it, off `req` before any mounted router has rewritten req.url; see the
+    // comment there.
+    logger.warn("client error", {
+      status: clientStatus,
+      method: req.method,
+      path: req.path,
+      reason: err.message,
+    });
   }
 
   // Nothing useful is left to do once the response is on the wire: a

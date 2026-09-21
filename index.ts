@@ -10,6 +10,7 @@ import {
   stopRateLimitPruning,
 } from "./utils/rate-limit-store.ts";
 import { syncCacheEpoch } from "./utils/cache-epoch.ts";
+import { createShutdown } from "./utils/shutdown.ts";
 import app from "./app.ts";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -123,134 +124,33 @@ const pruneTimer = setInterval(() => void pruneExpiredData(), PRUNE_INTERVAL_MS)
 startRateLimitPruning();
 
 /**
- * How long the drain below is given before the process leaves anyway.
+ * Draining, wired to the real four.
  *
- * Fly sends SIGTERM and follows it with SIGKILL after kill_timeout, which
- * fly.toml sets to fifteen seconds. Five is comfortably under that — it used
- * to *equal* the platform's default of five, so the SIGKILL landed the moment
- * this fallback began — and a request still running after five seconds is
- * not going to finish anyway.
- */
-const SHUTDOWN_TIMEOUT_MS = 5_000;
-
-let shuttingDown = false;
-
-/**
- * What the process leaves with once the drain finishes.
+ * The logic itself is in utils/shutdown.ts, with every reason it is shaped the
+ * way it is. It moved there because this file is the one the coverage list in
+ * vitest.config.ts has to exclude — it listens on a port on import — so the
+ * drain was the one piece of this app nothing could exercise, and each of the
+ * comments over there records a bug found in production instead.
  *
- * A signal is a clean stop and reports success; a crash is not, and a
- * supervisor reading the exit status is the only thing that can tell the
- * difference. See crash() below.
+ * The two timers are stopped at the start of the drain and the sidebar cache
+ * is dropped once nothing is left to answer from it; both are passed in
+ * because utils/shutdown.ts has no opinion about either.
  */
-let exitCode = 0;
-
-function shutdown(signal: string, code: number = 0): void {
-  // Re-entrant otherwise, and a second signal is ordinary — a deploy that
-  // sends SIGTERM twice, or an impatient Ctrl+C. The second pass used to call
-  // server.close() and pool.end() again: both hand their callback an error
-  // ("Called end on pool more than once"), both callbacks ignore it, and the
-  // inner one exits 0 — so the repeat signal cut the first drain short and
-  // reported success. It now only hurries the timer along.
-  if (shuttingDown) {
-    logger.info(`${signal} received again, already shutting down.`);
-    return;
-  }
-
-  shuttingDown = true;
-  exitCode = code;
-
-  logger.info(`${signal} received, shutting down gracefully...`);
-
-  clearInterval(pruneTimer);
-  stopRateLimitPruning();
-
-  // Nothing is left to answer once this resolves, so the pool goes either way
-  // — through server.close() below when the drain finishes, or through the
-  // timer when it does not. Idempotent because both of those can happen: a
-  // drain that completes just after the timer fired would otherwise call
-  // pool.end() a second time.
-  let finished = false;
-
-  const finish = (): void => {
-    if (finished) return;
-
-    finished = true;
-
-    cache.clear();
-    pool.end(() => {
-      logger.info("Database pool closed.");
-      process.exit(exitCode);
-    });
-  };
-
-  const forceExit = setTimeout(() => {
-    logger.error(
-      `Graceful shutdown exceeded ${SHUTDOWN_TIMEOUT_MS}ms, exiting anyway.`,
-    );
-    // Exits directly, and with a failure code. This used to call finish(),
-    // whose pool.end() only calls back once every checked-out client has been
-    // released — so a query still running (statement_timeout is 15s, see
-    // db.ts) kept the process alive for as long again after "exiting anyway"
-    // had been logged, and it then reported success. The drain did not
-    // finish; the exit code should say so.
-    process.exit(1);
-  }, SHUTDOWN_TIMEOUT_MS);
-
-  // unref'd so the timer cannot by itself be the reason the process is still
-  // alive: if the drain finishes first there is nothing left to wait for.
-  forceExit.unref();
-
-  // server.close() waits for open connections but does not close the idle
-  // ones, so a browser holding a keep-alive socket kept the process up until
-  // that socket's own timeout — every deploy paid for it. Available since
-  // Node 18.2; guarded because the suite mounts this module's app elsewhere.
-  server.closeIdleConnections?.();
-
-  server.close(() => {
-    clearTimeout(forceExit);
-    finish();
-  });
-}
+const { shutdown, crash } = createShutdown({
+  server,
+  pool,
+  logger,
+  stopTimers: () => {
+    clearInterval(pruneTimer);
+    stopRateLimitPruning();
+  },
+  clearCaches: () => cache.clear(),
+});
 
 // SIGINT as well as SIGTERM, so Ctrl+C in development takes the same path as
 // a deploy rather than dropping the pool on the floor.
 process.on("SIGTERM", () => shutdown("SIGTERM"));
 process.on("SIGINT", () => shutdown("SIGINT"));
-
-/**
- * The two ways this process can be left holding an error nobody caught.
- *
- * Neither was handled. An uncaught exception takes Node down by itself, but
- * it does so without running any of the draining below: open requests are
- * cut off mid-response, the checked-out clients are dropped rather than
- * released, and the only record is Node's own stack trace on stderr —
- * nowhere near error.log, which is where everything else this app considers
- * a failure is written. An unhandled rejection is worse, because Node's
- * default for it is also to exit: a rejected promise nothing awaited — a
- * `void`ed cache bump against a database that has gone away — could take
- * the whole site down as abruptly and with as little explanation.
- *
- * So both are logged the way every other failure here is and then handed to
- * the shutdown above, which closes the listener, drains what is in flight
- * and ends the pool before leaving — with a failure code, because this is
- * not a clean stop and the platform restarting the machine should be able
- * to tell. shutdown() is already re-entrant, so a second crash arriving
- * during the drain only says so rather than starting another one.
- *
- * Exiting rather than carrying on is deliberate, and it is the opposite of
- * the choice made for a database that cannot answer (see warnOnPendingMigrations
- * and /healthz): an unreachable Postgres leaves this process in a state it
- * is built for, where an error nobody caught leaves it in one nobody has
- * reasoned about.
- */
-function crash(kind: string, error: unknown): void {
-  logger.error(
-    `${kind}:`,
-    error instanceof Error ? (error.stack ?? error.message) : error,
-  );
-
-  shutdown(kind, 1);
-}
 
 process.on("unhandledRejection", (reason) =>
   crash("Unhandled promise rejection", reason),

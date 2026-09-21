@@ -3,13 +3,56 @@ import Game from "../../models/game.ts";
 import db from "../../db.ts";
 import { sidebarCache } from "../../utils/sidebar-cache.ts";
 
-vi.mock("../../db", () => ({
-  default: {
-    query: vi.fn(),
-  },
-}));
+/**
+ * The pool, plus a client checked out of it.
+ *
+ * A search now runs inside a transaction, because pg_trgm's "%" reads its
+ * threshold from the session and SET LOCAL is what scopes that to one request
+ * — see queryWithSimilarityThreshold in models/game.ts. The checked-out client
+ * delegates to the same `query` mock as the pool, so every assertion below
+ * still reads the statements off one place; `searchStatement` picks the real
+ * one out from between the BEGIN and the COMMIT.
+ */
+vi.mock("../../db", () => {
+  const query = vi.fn();
+
+  // BEGIN, the threshold and COMMIT answer themselves. They are bookkeeping,
+  // and letting them through to `query` would make every test below count its
+  // way past three calls it has nothing to say about — and consume the
+  // mockResolvedValueOnce meant for the statement under test.
+  const CONTROL = /^(BEGIN|COMMIT|ROLLBACK|SELECT set_config)/;
+
+  return {
+    default: {
+      query,
+      connect: vi.fn(async () => ({
+        query: (sql: string, values?: unknown[]) =>
+          CONTROL.test(sql) ? Promise.resolve({ rows: [] }) : query(sql, values),
+        release: vi.fn(),
+      })),
+    },
+  };
+});
 
 const mockDb = vi.mocked(db);
+
+/**
+ * The statement a search actually ran, and its values.
+ *
+ * Not `mock.calls[0]`: that is the BEGIN. The transaction wrapper is
+ * bookkeeping, and a test about what the search asks for should not have to
+ * count its way past it.
+ */
+function searchStatement(): [string, any[]] {
+  const call = (mockDb.query as any).mock.calls.find(
+    ([sql]: [string]) =>
+      sql.includes('FROM "games"') || sql.includes('from "games"'),
+  );
+
+  if (!call) throw new Error("no statement against \"games\" was run");
+
+  return [call[0], call[1] ?? []];
+}
 
 describe("Game Model", () => {
   beforeEach(() => {
@@ -428,10 +471,9 @@ describe("Game Model", () => {
 
       await Game.find({ search: "mario" });
 
-      expect(mockDb.query).toHaveBeenCalledWith(
-        expect.stringContaining('g."title" ILIKE $1'),
-        expect.arrayContaining(["%mario%"]),
-      );
+      const [sql, values] = searchStatement();
+      expect(sql).toContain('g."title" ILIKE $1');
+      expect(values).toContain("%mario%");
     });
 
     it("should find games with year filter", async () => {
@@ -1348,6 +1390,91 @@ describe("Game Model", () => {
 
       expect(query).toContain('ORDER BY g."title" ASC');
     });
+
+    /**
+     * Every ordering that does not rank on the rating pages the games first
+     * and attaches the aggregates to that page.
+     *
+     * It used to join "games" to "ratings" and GROUP BY for all of them, so
+     * "newest first" — the homepage, the sidebar's "Recently added" — read the
+     * whole catalogue and every vote on it, aggregated the lot, sorted it and
+     * then threw all but twenty-five rows away. The LIMIT is inside the
+     * subquery now, over "games" alone, which an index can serve.
+     */
+    it.each(["createdAt", "release", "title"])(
+      "pages the games before it joins the ratings for %s",
+      async (orderBy) => {
+        (mockDb.query as any).mockResolvedValueOnce({ rows: [] });
+
+        await Game.find({ orderBy, limit: 25, page: 2 });
+
+        const query = mockDb.query.mock.calls[0]![0] as string;
+
+        // The page is taken over "games" on its own...
+        expect(query).toMatch(
+          new RegExp(
+            `SELECT g\\."id"\\s+FROM "games" g[\\s\\S]*ORDER BY g\\."${orderBy}"[\\s\\S]*LIMIT \\$\\d+ OFFSET \\$\\d+`,
+          ),
+        );
+        // ...and the aggregate is looked up per row of it, rather than the
+        // whole "ratings" table being grouped first.
+        expect(query).toContain("LEFT JOIN LATERAL");
+        expect(query).not.toContain("GROUP BY g.id");
+      },
+    );
+
+    /**
+     * The rating ordering is the one that cannot: a game's place in the
+     * ranking is not known until its votes are counted, so there is no prefix
+     * of the catalogue the page could be taken from first.
+     */
+    it("still aggregates before it pages when it ranks on the rating", async () => {
+      (mockDb.query as any).mockResolvedValueOnce({ rows: [] });
+
+      await Game.find({ orderBy: "rating", limit: 25, page: 2 });
+
+      const query = mockDb.query.mock.calls[0]![0] as string;
+
+      expect(query).toContain('GROUP BY g.id, "siteMean"."value"');
+      expect(query).not.toContain("LEFT JOIN LATERAL");
+    });
+
+    /**
+     * A page with no page size to measure it against used to be dropped in
+     * silence — OFFSET was only applied inside the `limit` branch, so
+     * find({ page: 7 }) answered with the whole catalogue as if page 1 had
+     * been asked for.
+     */
+    it("refuses a page it has no limit to offset by", async () => {
+      await expect(Game.find({ page: 7 })).rejects.toThrow(/limit/);
+      expect(mockDb.query).not.toHaveBeenCalled();
+    });
+
+    it("leaves page 1 alone, which needs no offset", async () => {
+      (mockDb.query as any).mockResolvedValueOnce({ rows: [] });
+
+      await expect(Game.find({ page: 1 })).resolves.toEqual([]);
+    });
+
+    /**
+     * The routes call this with whatever "?orderBy=" carried, and the message
+     * goes to error.log — where nothing escapes it and a log viewer may well
+     * render it. Which field was refused is not the useful half anyway: the
+     * caller is the one line of code that passed it.
+     */
+    it("refuses an invalid ordering without quoting it back", async () => {
+      const rejected = "<script>alert(1)</script>";
+
+      await expect(Game.find({ orderBy: rejected })).rejects.toThrow(
+        /Invalid orderBy/,
+      );
+      await expect(Game.find({ orderBy: rejected })).rejects.not.toThrow(
+        new RegExp(rejected.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")),
+      );
+      await expect(
+        Game.find({ orderDir: "DESC; DROP TABLE games" }),
+      ).rejects.toThrow(/^Invalid orderDir$/);
+    });
   });
 
   describe("findAdjacentGames", () => {
@@ -1553,7 +1680,7 @@ describe("Game Model", () => {
 
       await Game.find({ search: "lucasarts" });
 
-      const [sql, values] = (mockDb.query as any).mock.calls[0];
+      const [sql, values] = searchStatement();
       expect(sql).toContain('g."title" ILIKE $1');
       expect(sql).toContain('g."developer" ILIKE $1');
       expect(sql).toContain('g."publisher" ILIKE $1');
@@ -1565,8 +1692,12 @@ describe("Game Model", () => {
 
       await Game.find({ search: "moneky island" });
 
-      const [sql, values] = (mockDb.query as any).mock.calls[0];
-      expect(sql).toContain('similarity(g."title", $2)');
+      const [sql, values] = searchStatement();
+      // The indexable form. `similarity(...) > 0.28` said the same thing and
+      // no index could serve it, so every search was a sequential scan of the
+      // catalogue — see queryWithSimilarityThreshold.
+      expect(sql).toContain('g."title" % $2');
+      expect(sql).not.toContain("similarity(g.\"title\", $2) >");
       expect(values).toContain("moneky island");
     });
 
@@ -1575,7 +1706,7 @@ describe("Game Model", () => {
 
       await Game.find({ search: "doom" });
 
-      const [sql] = (mockDb.query as any).mock.calls[0];
+      const [sql] = searchStatement();
       expect(sql).toContain("ORDER BY CASE");
       expect(sql).toContain('LOWER(g."title") = LOWER($2)');
     });
@@ -1585,7 +1716,7 @@ describe("Game Model", () => {
 
       await Game.find({ search: "doom", orderBy: "title", orderDir: "ASC" });
 
-      const [sql] = (mockDb.query as any).mock.calls[0];
+      const [sql] = searchStatement();
       expect(sql).toContain('ORDER BY g."title" ASC');
       expect(sql).not.toContain("ORDER BY CASE");
     });
@@ -1595,8 +1726,11 @@ describe("Game Model", () => {
 
       await Game.find({ search: "   " });
 
-      const [sql] = (mockDb.query as any).mock.calls[0];
-      expect(sql).not.toContain("similarity");
+      const [sql] = searchStatement();
+      expect(sql).not.toContain("%");
+      // ...and no transaction either: with nothing to match fuzzily there is
+      // no threshold to scope.
+      expect(mockDb.connect).not.toHaveBeenCalled();
     });
 
     // "100%" used to reach ILIKE as "%100%%", where the trailing wildcard made
@@ -1606,7 +1740,7 @@ describe("Game Model", () => {
 
       await Game.find({ search: "100%" });
 
-      const [, values] = (mockDb.query as any).mock.calls[0];
+      const [, values] = searchStatement();
       expect(values).toContain("%100\\%%");
     });
 
@@ -1615,20 +1749,20 @@ describe("Game Model", () => {
 
       await Game.find({ search: "a_b\\c" });
 
-      const [, values] = (mockDb.query as any).mock.calls[0];
+      const [, values] = searchStatement();
       expect(values).toContain("%a\\_b\\\\c%");
     });
 
-    // similarity() and the exact-title comparison read their argument as text,
-    // not as a pattern, so they still get the term as typed.
+    // The trigram operator and the exact-title comparison read their argument
+    // as text, not as a pattern, so they still get the term as typed.
     it("keeps the raw term for the fuzzy and exact matches", async () => {
       (mockDb.query as any).mockResolvedValueOnce({ rows: [] });
 
       await Game.find({ search: "100%" });
 
-      const [sql, values] = (mockDb.query as any).mock.calls[0];
+      const [sql, values] = searchStatement();
       expect(values).toContain("100%");
-      expect(sql).toContain('similarity(g."title", $2)');
+      expect(sql).toContain('g."title" % $2');
       // The prefix match is a pattern, so it uses the escaped copy.
       expect(sql).toContain('g."title" ILIKE $3');
     });

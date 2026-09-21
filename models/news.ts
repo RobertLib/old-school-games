@@ -195,7 +195,11 @@ export default class News extends Model {
 
     const news = newsResult.rows.map((row) => new News(row));
     const total = parseInt(countResult.rows[0].count, 10);
-    const totalPages = Math.ceil(total / limit);
+    // At least one page even with nothing to show, which is what
+    // paginationUrls has always done: Math.ceil(0 / 10) is 0, so an empty
+    // /news rendered "page 1 of 0" and views/pagination.ejs had a page number
+    // above its own total to reason about.
+    const totalPages = Math.max(1, Math.ceil(total / limit));
 
     return { news, total, totalPages };
   }

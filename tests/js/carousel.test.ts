@@ -276,6 +276,52 @@ describe("carousel.js — keyboard navigation", () => {
 
     expect(track.style.transform).not.toBe(afterNext);
   });
+
+  /**
+   * ArrowLeft and ArrowRight also scroll the page, and a horizontal scroll is
+   * the one the browser keeps — so the slide moved and the whole page slid
+   * sideways with it.
+   */
+  it.each(["ArrowLeft", "ArrowRight"])("takes %s for itself", (key) => {
+    const carousel = document.querySelector(
+      ".featured-games-carousel",
+    ) as HTMLElement;
+
+    const event = new KeyboardEvent("keydown", { key, cancelable: true });
+    carousel.dispatchEvent(event);
+
+    expect(event.defaultPrevented).toBe(true);
+  });
+
+  /**
+   * A field inside the carousel owns its own arrow keys: they move the caret,
+   * or change the value of a <select>. Stealing them to move the slide is not
+   * something the visitor asked for — the search field in a slide's own form
+   * is the case.
+   */
+  it.each(["input", "textarea", "select"])(
+    "leaves the arrow keys to a <%s> inside it",
+    (tag) => {
+      const carousel = document.querySelector(
+        ".featured-games-carousel",
+      ) as HTMLElement;
+      const field = document.createElement(tag);
+      carousel.appendChild(field);
+
+      const track = document.querySelector(".carousel-track") as HTMLElement;
+      const initial = track.style.transform;
+
+      const event = new KeyboardEvent("keydown", {
+        key: "ArrowRight",
+        bubbles: true,
+        cancelable: true,
+      });
+      field.dispatchEvent(event);
+
+      expect(track.style.transform).toBe(initial);
+      expect(event.defaultPrevented).toBe(false);
+    },
+  );
 });
 
 describe("carousel.js — autoplay", () => {

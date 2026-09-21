@@ -83,6 +83,14 @@ export default class GameOfTheWeek extends Model {
   static async selectNewGameOfTheWeek(
     executor: Queryable = db,
   ): Promise<GameOfTheWeek | null> {
+    // Playable games only, both here and in the fallback below — the same
+    // condition Game.findRandom applies, and for the same reason. The widget
+    // is a "play this" call to action on every page of the site, and a game
+    // with no stream cannot be played: the pick used to be able to land on one,
+    // and then the most prominent recommendation on the site led to a page with
+    // no player on it for a week. The catalogue holds such rows on purpose —
+    // a game catalogued before its bundle exists — so this is reachable rather
+    // than theoretical.
     const { rows: games } = await executor.query(
       `SELECT g.id
        FROM "games" g
@@ -97,6 +105,7 @@ export default class GameOfTheWeek extends Model {
          GROUP BY "gameId"
        ) r ON g.id = r."gameId"
        WHERE recent."gameId" IS NULL
+       AND g."stream" IS NOT NULL AND g."stream" <> ''
        AND (r.avg_rating IS NULL OR r.avg_rating >= 4)
        ORDER BY RANDOM()
        LIMIT 1`,
@@ -104,7 +113,9 @@ export default class GameOfTheWeek extends Model {
 
     if (!games.length) {
       const { rows: anyGames } = await executor.query(
-        `SELECT id FROM "games" ORDER BY RANDOM() LIMIT 1`,
+        `SELECT id FROM "games"
+         WHERE "stream" IS NOT NULL AND "stream" <> ''
+         ORDER BY RANDOM() LIMIT 1`,
       );
 
       if (!anyGames.length) {

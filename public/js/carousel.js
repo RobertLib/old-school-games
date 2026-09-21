@@ -311,9 +311,18 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // Keyboard navigation
   carousel.addEventListener("keydown", (e) => {
+    // A field inside the carousel owns its own arrow keys — they move the
+    // caret, or change the value of a <select>. Moving the slide out from
+    // under one instead is not something the visitor asked for.
+    if (e.target.closest("input, textarea, select")) return;
+
     if (e.key === "ArrowLeft") {
+      // Otherwise the page scrolls sideways at the same time as the slide
+      // changes, and a horizontal scroll is the one the browser keeps.
+      e.preventDefault();
       prevSlide();
     } else if (e.key === "ArrowRight") {
+      e.preventDefault();
       nextSlide();
     }
   });

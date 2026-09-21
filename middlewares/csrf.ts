@@ -2,6 +2,7 @@ import crypto from "crypto";
 import { type Request, type Response, type NextFunction } from "express";
 import { readCookie } from "../utils/cookies.ts";
 import { expectsJson } from "../utils/expects-json.ts";
+import { SITE_URL } from "../utils/site.ts";
 import "../types/session.ts";
 
 /**
@@ -30,6 +31,39 @@ const MASKED_PATTERN = /^[0-9a-f]{128}$/;
 
 const ONE_MONTH_MS = 30 * 24 * 60 * 60 * 1000;
 const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
+const UNSAFE_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
+
+/**
+ * Whether an unsafe request announces an origin that is not this site's.
+ *
+ * Defence in depth behind the token, not instead of it. The token is what
+ * actually stops a forged submit; this catches the cases where the token check
+ * could be sidestepped without the attacker ever being able to read a
+ * response — a bug in the masking, a secret leaked into a page, a browser or
+ * proxy that mishandles the "__Host-" prefix — and it costs one string
+ * comparison.
+ *
+ * A missing Origin is allowed through, because it is not evidence of anything.
+ * Browsers omit it on same-origin form posts (that is exactly what the
+ * no-JavaScript comment form sends), and the non-browser callers that matter
+ * here — the suite, curl, a health checker — send nothing either. Requiring it
+ * would refuse the very submits this site is built to accept.
+ *
+ * Production only. Development and the suite run on localhost under any number
+ * of ports and hostnames, and SITE_URL names the live origin, so comparing
+ * against it outside production would refuse every form post on a developer's
+ * machine. `req.headers.origin` arriving as an array cannot equal a string,
+ * which is the right answer for a header nobody legitimately repeats.
+ */
+function hasForeignOrigin(req: Request): boolean {
+  if (process.env.NODE_ENV !== "production") return false;
+
+  const origin = req.headers.origin;
+
+  if (origin === undefined) return false;
+
+  return origin !== SITE_URL;
+}
 
 function xorBytes(a: Buffer, b: Buffer): Buffer {
   const out = Buffer.alloc(SECRET_BYTES);
@@ -198,7 +232,7 @@ export function validateCsrf(
   res: Response,
   next: NextFunction,
 ): void {
-  if (!["POST", "PUT", "PATCH", "DELETE"].includes(req.method)) {
+  if (!UNSAFE_METHODS.has(req.method)) {
     return next();
   }
 
@@ -224,7 +258,14 @@ export function validateCsrf(
   const candidate =
     typeof submitted === "string" ? unmaskToken(submitted) : null;
 
-  if (candidate === null || !matches(candidate, req.csrfToken)) {
+  // The same refusal as a bad token, deliberately: the two are the same class
+  // of request and giving them separate answers would only tell a prober which
+  // check it tripped.
+  if (
+    hasForeignOrigin(req) ||
+    candidate === null ||
+    !matches(candidate, req.csrfToken)
+  ) {
     // An object for the endpoints answered over fetch, for the same reason the
     // rate limiters send one: their clients read the reason off `error` in a
     // JSON body, and a plain-text 403 made response.json() throw — so the

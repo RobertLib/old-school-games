@@ -1,5 +1,23 @@
+# Line endings, decided here rather than by whatever each checkout has
+# core.autocrlf set to. Without this a Windows clone rewrites every text file
+# on the way in and back out again, so the same content produces a different
+# diff depending on whose machine it came from — and the noise arrives in
+# files nobody edited.
+* text=auto eol=lf
+
 # The migration runner records a sha256 of each file's bytes and refuses to
 # run when an applied file's checksum differs (utils/migrations.ts). A checkout
 # with core.autocrlf=true would rewrite every line ending and fail that check
-# on every file, so the SQL is pinned to LF regardless of platform.
+# on every file, so the SQL is pinned to LF regardless of platform. Covered by
+# the rule above now, and kept anyway: it is the one place where a line ending
+# is not a cosmetic matter, and the next person to narrow that rule should
+# have to read this.
 *.sql text eol=lf
+
+# Binary, said explicitly. Git's own heuristic gets these right today, but a
+# NUL-free header is all it takes for it to guess "text" — at which point the
+# rule above rewrites bytes inside a font or an image and the file is quietly
+# corrupted in the checkout.
+*.png binary
+*.webp binary
+*.woff2 binary
