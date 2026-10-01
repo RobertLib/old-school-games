@@ -74,11 +74,17 @@ jobs:
       # liked without a single job turning red — which is the state this was
       # in when the thresholds did not exist at all.
       - run: npm run test:coverage
-      # Advisory rather than a gate on the whole dependency tree: --omit=dev
-      # asks only about what is actually shipped in the image, so a finding
-      # here is a vulnerability reachable in production rather than in a test
-      # runner. --audit-level=high lets the usual stream of low-severity
-      # advisories in dev tooling past without turning the build red.
+      # A gate, and a deliberate one: this job is what `deploy` needs, so a
+      # high or critical advisory in anything the image ships stops every
+      # deploy until it is dealt with — including one published overnight
+      # against a dependency nothing here changed. --omit=dev asks only about
+      # what is actually shipped, so a finding is reachable in production
+      # rather than in a test runner, and --audit-level=high lets the usual
+      # stream of low and moderate ones past. To get a deploy out while one is
+      # open: `npm audit fix` if a fixed version exists, an "overrides" entry
+      # in package.json if only a transitive one does, and otherwise read the
+      # advisory — this step can be relaxed for that one push, but that is a
+      # decision to make on purpose, not a default.
       - run: npm audit --omit=dev --audit-level=high
 
   # The image is what production actually runs, and nothing built it until a

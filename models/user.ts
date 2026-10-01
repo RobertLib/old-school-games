@@ -1,6 +1,7 @@
 import Model, { type ModelData } from "./model.ts";
 import db from "../db.ts";
 import { parseId } from "../utils/ids.ts";
+import { foldEmail } from "../utils/email.ts";
 import { hashPassword } from "../utils/password.ts";
 
 interface UserData extends ModelData {
@@ -28,14 +29,17 @@ export default class User extends Model {
    * "admin@example.com" simply did not exist for anyone typing
    * "Admin@example.com" — indistinguishable from a wrong password.
    *
-   * LOWER() on both sides is matched by the functional index in
+   * LOWER("email") is matched by the functional index in
    * 0025_users_email_case_insensitive.sql, which also rules out two accounts
-   * that differ only in case.
+   * that differ only in case. The typed side is folded by foldEmail rather
+   * than by LOWER($1), because that is the value the login limiters key on —
+   * see utils/email.ts for the address that reached one account through two
+   * different keys.
    */
   static async findByEmail(email: string): Promise<User | null> {
     const { rows } = await db.query(
-      'SELECT * FROM "users" WHERE LOWER("email") = LOWER($1)',
-      [email],
+      'SELECT * FROM "users" WHERE LOWER("email") = $1',
+      [foldEmail(email)],
     );
 
     return rows[0] ? new User(rows[0]) : null;

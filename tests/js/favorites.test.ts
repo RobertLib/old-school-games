@@ -1827,6 +1827,67 @@ describe("favorites.js — importCollection", () => {
   });
 
   /**
+   * Ids travel to /games/collection in a comma-separated list. One that was
+   * itself a list — from a hand-edited export — went out as several, pushed
+   * the real ids at the end of its batch past the server's hundred, and the
+   * hydration that followed deleted those real favourites as games that no
+   * longer exist.
+   */
+  it("keeps only ids a game can have", () => {
+    const result = window.importCollection(
+      JSON.stringify({
+        version: 2,
+        favorites: [
+          { id: [1, 2], addedAt: "2026-02-01T00:00:00.000Z" },
+          { id: "1,1,1,1", addedAt: "2026-02-02T00:00:00.000Z" },
+          { id: "abc", addedAt: "2026-02-03T00:00:00.000Z" },
+          { id: "0", addedAt: "2026-02-04T00:00:00.000Z" },
+          { id: 7, addedAt: "2026-02-05T00:00:00.000Z" },
+          { id: "8", addedAt: "2026-02-06T00:00:00.000Z" },
+        ],
+        recentlyPlayed: [],
+      }),
+    );
+
+    expect(result.ok).toBe(true);
+
+    const ids = JSON.parse(localStorage.getItem("favoriteGames")!)
+      .map((entry: { id: string }) => entry.id)
+      .sort();
+    expect(ids).toEqual(["7", "8"]);
+  });
+
+  it("reads no more than its limit from a file", () => {
+    const favorites = Array.from({ length: 2500 }, (_, index) => ({
+      id: String(index + 1),
+      addedAt: "2026-02-01T00:00:00.000Z",
+    }));
+
+    window.importCollection(
+      JSON.stringify({ version: 2, favorites, recentlyPlayed: [] }),
+    );
+
+    expect(JSON.parse(localStorage.getItem("favoriteGames")!)).toHaveLength(
+      2000,
+    );
+  });
+
+  // And what is already stored: a junk id is not offered as a favourite, so
+  // it is never sent in a batch beside real ones.
+  it("does not count a stored id no game can have as a favourite", () => {
+    localStorage.setItem(
+      "favoriteGames",
+      JSON.stringify([
+        { id: "1,2", addedAt: "2026-01-01T00:00:00.000Z" },
+        { id: "3", addedAt: "2026-01-02T00:00:00.000Z" },
+      ]),
+    );
+
+    expect(window.isFavorite("1,2")).toBe(false);
+    expect(window.isFavorite("3")).toBe(true);
+  });
+
+  /**
    * The message used to count the entries in the *file*, so re-importing the
    * same export reported "Imported 40 favourites" having added none at all.
    * What the reader needs is what changed in their collection.

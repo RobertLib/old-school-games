@@ -254,19 +254,39 @@ describe("resolveSlugForUpdate", () => {
     liveFilter: 'AND "deletedAt" IS NULL',
   };
 
+  // "Doom" was given "doom-2" because another entity held "doom"; changing
+  // the title's case keeps its base, so it keeps its address.
   it("keeps the current slug when the title's base has not moved", async () => {
     const client = {
       query: vi.fn(async (_text: string, _values?: unknown[]) => ({
-        rows: [{ slug: "doom-2" }],
+        rows: [{ slug: "doom-2", title: "Doom" }],
       })),
     };
 
     await expect(
-      resolveSlugForUpdate(client, NEWS, "Doom", 3),
+      resolveSlugForUpdate(client, NEWS, "DOOM", 3),
     ).resolves.toBe("doom-2");
 
     // One query: the current slug. Nothing is re-resolved.
     expect(client.query).toHaveBeenCalledTimes(1);
+  });
+
+  /**
+   * "quake-2" is "quake" plus a suffix, and it is also what "Quake 2"
+   * slugifies to. Read as a suffix, renaming "Quake 2" to "Quake" kept
+   * /quake-2, and a real "Quake 2" added later was pushed to /quake-2-2.
+   */
+  it("moves when the number was part of the old title, not a suffix", async () => {
+    const client = {
+      query: vi
+        .fn()
+        .mockResolvedValueOnce({ rows: [{ slug: "quake-2", title: "Quake 2" }] })
+        .mockResolvedValueOnce({ rows: [] }),
+    };
+
+    await expect(
+      resolveSlugForUpdate(client, NEWS, "Quake", 3),
+    ).resolves.toBe("quake");
   });
 
   it("re-resolves when the title's base genuinely changes", async () => {

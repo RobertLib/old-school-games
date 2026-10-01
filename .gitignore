@@ -75,12 +75,12 @@ web_modules/
 # Yarn Integrity file
 .yarn-integrity
 
-# dotenv environment variable files
+# dotenv environment variable files — every variant, so a ".env.production"
+# or a ".env.bak" is not one `git add .` away from the repository. The
+# template is the one that belongs in it.
 .env
-.env.development.local
-.env.test.local
-.env.production.local
-.env.local
+.env.*
+!.env.example
 
 # parcel-bundler cache (https://parceljs.org/)
 .cache

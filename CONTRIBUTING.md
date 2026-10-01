@@ -9,7 +9,7 @@ is only the short path through it.
 Node 24 and a PostgreSQL, then:
 
 ```bash
-nvm use            # .nvmrc says 24; "engines" is "^24" and .npmrc makes it strict
+nvm use            # .nvmrc says 24; "engines" is "^24.15.0" and .npmrc makes it strict
 npm install
 createdb old_school_games
 cp .env.example .env

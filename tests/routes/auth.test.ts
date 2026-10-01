@@ -1333,6 +1333,41 @@ describe("the device cookie and the account-wide backstop", () => {
     expect(response.status).toBe(429);
   });
 
+  /**
+   * A password reset revokes the device cookies issued before it, as it ends
+   * the sessions: the account's credential is inside the MAC, and the reset
+   * stores a new hash. Before, a login made once with a phished password kept
+   * a cookie that skipped this backstop for a year after the reset.
+   */
+  it("does not lift it for a cookie issued before the password was reset", async () => {
+    const device = await deviceFrom("192.0.2.25");
+
+    admin.password = "the hash after the reset";
+
+    try {
+      await lockAccount();
+
+      const response = await attempt("203.0.113.5", RIGHT, { device });
+
+      expect(response.status).toBe(429);
+    } finally {
+      admin.password = "stored-hash";
+    }
+  });
+
+  // The account is looked up for the device check and again by the handler;
+  // accountOf in routes/auth.ts makes that one query, not two.
+  it("looks the account up once for a login that presents a device cookie", async () => {
+    const device = await deviceFrom("192.0.2.26");
+
+    vi.mocked(User.findByEmail).mockClear();
+
+    const response = await attempt("203.0.113.6", RIGHT, { device });
+
+    expect(response.status).toBe(302);
+    expect(User.findByEmail).toHaveBeenCalledTimes(1);
+  });
+
   it("does not lift it for a cookie whose signature has been altered", async () => {
     const device = await deviceFrom("192.0.2.30");
     const last = device.at(-1) === "0" ? "1" : "0";

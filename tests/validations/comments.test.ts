@@ -427,6 +427,48 @@ describe("Comment Validations", () => {
       }
     });
 
+    /**
+     * trim() leaves these where it finds them, so each used to be stored as a
+     * comment that draws nothing — an empty box on the game page, on
+     * /comments and in the sidebar. The nick already had this test.
+     */
+    it("should reject content that draws nothing", () => {
+      for (const content of [
+        "\u200b",
+        "\u3164",
+        "\u2800\u2800",
+        "\u200b\u200b<b></b>",
+        "\u00ad\ufeff",
+      ]) {
+        vi.clearAllMocks();
+
+        mockReq.body = { nick: "TestUser", content, gameId: "1" };
+
+        validateComment(mockReq as Request, mockRes as Response, mockNext);
+
+        expect(mockRes.status).toHaveBeenCalledWith(400);
+        expect(mockRes.json).toHaveBeenCalledWith({
+          error: "Content is required",
+        });
+        expect(mockNext).not.toHaveBeenCalled();
+      }
+    });
+
+    // One visible character is enough, and the invisible ones around it are
+    // kept: a zero-width joiner is what makes an emoji family one glyph.
+    it("should keep content with something visible in it exactly as typed", () => {
+      for (const content of ["👨\u200d👩\u200d👧", "\u200bok", "\u3164:)"]) {
+        vi.clearAllMocks();
+
+        mockReq.body = { nick: "TestUser", content, gameId: "1" };
+
+        validateComment(mockReq as Request, mockRes as Response, mockNext);
+
+        expect(mockNext).toHaveBeenCalled();
+        expect(mockReq.body.content).toBe(content);
+      }
+    });
+
     // Dropping tags is how the emptiness check above works, but it must not
     // touch what gets stored: "< b >" is a run of ordinary characters here,
     // not a tag, and stripping it would eat the middle of the sentence.

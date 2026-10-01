@@ -28,10 +28,19 @@ import { deriveKey } from "./session-secret.ts";
  * around those.
  *
  * Stateless: the value is a random nonce, the moment it was issued and a MAC
- * over both and the account, so there is no table of issued cookies to keep
- * and nothing to look up. The account is bound through the MAC rather than
- * written into the value, so the cookie does not carry an identifier derived
- * from anyone's e-mail address.
+ * over both, the account and the account's current credential, so there is no
+ * table of issued cookies to keep. The account is bound through the MAC rather
+ * than written into the value, so the cookie does not carry an identifier
+ * derived from anyone's e-mail address.
+ *
+ * The credential is what a password reset revokes them with. It is the one
+ * utils/session-credential.ts derives from the stored hash, and a reset always
+ * stores a new hash, so every device cookie issued before it stops verifying
+ * at that moment — the same way every session opened before it does. Without
+ * it, somebody who had logged in once with a phished password kept, for a
+ * year after the reset, a cookie that skipped the account-wide backstop and
+ * had its hashing put first in the queue; only rotating SESSION_SECRET
+ * revoked it.
  */
 
 const SECURE = process.env.NODE_ENV === "production";
@@ -83,19 +92,38 @@ const VALUE_PATTERN = /^([0-9a-f]{32})\.([1-9][0-9]{0,11})\.([0-9a-f]{64})$/;
 /**
  * Its own key, derived from SESSION_SECRET for this purpose alone: a MAC
  * minted here verifies as nothing else, and nothing else as one of these.
+ *
+ * v2 since the credential went into the MAC. Every v1 cookie stopped
+ * verifying on that deploy, which costs its owner nothing until the account
+ * is under attack, and the next successful login issues a v2 one.
  */
-const KEY = deriveKey("login device cookie v1");
+const KEY = deriveKey("login device cookie v2");
 
-function mac(account: string, nonce: string, issuedAt: number): string {
+function mac(
+  account: string,
+  credential: string,
+  nonce: string,
+  issuedAt: number,
+): string {
   return crypto
     .createHmac("sha256", KEY)
-    .update(`${account}.${nonce}.${issuedAt}`)
+    .update(`${account}.${credential}.${nonce}.${issuedAt}`)
     .digest("hex");
 }
 
 /**
+ * Whether the request carries a device cookie at all — what lets the login
+ * skip looking the account up for the device check when there is nothing to
+ * check.
+ */
+export function presentsDeviceCookie(req: Request): boolean {
+  return readCookie(req.headers.cookie, DEVICE_COOKIE) !== null;
+}
+
+/**
  * Hands the browser a fresh device cookie for `account` — the same account key
- * the login limiters count by.
+ * the login limiters count by — under the account's current `credential`
+ * (credentialOf its stored password hash).
  *
  * Fresh every time, rather than the existing one kept: the term runs from the
  * last login, and a new nonce means a cookie that has been failing on some
@@ -113,12 +141,14 @@ function mac(account: string, nonce: string, issuedAt: number): string {
 export function issueDeviceCookie(
   res: Response,
   account: string,
+  credential: string,
   now: number = Date.now(),
 ): void {
   const nonce = crypto.randomBytes(NONCE_BYTES).toString("hex");
   const issuedAt = Math.floor(now / 1000);
+  const value = `${nonce}.${issuedAt}.${mac(account, credential, nonce, issuedAt)}`;
 
-  res.cookie(DEVICE_COOKIE, `${nonce}.${issuedAt}.${mac(account, nonce, issuedAt)}`, {
+  res.cookie(DEVICE_COOKIE, value, {
     httpOnly: true,
     secure: SECURE,
     sameSite: "strict",
@@ -128,15 +158,18 @@ export function issueDeviceCookie(
 }
 
 /**
- * The nonce of a device cookie this server issued for `account` and whose
- * term has not run out, or null for anything else — no cookie, a mangled one,
- * one for a different account, one from a different SESSION_SECRET.
+ * The nonce of a device cookie this server issued for `account` under its
+ * current `credential` and whose term has not run out, or null for anything
+ * else — no cookie, a mangled one, one for a different account, one issued
+ * before the account's password was last reset, one from a different
+ * SESSION_SECRET.
  *
  * The nonce is what the device's own failure budget is keyed by.
  */
 export function recognisedDevice(
   req: Request,
   account: string,
+  credential: string,
   now: number = Date.now(),
 ): string | null {
   const value = readCookie(req.headers.cookie, DEVICE_COOKIE);
@@ -162,7 +195,7 @@ export function recognisedDevice(
   // Both sides are 32 bytes — the pattern above fixes the presented one — so
   // timingSafeEqual cannot throw on a length mismatch.
   const valid = crypto.timingSafeEqual(
-    Buffer.from(mac(account, nonce, issuedAt), "hex"),
+    Buffer.from(mac(account, credential, nonce, issuedAt), "hex"),
     Buffer.from(presented, "hex"),
   );
 

@@ -34,7 +34,7 @@
   "author": "Robert Libsansky",
   "license": "MIT",
   "engines": {
-    "node": "^24"
+    "node": "^24.15.0"
   },
   "dependencies": {
     "compression": "^1.8.1",

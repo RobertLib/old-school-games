@@ -14,8 +14,10 @@ import { endSession } from "../utils/session-cookie.ts";
 import { credentialOf } from "../utils/session-credential.ts";
 import {
   issueDeviceCookie,
+  presentsDeviceCookie,
   recognisedDevice,
 } from "../utils/device-cookie.ts";
+import { foldEmail } from "../utils/email.ts";
 import { issueCsrfSecret } from "../middlewares/csrf.ts";
 import "../types/session.ts";
 import crypto from "crypto";
@@ -27,18 +29,18 @@ const router = express.Router();
  *
  * Hashed rather than stored as typed: the "rate_limits" table is not the
  * place to keep a list of the addresses people have tried to log in as, and
- * a fixed 64 characters cannot overflow the key column. Lower-cased and
- * trimmed first, because that is how User.findByEmail matches it — a caller
- * rotating the case of one address is still hitting one account.
+ * a fixed 64 characters cannot overflow the key column. Folded by foldEmail
+ * first, the very function User.findByEmail folds the typed address with — a
+ * caller rotating the case of one address is still hitting one account, and
+ * no spelling reaches an account through a key of its own (see
+ * utils/email.ts).
  *
  * It is also what a device cookie is bound to (see utils/device-cookie.ts),
  * so the cookie and the limiters cannot disagree about which account an
  * attempt is at.
  */
 function accountKey(req: express.Request): string {
-  const email = String(req.body?.email ?? "")
-    .trim()
-    .toLowerCase();
+  const email = foldEmail(String(req.body?.email ?? ""));
 
   return crypto.createHash("sha256").update(email).digest("hex");
 }
@@ -76,21 +78,59 @@ function clientKey(req: express.Request): string {
 }
 
 /**
- * The device cookie a login attempt presents for the account it names, or
- * null — read once per request and remembered, because two limiters below
- * ask for it.
+ * The account a login attempt names, looked up once per request and
+ * remembered: the device check below needs its credential before the limiters
+ * decide, and the handler needs the account itself afterwards — one query
+ * between them, not two.
  *
- * Only for the account named: a cookie issued to one account says nothing
- * about an attempt at another, which is what binding the account into the MAC
- * is for.
+ * Only asked for once hasEmail has said the address is a non-empty string.
  */
-const recognised = new WeakMap<express.Request, string | null>();
+const accounts = new WeakMap<express.Request, Promise<User | null>>();
 
-function deviceOf(req: express.Request): string | null {
+function accountOf(req: express.Request): Promise<User | null> {
+  let account = accounts.get(req);
+
+  if (account === undefined) {
+    account = User.findByEmail(req.body.email);
+    accounts.set(req, account);
+  }
+
+  return account;
+}
+
+/**
+ * The device cookie a login attempt presents for the account it names, or
+ * null — worked out once per request and remembered, because two limiters
+ * below ask for it.
+ *
+ * Only for the account named, and only under its current credential: a cookie
+ * issued to one account says nothing about an attempt at another, and one
+ * issued before the account's password was reset says nothing at all — see
+ * utils/device-cookie.ts. That needs the account's stored hash, so a request
+ * that does present a cookie looks the account up here, ahead of the
+ * limiters; one that presents none, which is every attempt but an owner's,
+ * costs no query. An account that does not exist has no device.
+ *
+ * A failed lookup rejects, and express-rate-limit hands that to next() — a
+ * 500, failing closed like the limiters' own store errors below.
+ */
+const recognised = new WeakMap<express.Request, Promise<string | null>>();
+
+async function recogniseDevice(req: express.Request): Promise<string | null> {
+  if (!hasEmail(req) || !presentsDeviceCookie(req)) return null;
+
+  const account = await accountOf(req);
+
+  if (!account) return null;
+
+  return recognisedDevice(req, accountKey(req), credentialOf(account.password));
+}
+
+function deviceOf(req: express.Request): Promise<string | null> {
   let nonce = recognised.get(req);
 
   if (nonce === undefined) {
-    nonce = hasEmail(req) ? recognisedDevice(req, accountKey(req)) : null;
+    nonce = recogniseDevice(req);
     recognised.set(req, nonce);
   }
 
@@ -207,12 +247,12 @@ const deviceLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
   limit: 10,
   skipSuccessfulRequests: true,
-  keyGenerator: (req) =>
+  keyGenerator: async (req) =>
     crypto
       .createHash("sha256")
-      .update(deviceOf(req) ?? "")
+      .update((await deviceOf(req)) ?? "")
       .digest("hex"),
-  skip: (req) => deviceOf(req) === null,
+  skip: async (req) => (await deviceOf(req)) === null,
   message: "Too many login attempts for this account, please try again later.",
   standardHeaders: true,
   legacyHeaders: false,
@@ -262,7 +302,7 @@ const accountLimiter = rateLimit({
   limit: 200,
   skipSuccessfulRequests: true,
   keyGenerator: accountKey,
-  skip: (req) => !hasEmail(req) || deviceOf(req) !== null,
+  skip: async (req) => !hasEmail(req) || (await deviceOf(req)) !== null,
   message: "Too many login attempts for this account, please try again later.",
   standardHeaders: true,
   legacyHeaders: false,
@@ -351,12 +391,17 @@ router.post(
       });
     }
 
-    const user = await User.findByEmail(email);
+    // The lookup the device check may already have made — see accountOf.
+    const user = await accountOf(req);
 
     let valid: boolean;
 
     try {
-      valid = await checkPassword(user, password, deviceOf(req) !== null);
+      valid = await checkPassword(
+        user,
+        password,
+        (await deviceOf(req)) !== null,
+      );
     } catch (error) {
       if (!(error instanceof PasswordHashingBusyError)) throw error;
 
@@ -435,7 +480,7 @@ router.post(
       // This browser has now signed in to this account, which is what the
       // account-wide backstop lets it skip on a later attempt — see
       // utils/device-cookie.ts and accountLimiter above.
-      issueDeviceCookie(res, accountKey(req));
+      issueDeviceCookie(res, accountKey(req), userData.credential);
 
       // Saved before the redirect, not by express-session on the way out.
       // Its res.end wrapper writes the status line and headers first and only

@@ -210,6 +210,16 @@ describe("write-through cache invalidation", () => {
     expect(clearFeedCache).not.toHaveBeenCalled();
   });
 
+  // The same guard for a comment: a delete that matched nothing used to bump
+  // the shared epoch anyway, emptying the comment widgets on every machine.
+  it("tells nobody anything when a comment delete matched no row", async () => {
+    mockDb.query.mockResolvedValue({ rows: [], rowCount: 0 } as any);
+
+    await expect(Comment.delete(1)).resolves.toBe(false);
+
+    expect(bumpCacheEpoch).not.toHaveBeenCalled();
+  });
+
   /**
    * Which scope a write tells the other machines about — see
    * utils/cache-epoch.ts. There used to be one counter for the whole app, so

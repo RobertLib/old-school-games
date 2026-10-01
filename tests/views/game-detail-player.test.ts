@@ -207,3 +207,65 @@ describe("the player frame on a player origin of its own", () => {
     expect(iframe.getAttribute("allow")).toBe("fullscreen; gamepad; autoplay");
   });
 });
+
+/**
+ * Alt+Enter, relayed from the page into the frame by the inline script in
+ * game-detail.ejs — run here for real, against a frame on each origin.
+ *
+ * On this site the call is exactly what it always was. On a player origin of
+ * its own the frame gets no user activation from a keypress in the page, so
+ * its requestFullscreen() was refused; the message now delegates it.
+ */
+describe("the Alt+Enter relay", () => {
+  async function relay(
+    frameSrc: string,
+  ): Promise<{ calls: unknown[][] }> {
+    const html = await renderDetail(MEDIA_BUNDLE);
+    const dom = new JSDOM(html, { url: `${SITE_URL}/doom`, runScripts: "outside-only" });
+    const { window } = dom;
+    const script = [...window.document.querySelectorAll("script[nonce]")]
+      .map((element) => element.textContent ?? "")
+      .find((text) => text.includes("clickFullscreen"))!;
+
+    // The frame game-player.js would have built. The <noscript> fallback is
+    // parsed as markup here (scripts only run from outside), so it is taken
+    // out first — the relay addresses the first frame on the page.
+    window.document
+      .querySelectorAll(".game-detail-stream")
+      .forEach((element) => element.remove());
+
+    const iframe = window.document.createElement("iframe");
+    iframe.className = "game-detail-stream";
+    iframe.src = frameSrc;
+    window.document.body.appendChild(iframe);
+
+    const calls: unknown[][] = [];
+    Object.defineProperty(iframe, "contentWindow", {
+      value: { postMessage: (...args: unknown[]) => calls.push(args) },
+    });
+
+    window.eval(script);
+    window.document.body.dispatchEvent(
+      new window.KeyboardEvent("keydown", { key: "Enter", altKey: true, bubbles: true }),
+    );
+
+    return { calls };
+  }
+
+  it("posts to a same-origin player exactly as before", async () => {
+    const { calls } = await relay(`${SITE_URL}/js-dos.html?v=1`);
+
+    expect(calls).toEqual([[{ action: "clickFullscreen" }, new URL(SITE_URL).origin]]);
+  });
+
+  it("delegates fullscreen to a player on an origin of its own", async () => {
+    const { calls } = await relay(`${PLAYER}/js-dos.html?v=1`);
+
+    expect(calls).toEqual([
+      [
+        { action: "clickFullscreen" },
+        { targetOrigin: PLAYER, delegate: "fullscreen" },
+      ],
+    ]);
+  });
+});

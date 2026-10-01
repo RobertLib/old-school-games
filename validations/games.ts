@@ -180,8 +180,11 @@ const LOADABLE_ORIGINS = new Set(
 /**
  * An address a link may point at: a path on this site, or http(s) anywhere.
  * What "manual" is — an href, which the page never loads itself.
+ *
+ * Exported for Game.findBySlug, which asks it again of the stored value on
+ * the way to the page — see there.
  */
-function isLinkAddress(value: string): boolean {
+export function isLinkAddress(value: string): boolean {
   if (CONTROL_CHARS.test(value) || BACKSLASH.test(value)) return false;
 
   return isSitePath(value) || parseHttpUrl(value) !== null;

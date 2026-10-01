@@ -2,7 +2,28 @@ import crypto from "crypto";
 import { type Request, type Response, type NextFunction } from "express";
 import { readCookie } from "../utils/cookies.ts";
 
-export const VOTER_COOKIE = "osg_vid";
+/**
+ * The name the cookie had before it carried a prefix, and still has outside
+ * production.
+ */
+export const LEGACY_VOTER_COOKIE = "osg_vid";
+
+/**
+ * "__Host-" in production, as the CSRF cookie has (middlewares/csrf.ts).
+ * Without it, code on any subdomain of the site — a PLAYER_ORIGIN such as
+ * play.oldschoolgames.eu is exactly that — could set an "osg_vid" for the
+ * whole domain and hand a visitor an id of its choosing, which is their
+ * ratings. A browser accepts a "__Host-" cookie only from the host itself,
+ * over HTTPS and for Path=/, so a subdomain cannot plant one. The prefix
+ * requires Secure, so development over HTTP keeps the bare name.
+ */
+function voterCookieName(secure: boolean): string {
+  return secure ? `__Host-${LEGACY_VOTER_COOKIE}` : LEGACY_VOTER_COOKIE;
+}
+
+export const VOTER_COOKIE = voterCookieName(
+  process.env.NODE_ENV === "production",
+);
 
 const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
 const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
@@ -30,7 +51,27 @@ const UUID_PATTERN =
  * guessed or read) but that a new one is free.
  */
 export function voterId(req: Request, res: Response, next: NextFunction): void {
-  let id = readCookie(req.headers.cookie, VOTER_COOKIE);
+  const secure = process.env.NODE_ENV === "production";
+  const name = voterCookieName(secure);
+  let id = readCookie(req.headers.cookie, name);
+
+  /**
+   * The id a browser was given under the old name, carried over to the new
+   * one — every visitor until the prefix was added holds only that, and
+   * minting them a fresh id would be every rating they have left, gone.
+   *
+   * Read only when the prefixed cookie is missing, so once a browser has one
+   * an "osg_vid" planted from a subdomain changes nothing. The old cookie is
+   * not cleared: a rollback to an image that reads only "osg_vid" would
+   * otherwise find nobody's id. It is no longer refreshed, so it runs out a
+   * year after the visitor's last visit before this change, and this fallback
+   * can go then.
+   */
+  if ((!id || !UUID_PATTERN.test(id)) && name !== LEGACY_VOTER_COOKIE) {
+    const legacy = readCookie(req.headers.cookie, LEGACY_VOTER_COOKIE);
+
+    if (legacy && UUID_PATTERN.test(legacy)) id = legacy;
+  }
 
   if (!id || !UUID_PATTERN.test(id)) {
     // Minted on safe methods only. The cookie is SameSite=Lax, so a top-level
@@ -69,11 +110,14 @@ export function voterId(req: Request, res: Response, next: NextFunction): void {
    * and everything below it carries "Cache-Control: private, no-cache" (see
    * app.ts), so there is no shared cache for the header to confuse.
    */
-  res.cookie(VOTER_COOKIE, id, {
+  res.cookie(name, id, {
     maxAge: ONE_YEAR_MS,
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    secure,
+    // Express's default, stated: "__Host-" is refused by the browser without
+    // it.
+    path: "/",
   });
 
   req.voterId = id;

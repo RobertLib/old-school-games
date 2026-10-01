@@ -110,7 +110,30 @@
           // There is no reply, so this page installs no message listener.
           // If one is ever added it must test event.source ===
           // iframe.contentWindow and event.origin against that same origin.
-          iframe.contentWindow.postMessage({ action: 'clickFullscreen' }, new URL(iframe.src).origin);
+          const playerOrigin = new URL(iframe.src).origin;
+
+          if (playerOrigin === window.location.origin) {
+            iframe.contentWindow.postMessage({ action: 'clickFullscreen' }, new URL(iframe.src).origin);
+          } else {
+            // A player on an origin of its own (PLAYER_ORIGIN) gets no part of
+            // this keypress: user activation reaches ancestors and
+            // same-origin frames only, so its requestFullscreen() was refused
+            // and nothing happened. "delegate" hands the activation over with
+            // the message (Capability Delegation), which the frame's
+            // allow="fullscreen" permits. The same-origin call above is left
+            // exactly as it was, because it works.
+            try {
+              iframe.contentWindow.postMessage(
+                { action: 'clickFullscreen' },
+                { targetOrigin: playerOrigin, delegate: 'fullscreen' },
+              );
+            } catch (error) {
+              // A browser that does not take the options form reads the
+              // object as a targetOrigin and throws. Sent plainly, the message
+              // still arrives; only the delegation is lost.
+              iframe.contentWindow.postMessage({ action: 'clickFullscreen' }, playerOrigin);
+            }
+          }
         }
       }
     });

@@ -18,7 +18,12 @@ const router = express.Router();
 // ids, so titles, artwork and ratings are never stale.
 router.get("/collection", async (req, res) => {
   const raw = typeof req.query.ids === "string" ? req.query.ids : "";
-  const ids = raw.split(",").filter(Boolean).slice(0, 100);
+  // Not cut to a hundred here: Game.findByIds keeps the first hundred
+  // *distinct valid* ids. Cut as raw strings, a run of junk or of one id
+  // repeated filled the hundred, and the real ids after it went unanswered —
+  // which favorites.js reads as games that are gone, and deletes. The list
+  // is as long as the query string, which Node's header limit already bounds.
+  const ids = raw.split(",").filter(Boolean);
 
   // No try/catch. Express 5 hands a rejected async handler to the error
   // handler by itself, and app.ts answers this endpoint in JSON with the
@@ -401,7 +406,14 @@ router.post(
     // not a fault. Anything else is rethrown, so app.ts logs the stack and
     // answers the JSON 500 this used to write out by hand.
     try {
-      await Game.rate(id, voterId, rating, ip);
+      // False for a game that is not there: rate() locks the game's row
+      // before it writes the vote (see there), so a missing game is no row
+      // rather than the foreign-key violation handled below — which stays,
+      // for any path that still reaches it.
+      if (!(await Game.rate(id, voterId, rating, ip))) {
+        res.status(404).json({ error: "Game not found" });
+        return;
+      }
 
       const summary = await Game.getRatingSummary(id);
 

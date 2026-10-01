@@ -75,12 +75,14 @@ web_modules/
 # Yarn Integrity file
 .yarn-integrity
 
-# dotenv environment variable files
+# dotenv environment variable files — every one of them, not a list of the
+# names some tool happens to use. This used to name .env and four *.local
+# variants, so a ".env.production" or a ".env.bak" sitting in the working tree
+# went into the build context on a manual `fly deploy`, was copied in by
+# `COPY . .` and could be read by the app's user. .env.example is excluded
+# further down for its own reason, so nothing here needs an exception.
 .env
-.env.development.local
-.env.test.local
-.env.production.local
-.env.local
+.env.*
 
 # parcel-bundler cache (https://parceljs.org/)
 .cache

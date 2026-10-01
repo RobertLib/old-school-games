@@ -329,3 +329,117 @@ describe("0051 — the neighbour index", () => {
     ]);
   });
 });
+
+describe("0057 — voters' addresses out of the legacy voter ids", () => {
+  it("replaces every 'ip:' voter id and leaves browser ids alone", async () => {
+    const gameId = await insertGame("doom");
+    const otherId = await insertGame("quake");
+    const browser = "0f8fad5b-d9cb-469f-a165-70867728950e";
+
+    await pool.query(
+      `INSERT INTO "ratings" ("gameId", "rating", "voterId", "ipAddress")
+       VALUES ($1, 5, 'ip:203.0.113.7', NULL),
+              ($2, 2, 'ip:203.0.113.7', NULL),
+              ($1, 3, $3, '198.51.100.1')`,
+      [gameId, otherId, browser],
+    );
+
+    await run("0057_ratings_legacy_voter_ids.sql");
+
+    const { rows } = await pool.query(
+      `SELECT "id", "gameId", "voterId", "rating" FROM "ratings" ORDER BY "id"`,
+    );
+
+    expect(rows).toEqual([
+      { id: 1, gameId, voterId: "legacy:1", rating: 5 },
+      { id: 2, gameId: otherId, voterId: "legacy:2", rating: 2 },
+      { id: 3, gameId, voterId: browser, rating: 3 },
+    ]);
+    expect(JSON.stringify(rows)).not.toContain("203.0.113.7");
+  });
+
+  // The 0042 trigger fires on this UPDATE; the vote's value and its game are
+  // the same, so the totals must come through exactly as they were.
+  it("leaves the rating totals as they were", async () => {
+    const gameId = await insertGame("doom");
+
+    await pool.query(
+      `INSERT INTO "ratings" ("gameId", "rating", "voterId")
+       VALUES ($1, 5, 'ip:203.0.113.7'), ($1, 1, 'ip:203.0.113.8')`,
+      [gameId],
+    );
+
+    await run("0057_ratings_legacy_voter_ids.sql");
+
+    const { rows } = await pool.query(
+      `SELECT "ratingSum", "ratingCount" FROM "games" WHERE "id" = $1`,
+      [gameId],
+    );
+
+    expect(rows[0]).toEqual({ ratingSum: 6, ratingCount: 2 });
+  });
+
+  it("finds nothing to do the second time", async () => {
+    const gameId = await insertGame("doom");
+
+    await pool.query(
+      `INSERT INTO "ratings" ("gameId", "rating", "voterId")
+       VALUES ($1, 4, 'ip:203.0.113.7')`,
+      [gameId],
+    );
+
+    await run("0057_ratings_legacy_voter_ids.sql");
+    await run("0057_ratings_legacy_voter_ids.sql");
+
+    const { rows } = await pool.query(`SELECT "voterId" FROM "ratings"`);
+
+    expect(rows).toEqual([{ voterId: "legacy:1" }]);
+  });
+});
+
+describe("0058 — 0054's backfill once more", () => {
+  /**
+   * The state an earlier text of 0054 could have left: a live slug missing
+   * from its history. The triggers record every write now, so the row is
+   * taken out of the history directly — "game_slugs" has no trigger of its
+   * own.
+   */
+  it("puts back a live slug missing from its history", async () => {
+    const gameId = await insertGame("quake");
+    const { rows: news } = await pool.query(
+      `INSERT INTO "news" ("title", "slug", "content")
+       VALUES ('Hidden', 'hidden', 'x') RETURNING "id"`,
+    );
+
+    await pool.query(`DELETE FROM "game_slugs" WHERE "gameId" = $1`, [gameId]);
+    await pool.query(`DELETE FROM "news_slugs" WHERE "newsId" = $1`, [
+      news[0].id,
+    ]);
+
+    await run("0058_slug_history_backfill_again.sql");
+
+    const games = await pool.query(`SELECT "gameId", "slug" FROM "game_slugs"`);
+    const articles = await pool.query(
+      `SELECT "newsId", "slug" FROM "news_slugs"`,
+    );
+
+    expect(games.rows).toEqual([{ gameId, slug: "quake" }]);
+    expect(articles.rows).toEqual([{ newsId: news[0].id, slug: "hidden" }]);
+  });
+
+  it("adds nothing where the history is already complete", async () => {
+    await insertGame("doom");
+
+    const before = await pool.query(
+      `SELECT "id", "gameId", "slug" FROM "game_slugs" ORDER BY "id"`,
+    );
+
+    await run("0058_slug_history_backfill_again.sql");
+
+    const after = await pool.query(
+      `SELECT "id", "gameId", "slug" FROM "game_slugs" ORDER BY "id"`,
+    );
+
+    expect(after.rows).toEqual(before.rows);
+  });
+});

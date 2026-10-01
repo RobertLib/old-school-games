@@ -373,6 +373,42 @@ describe("Game Model", () => {
 
       expect(result).toBeNull();
     });
+
+    /**
+     * The game page prints "manual" as an href, and validateGame checks it
+     * only on the way in. A row written by hand or by SQL import reached the
+     * page as stored — so a "javascript:" value was a link that runs script
+     * on this origin. It is asked again here, as the description is
+     * sanitized again.
+     */
+    it.each([
+      ["a javascript: address", "javascript:alert(document.cookie)", null],
+      ["a data: address", "data:text/html,<script>alert(1)</script>", null],
+      ["a protocol-relative address", "//evil.example/manual.pdf", null],
+      ["an http(s) address", "https://example.com/doom.pdf", "https://example.com/doom.pdf"],
+      ["a path on this site", "/manuals/doom.pdf", "/manuals/doom.pdf"],
+      // Stored before the form trimmed, and it worked as a link all along.
+      ["an address with spaces round it", "  https://example.com/doom.pdf ", "https://example.com/doom.pdf"],
+      ["nothing", "", null],
+    ])("shows the manual link only when it is a link: %s", async (_label, manual, expected) => {
+      (mockDb.query as any).mockResolvedValueOnce({
+        rows: [
+          {
+            id: 1,
+            title: "Doom",
+            slug: "doom",
+            genre: "ACTION",
+            manual,
+            averageRating: "0",
+            ratingCount: "0",
+          },
+        ],
+      });
+
+      const result = await Game.findBySlug("doom");
+
+      expect(result?.manual).toBe(expected);
+    });
   });
 
   describe("find", () => {
@@ -1993,6 +2029,22 @@ describe("Game Model", () => {
       await Game.findByIds(Array.from({ length: 150 }, (_, i) => i + 1));
 
       expect((mockDb.query as any).mock.calls[0][1][0]).toHaveLength(100);
+    });
+
+    // The hundred are distinct valid ids. Counted before junk and repeats
+    // were dropped, a run of either filled it, and the real ids after it went
+    // unanswered — which favorites.js reads as games that are gone.
+    it("takes its hundred from the distinct valid ids", async () => {
+      (mockDb.query as any).mockResolvedValueOnce({ rows: [] });
+
+      await Game.findByIds([
+        ...Array.from({ length: 150 }, () => "1"),
+        ...Array.from({ length: 150 }, () => "junk"),
+        "2",
+        "3",
+      ]);
+
+      expect((mockDb.query as any).mock.calls[0][1][0]).toEqual([1, 2, 3]);
     });
   });
 

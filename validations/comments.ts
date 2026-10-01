@@ -283,7 +283,14 @@ export const validateComment = (
   // checks above and would be stored as a comment with nothing in it. Tags
   // are dropped for this test only, never from what gets stored: doing it to
   // the stored value would eat the "< b >" out of an ordinary "a < b > c".
-  if (content.replace(/<[^>]*>/g, "").trim().length === 0) {
+  //
+  // And content that draws nothing, by the same VISIBLE test the nick gets.
+  // trim() was the whole test, and it leaves a zero-width space, a Hangul
+  // filler or a blank Braille cell where it found them — so "\u200b" was
+  // stored as a comment, an empty box on the game page, on /comments and in
+  // the "Latest comments" sidebar on every page. Nothing is stripped: a
+  // comment with one visible character in it is kept exactly as typed.
+  if (!VISIBLE.test(content.replace(/<[^>]*>/g, ""))) {
     return reject(req, res, "Content is required");
   }
 

@@ -755,7 +755,19 @@ app.use((req, res, next) => {
 
   // Every trailing slash, not just the last: "/doom///" is the same page too,
   // and it 404s today rather than resolving.
-  const target = pathname.replace(/\/+$/, "");
+  //
+  // A loop, not `replace(/\/+$/, "")`. That regex is quadratic on a run of
+  // slashes that is *not* at the end: V8 tries a match from every slash in
+  // the run, each one scans to the end of the run and fails on the next
+  // character. "/a" + 15,500 slashes + "b/" fits under Node's header limit
+  // and took ~75 ms of event loop per request — answered here, above the
+  // access log and the global limiter, so a few of those a second stalled the
+  // machine and nothing recorded who sent them.
+  let end = pathname.length;
+
+  while (end > 1 && pathname.charCodeAt(end - 1) === 0x2f) end--;
+
+  const target = pathname.slice(0, end);
 
   return res.redirect(301, `${target}${query}`);
 });
@@ -1503,6 +1515,24 @@ app.use(session(sessionOptions));
 // test that mounts the app reaches the store the app is actually using rather
 // than a second one built by importing this module again.
 app.locals.sessionStore = sessionStore;
+
+// A signed-in page is not stored at all, not even by the browser that asked
+// for it. "no-cache" above still lets the browser keep a copy — revalidated
+// before reuse, but Back and the back/forward cache show it without asking —
+// so on a shared machine, after the admin had logged out, Back brought the
+// edit forms back with the game or the article filled in. "no-store" keeps
+// both out, and the page is fetched again as whoever is there now.
+//
+// Only for a session with a user in it. Every other response keeps
+// "no-cache": "no-store" also keeps a page out of the back/forward cache, and
+// an ordinary visitor's Back has nothing in it worth that price.
+app.use((req, res, next) => {
+  if (req.session?.user) {
+    res.setHeader("Cache-Control", "private, no-store");
+  }
+
+  next();
+});
 
 app.use(flash);
 

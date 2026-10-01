@@ -350,11 +350,30 @@ export async function resolveSlugForUpdate(
   const current: unknown = rows[0]?.slug;
   const currentTitle: unknown = rows[0]?.title;
 
+  /**
+   * The base the current title slugifies to, which the suffix test also has
+   * to agree with.
+   *
+   * slugSharesBase alone cannot tell a collision suffix from a number that is
+   * part of the title: "quake-2" is "quake" with a suffix, and it is also
+   * what "Quake 2" slugifies to. So renaming "Quake 2" to "Quake" kept
+   * /quake-2 — and a real "Quake 2" added later got /quake-2-2, because the
+   * first game's history holds "quake-2": the canonical address of each game
+   * named the other. A suffix is a suffix only if the old title had the same
+   * base as the new one. A row with no title to read keeps the test as it
+   * was.
+   */
+  const currentBase =
+    typeof currentTitle === "string"
+      ? slugify(currentTitle) || config.fallbackBase
+      : null;
+
   if (
     typeof current === "string" &&
     ((typeof currentTitle === "string" &&
       currentTitle.trim() === title.trim()) ||
-      slugSharesBase(current, base))
+      (slugSharesBase(current, base) &&
+        (currentBase === null || currentBase === base)))
   ) {
     return current;
   }

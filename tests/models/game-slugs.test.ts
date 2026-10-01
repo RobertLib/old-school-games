@@ -224,6 +224,21 @@ describe("Game slugs", () => {
     expect((await Game.findById(id))?.slug).toBe("doom-ii");
     expect(await Game.findCurrentSlug("doom")).toBe("doom-ii");
   });
+
+  /**
+   * "quake-2" reads as "quake" with a collision suffix, and it is also what
+   * "Quake 2" slugifies to. Taken for a suffix, the rename kept /quake-2 as
+   * the canonical address of a game called "Quake". The old address still
+   * redirects to it, as every retired slug does.
+   */
+  it("moves when the number it drops was part of the title", async () => {
+    const { id } = await create("Quake 2");
+
+    await Game.update(id, { title: "Quake", genre: "ACTION" });
+
+    expect((await Game.findById(id))?.slug).toBe("quake");
+    expect(await Game.findCurrentSlug("quake-2")).toBe("quake");
+  });
 });
 
 describe("Game slugs — fixes from the review", () => {

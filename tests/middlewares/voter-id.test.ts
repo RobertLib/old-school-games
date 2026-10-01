@@ -1,6 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { NextFunction, Request, Response } from "express";
-import { VOTER_COOKIE, voterId } from "../../middlewares/voter-id.ts";
+import {
+  LEGACY_VOTER_COOKIE,
+  VOTER_COOKIE,
+  voterId,
+} from "../../middlewares/voter-id.ts";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 
@@ -154,5 +158,67 @@ describe("voterId", () => {
 
     expect(production.secure).toBe(true);
     expect(development.secure).toBe(false);
+  });
+
+  /**
+   * "__Host-" in production, so a subdomain cannot plant an id for the whole
+   * domain — and every browser that already holds an id under the old name
+   * keeps it, because that id is all of their ratings.
+   */
+  describe("the prefixed name in production", () => {
+    const id = "123e4567-e89b-42d3-a456-426614174000";
+    const other = "0f8fad5b-d9cb-469f-a165-70867728950e";
+
+    function name(cookie: ReturnType<typeof run>["res"]): string {
+      return vi.mocked(cookie.cookie).mock.calls[0]![0] as string;
+    }
+
+    beforeEach(() => {
+      process.env.NODE_ENV = "production";
+    });
+
+    it("mints under __Host-osg_vid, for Path=/", () => {
+      const { res, options } = run(undefined);
+
+      expect(name(res)).toBe("__Host-osg_vid");
+      expect(options()).toEqual(
+        expect.objectContaining({ secure: true, path: "/" }),
+      );
+    });
+
+    it("carries an id held under the old name over to the new one", () => {
+      const { req, res } = run(`${LEGACY_VOTER_COOKIE}=${id}`);
+
+      expect(req.voterId).toBe(id);
+      expect(res.cookie).toHaveBeenCalledWith("__Host-osg_vid", id, expect.anything());
+    });
+
+    it("carries it over on a POST as well, minting nothing", () => {
+      const { req, res } = run(`${LEGACY_VOTER_COOKIE}=${id}`, "POST");
+
+      expect(req.voterId).toBe(id);
+      expect(res.cookie).toHaveBeenCalledWith("__Host-osg_vid", id, expect.anything());
+    });
+
+    // The planted-cookie case: once the browser has the prefixed id, an
+    // "osg_vid" set from a subdomain is not read at all.
+    it("prefers the prefixed id over anything under the old name", () => {
+      const { req } = run(`${LEGACY_VOTER_COOKIE}=${other}; __Host-osg_vid=${id}`);
+
+      expect(req.voterId).toBe(id);
+    });
+
+    it("mints a fresh id when the old one is malformed", () => {
+      const { req } = run(`${LEGACY_VOTER_COOKIE}=' OR 1=1 --`);
+
+      expect(req.voterId).toMatch(UUID);
+    });
+
+    // A rollback to an image that reads only "osg_vid" must still find it.
+    it("leaves the old cookie in place", () => {
+      const { res } = run(`${LEGACY_VOTER_COOKIE}=${id}`);
+
+      expect(res.cookie).toHaveBeenCalledTimes(1);
+    });
   });
 });

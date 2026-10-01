@@ -94,7 +94,7 @@ describe("User Model", () => {
       const result = await User.findByEmail("test@example.com");
 
       expect(mockDb.query).toHaveBeenCalledWith(
-        'SELECT * FROM "users" WHERE LOWER("email") = LOWER($1)',
+        'SELECT * FROM "users" WHERE LOWER("email") = $1',
         ["test@example.com"],
       );
       expect(result).toBeInstanceOf(User);
@@ -118,8 +118,25 @@ describe("User Model", () => {
       await User.findByEmail(email);
 
       expect(mockDb.query).toHaveBeenCalledWith(
-        'SELECT * FROM "users" WHERE LOWER("email") = LOWER($1)',
-        [email],
+        'SELECT * FROM "users" WHERE LOWER("email") = $1',
+        ["test@example.com"],
+      );
+    });
+
+    /**
+     * Folded in JavaScript, by the function the login limiters key on, not by
+     * LOWER($1). Postgres folds "İ" to "i" and JavaScript to "i" plus a
+     * combining dot, so "admİn@…" used to reach the admin's account through
+     * the lookup while counting against a limiter bucket of its own.
+     */
+    it("folds the typed address the way the login limiters do", async () => {
+      (mockDb.query as any).mockResolvedValueOnce({ rows: [] });
+
+      await User.findByEmail("  Admİn@Example.com ");
+
+      expect(mockDb.query).toHaveBeenCalledWith(
+        'SELECT * FROM "users" WHERE LOWER("email") = $1',
+        ["admi\u0307n@example.com"],
       );
     });
   });

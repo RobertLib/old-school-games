@@ -515,6 +515,8 @@ describe("Comments Routes", () => {
         expect(response.body.locals).toEqual({
           noindex: true,
           message: "Too many comments, please try again later.",
+          // What the view heads the page with — see views/400.ejs.
+          status: 429,
         });
       });
 

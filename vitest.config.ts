@@ -95,6 +95,7 @@ export const UNIT_TESTS = [
   "tests/views/media-preconnect.test.ts",
   "tests/views/meta-tags.test.ts",
   "tests/views/pagination-rendering.test.ts",
+  "tests/views/refusal-page-rendering.test.ts",
   "tests/views/share-image-alt.test.ts",
   "tests/views/twitter-card.test.ts",
   /*
@@ -134,6 +135,10 @@ export const UNIT_TESTS = [
   // session keeps, and the secret both derive their keys from. The session
   // store they sit beside is not here — its test drives the real table.
   "tests/utils/device-cookie.test.ts",
+  // The session cookie's name and attributes. The module also ends a session
+  // through req.session, which this does not touch; it imports the logger
+  // and nothing that reaches db.ts.
+  "tests/utils/session-cookie.test.ts",
   "tests/utils/session-credential.test.ts",
   "tests/utils/session-secret.test.ts",
   "tests/utils/expects-json.test.ts",

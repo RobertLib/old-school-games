@@ -42,6 +42,15 @@ updates:
         update-types:
           - version-update:semver-major
           - version-update:semver-minor
+      # Majors only, and for a different reason: @types/node's major is the
+      # Node major it describes, and production runs the one in .nvmrc. With
+      # nothing compiled, typecheck is the only thing that would catch a call
+      # to an API Node 24 does not have — and a @types/node 26 tells it every
+      # such call is fine. Moves with the other four places the Node version is
+      # written (see tests/node-version.test.ts), by hand.
+      - dependency-name: "@types/node"
+        update-types:
+          - version-update:semver-major
 
   # GitHub Actions. superfly/flyctl-actions/setup-flyctl is pinned to a commit
   # SHA on purpose (the reasoning is in fly-deploy.yml, next to the pin);

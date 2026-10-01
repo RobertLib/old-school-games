@@ -59,6 +59,43 @@ describe("Game of the week rollover", () => {
     expect(await GameOfTheWeek.getOrSelectCurrent()).toBeNull();
   });
 
+  // Off the game's own totals now, which the 0042 trigger keeps in step with
+  // every vote — the same numbers the join over "ratings" used to add up.
+  it("reports the pick's rating from its votes", async () => {
+    const gameId = await createGame("Doom");
+
+    await pool.query(
+      `INSERT INTO "ratings" ("gameId", "rating", "voterId")
+       VALUES ($1, 5, 'a'), ($1, 4, 'b'), ($1, 3, 'c')`,
+      [gameId],
+    );
+    await pool.query(
+      `INSERT INTO "game_of_the_week" ("gameId", "startDate", "endDate")
+       VALUES ($1, NOW() - INTERVAL '1 day', NOW() + INTERVAL '6 days')`,
+      [gameId],
+    );
+
+    const current = await GameOfTheWeek.getCurrent();
+
+    expect(current?.game?.averageRating).toBe(4);
+    expect(current?.game?.ratingCount).toBe(3);
+  });
+
+  it("reports an unrated pick as 0 from 0 votes", async () => {
+    const gameId = await createGame("Quake");
+
+    await pool.query(
+      `INSERT INTO "game_of_the_week" ("gameId", "startDate", "endDate")
+       VALUES ($1, NOW() - INTERVAL '1 day', NOW() + INTERVAL '6 days')`,
+      [gameId],
+    );
+
+    const current = await GameOfTheWeek.getCurrent();
+
+    expect(current?.game?.averageRating).toBe(0);
+    expect(current?.game?.ratingCount).toBe(0);
+  });
+
   it("selects a game when no pick is current", async () => {
     const id = await createGame("Alpha");
 

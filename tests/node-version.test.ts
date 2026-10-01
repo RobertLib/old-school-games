@@ -24,7 +24,7 @@ function read(file: string): string {
  * only appears after the tests have gone green.
  *
  * Major only, on purpose. .nvmrc may name an exact release ("24.5.0") while
- * "engines" is a range ("^24") and the image tag is the floating major — those
+ * "engines" is a range ("^24.15.0") and the image tag is the floating major — those
  * are three correct spellings of the same decision, and pinning them to one
  * string would make an ordinary patch bump a four-file change. What must never
  * differ is which major they mean.

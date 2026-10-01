@@ -546,11 +546,24 @@ export default class Comment extends Model {
    * Removes a comment for good. Replies go with it — "parentId" cascades (see
    * 0020_search_ratings_comments.sql) — which is what moderation wants:
    * deleting spam should not leave the answers to it dangling.
+   *
+   * Reports whether there was one, and drops the caches only then — as
+   * Game.delete and deleteSameSource already did. Clearing unconditionally
+   * bumped the shared epoch, and so emptied the comment widgets on every
+   * machine, for a delete that changed nothing: a double-click, or a
+   * moderator acting on a page another moderator had already cleaned up.
    */
-  static async delete(id: number): Promise<void> {
-    await db.query('DELETE FROM "comments" WHERE "id" = $1', [id]);
+  static async delete(id: number): Promise<boolean> {
+    const { rowCount } = await db.query(
+      'DELETE FROM "comments" WHERE "id" = $1',
+      [id],
+    );
 
-    clearCommentCaches();
+    const deleted = (rowCount ?? 0) > 0;
+
+    if (deleted) clearCommentCaches();
+
+    return deleted;
   }
 
   /**

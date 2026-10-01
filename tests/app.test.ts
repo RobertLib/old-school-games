@@ -349,6 +349,23 @@ describe("the assembled app", () => {
       expect(response.headers.location).toBe("/no-such");
     });
 
+    /**
+     * Only the run at the end goes. The trim used to be `/\/+$/`, which is
+     * quadratic on a long run of slashes *inside* the path — ~75 ms of event
+     * loop for one request of this shape at 15,500 slashes — and the
+     * middleware sits above the limiter. The loop that replaced it has to
+     * give the same answer.
+     */
+    it("trims only the trailing run when the path has a long run inside", async () => {
+      const inner = "/".repeat(4000);
+      const response = await request(server)
+        .get(`/a${inner}b//`)
+        .redirects(0);
+
+      expect(response.status).toBe(301);
+      expect(response.headers.location).toBe(`/a${inner}b`);
+    });
+
     it("leaves the root alone", async () => {
       const response = await request(server).get("/").redirects(0);
 
@@ -1882,6 +1899,25 @@ describe("the assembled app", () => {
     });
 
     /**
+     * A player on its own origin is not activated by a keypress in the page
+     * — activation reaches ancestors and same-origin frames only — so its
+     * requestFullscreen() was refused. The message hands the activation over
+     * (Capability Delegation), still addressed to the frame's own origin, and
+     * only in that arrangement: the same-origin call above is unchanged.
+     */
+    it("delegates fullscreen to a player on an origin of its own", async () => {
+      const detail = await readFile(
+        new URL("../views/games/game-detail.ejs", import.meta.url),
+        "utf-8",
+      );
+
+      expect(detail).toContain("if (playerOrigin === window.location.origin)");
+      expect(detail).toContain(
+        "{ targetOrigin: playerOrigin, delegate: 'fullscreen' }",
+      );
+    });
+
+    /**
      * The access log, which is one line per *answered* request rather than
      * one per arriving one.
      *
@@ -2190,6 +2226,21 @@ describe("the admin flow through the assembled app", () => {
 
     expect(response.status).toBe(302);
     expect(response.headers.location).toBe("/login");
+  });
+
+  /**
+   * "private, no-cache" still lets the browser keep the page, and Back after
+   * a logout on a shared machine showed the admin's filled-in edit form.
+   * A signed-in page is not stored at all; a visitor's keeps "no-cache" (see
+   * "cache headers" above), so their back/forward cache still works.
+   */
+  it("keeps a signed-in page out of the browser's cache too", async () => {
+    const { cookie } = await signIn();
+
+    const page = await request(server).get("/games/new").set("Cookie", cookie);
+
+    expect(page.status).toBe(200);
+    expect(page.headers["cache-control"]).toBe("private, no-store");
   });
 
   /**

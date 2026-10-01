@@ -818,6 +818,29 @@ describe("Games Routes", () => {
       expect(response.body.games).toHaveLength(1);
     });
 
+    /**
+     * The real ids at the end of a long list are still answered. They used to
+     * be cut off as raw strings, so a run of one id repeated — what an id
+     * holding commas turned into — pushed them out of the hundred, and the
+     * client then deleted them as games that no longer exist.
+     */
+    it("answers the ids after a long run of repeats or junk", async () => {
+      const id = await seedGame("Doom", "doom");
+      const padding = [
+        ...Array.from({ length: 120 }, () => "1"),
+        ...Array.from({ length: 120 }, () => "x"),
+      ].join(",");
+
+      const response = await request(server).get(
+        `/games/collection?ids=${padding},${id}`,
+      );
+
+      expect(response.status).toBe(200);
+      expect(response.body.games.map((game: { id: number }) => game.id)).toContain(
+        id,
+      );
+    });
+
     it("returns an empty list for a missing or junk ids parameter", async () => {
       expect((await request(server).get("/games/collection")).body.games).toEqual(
         [],

@@ -434,7 +434,7 @@ router.get("/:gameId", commentsReadRateLimit, async (req, res, next) => {
  * validations/comments.ts gives a rejected form, so a visitor with scripts off
  * gets one consistent refusal whichever check turns them away. The status is
  * the caller's, not fixed at 400: a 404, a 409 or a 429 still says what
- * happened, and the view reads as a bad request either way.
+ * happened, and the view heads the page with it.
  *
  * A flash and a redirect would be the other shape, and it is the wrong one
  * here: middlewares/flash.ts only renders for a logged-in admin, and the
@@ -451,7 +451,8 @@ function refuseComment(
     return;
   }
 
-  res.status(status).render("400", { noindex: true, message });
+  // The status goes to the view as well, which heads the page with it.
+  res.status(status).render("400", { noindex: true, message, status });
 }
 
 const commentRateLimit = rateLimit({

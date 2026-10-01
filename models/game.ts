@@ -32,6 +32,9 @@ import {
   sidebarCache,
 } from "../utils/sidebar-cache.ts";
 import { sanitizeHtml } from "../utils/sanitize-html.ts";
+// The test the admin form applies to the manual link, asked again on the way
+// out — see findBySlug.
+import { isLinkAddress } from "../validations/games.ts";
 import {
   type SlugConfig,
   findFirstSlugs,
@@ -1171,10 +1174,14 @@ export default class Game extends Model {
     // "12abc" as 12, and accepted ids far past what an "integer" column can
     // store — which came back from Postgres as a range error, so one junk
     // entry in someone's favourites answered the whole request with a 500.
-    const numericIds = ids
-      .map((id) => parseId(id))
-      .filter((id): id is number => id !== null)
-      .slice(0, 100);
+    //
+    // Distinct before the hundred is taken, so a repeated id costs one place
+    // rather than one per repetition.
+    const numericIds = [
+      ...new Set(
+        ids.map((id) => parseId(id)).filter((id): id is number => id !== null),
+      ),
+    ].slice(0, 100);
 
     if (numericIds.length === 0) return [];
 
@@ -1463,6 +1470,23 @@ export default class Game extends Model {
       game.description = sanitizeHtml(game.description);
     }
 
+    // The manual link, for the same reason: validateGame refuses anything but
+    // a path on this site or an http(s) address, but only on the way in, and
+    // views/games/game-detail.ejs prints it as an href. A "javascript:" value
+    // that reached the row by hand or by SQL import would have rendered as a
+    // link that runs script on this origin when clicked. Escaping does
+    // nothing for that — it is a scheme, not markup — so a value that is not
+    // a link is not shown at all.
+    //
+    // Trimmed first, as validateGame trims before it checks: a row stored
+    // before the form trimmed still worked as an href (a browser strips the
+    // spaces itself) and must not disappear over them.
+    if (typeof game.manual === "string") {
+      const manual = game.manual.trim();
+
+      game.manual = manual && isLinkAddress(manual) ? manual : null;
+    }
+
     return game;
   }
 
@@ -1717,19 +1741,53 @@ export default class Game extends Model {
     return deleted;
   }
 
+  /**
+   * Records a vote, or changes the one this voter already cast. False when
+   * there is no such game — the route answers that with a 404.
+   *
+   * The game's row is locked first, in the same statement, and that order is
+   * the point. A changed vote is the upsert's DO UPDATE path: it locks the
+   * rating row, and then the trigger from 0042 needs the game's row to move
+   * the totals. Game.delete takes those two the other way round — the game's
+   * row, then the rating rows its ON DELETE CASCADE removes. A re-vote and a
+   * delete of the same game at the same moment each held what the other was
+   * waiting for, and Postgres aborted one of them with a deadlock: the voter
+   * got a 500. Taking the game's row before anything else puts both in one
+   * order, so one simply waits for the other.
+   *
+   * FOR NO KEY UPDATE, the lock the trigger's own UPDATE takes anyway, so a
+   * vote waits for nothing it did not already wait for: votes on one game
+   * were already queued on that row by the trigger, and the foreign-key check
+   * of a first vote elsewhere takes KEY SHARE, which this does not block.
+   *
+   * A game that is not there — or that a delete removed while this waited —
+   * selects no row, so nothing is inserted and the answer is false. It used
+   * to surface as the foreign-key violation the route still also handles.
+   */
   static async rate(
     id: number,
     voterId: string,
     rating: number,
     ip?: string,
-  ): Promise<void> {
-    await db.query(
-      `INSERT INTO "ratings" ("gameId", "voterId", "ipAddress", "rating")
-       VALUES ($1, $2, $3, $4)
+  ): Promise<boolean> {
+    const { rowCount } = await db.query(
+      // Cast where they are selected: a parameter in a SELECT list has no
+      // column to take its type from, as it did in VALUES, and would arrive
+      // as text. EXCLUDED rather than $3 and $4 again in DO UPDATE, so each
+      // parameter is typed in one place.
+      `WITH game AS (
+         SELECT "id" FROM "games" WHERE "id" = $1 FOR NO KEY UPDATE
+       )
+       INSERT INTO "ratings" ("gameId", "voterId", "ipAddress", "rating")
+       SELECT "id", $2::varchar, $3::varchar, $4::int FROM game
        ON CONFLICT ("gameId", "voterId")
-       DO UPDATE SET "rating" = $4, "ipAddress" = $3, "createdAt" = NOW()`,
+       DO UPDATE SET "rating" = EXCLUDED."rating",
+                     "ipAddress" = EXCLUDED."ipAddress",
+                     "createdAt" = NOW()`,
       [id, voterId, ip ?? null, rating],
     );
+
+    return (rowCount ?? 0) > 0;
   }
 
   static async getRatingSummary(

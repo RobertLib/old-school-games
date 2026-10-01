@@ -50,17 +50,24 @@ export default class GameOfTheWeek extends Model {
    * than one rendering as a blank. The foreign key cascades (0012), so that
    * cannot happen today; if it ever does, getOrSelectCurrent below reads the
    * null as "nothing current" and picks again, which is the right answer.
+   *
+   * The rating comes off the game's own row — "ratingSum" and "ratingCount",
+   * kept exact by the trigger from 0042 — as every listing in models/game.ts
+   * reads it (AVERAGE_RATING there, spelled out again here because this
+   * module's suite stands in for that one). It used to join every vote the
+   * game had ever received and group them, on a widget every page renders.
    */
   static async getCurrent(): Promise<GameOfTheWeek | null> {
     const { rows } = await db.query(
       `SELECT gw.*, to_jsonb(g.*) AS "gameRow",
-              COALESCE(AVG(r."rating"), 0) AS "averageRating",
-              COUNT(r."rating") AS "ratingCount"
+              CASE
+                WHEN g."ratingCount" = 0 THEN 0
+                ELSE g."ratingSum"::numeric / g."ratingCount"
+              END AS "averageRating",
+              g."ratingCount" AS "ratingCount"
        FROM "game_of_the_week" gw
        JOIN "games" g ON g."id" = gw."gameId"
-       LEFT JOIN "ratings" r ON r."gameId" = g."id"
        WHERE NOW() BETWEEN gw."startDate" AND gw."endDate"
-       GROUP BY gw."id", g."id"
        ORDER BY gw."startDate" DESC
        LIMIT 1`,
     );

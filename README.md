@@ -135,10 +135,12 @@ A web application for browsing and playing classic MS-DOS games directly in your
 
 - Node.js 24 — the version in `.nvmrc`, so `nvm use` picks it up, and the
   one CI, the Dockerfile and Fly all run (`node-version-file: .nvmrc`,
-  `NODE_VERSION=24`). `package.json` says `^24` to match, and `.npmrc` sets
-  `engine-strict=true`, so `npm install` on another major **fails** rather
-  than warning and installing anyway — run `nvm use` first. The floor the code
-  itself imposes is lower — 22.18, the first release that strips type
+  `NODE_VERSION=24`). `package.json` says `^24.15.0` to match, and `.npmrc`
+  sets `engine-strict=true`, so `npm install` on another major **fails**
+  rather than warning and installing anyway — run `nvm use` first. The `.15`
+  is jsdom's: it declares `^24.15.0`, and under `engine-strict` an older 24
+  refused the install naming jsdom rather than this project. The floor the
+  code itself imposes is lower — 22.18, the first release that strips type
   annotations, which is what `node index.ts` relies on — but 24 is the only
   version anything here is tested against; move all four together.
 - PostgreSQL
@@ -444,7 +446,10 @@ and left in place by a logout. An attempt that presents a valid one for the
 account it names skips the backstop and is counted against its own device's
 budget instead (ten failures an hour); the per-address limits apply to it as
 to anyone. Rotating `SESSION_SECRET` retires every device cookie along with
-every session.
+every session, and so does resetting the account's password: the cookie is
+bound to the account's current credential, as a session is, so a browser that
+signed in with a phished password does not keep skipping the backstop after
+the reset.
 
 ### News
 
@@ -519,8 +524,12 @@ frame cannot reach the site at all. With it set:
 
      A subdomain is the same *site* as `oldschoolgames.eu`. It still cannot
      read the site's pages or cookies, but code running there could *set*
-     cookies for the whole domain: the CSRF secret is immune to that (its
-     `__Host-` prefix), the session cookie `connect.sid` is not.
+     cookies for the whole domain. The CSRF secret, the session cookie and
+     the voter id carry the `__Host-` prefix in production, which a browser
+     accepts only from the host itself, so none of them can be planted that
+     way. The voter id is still read under its old unprefixed name `osg_vid`
+     from a browser that has nothing newer, so ratings cast before the prefix
+     are not lost; that fallback can go a year after it shipped.
 2. Set it beside `CANONICAL_HOST` and `MEDIA_ORIGIN` in the `[env]` block of
    `fly.toml` — for example `PLAYER_ORIGIN = "https://old-school-games.fly.dev"`
    — and deploy. No static file needs editing: the player takes the site's

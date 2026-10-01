@@ -2,10 +2,17 @@
 <html lang="en">
 
 <head>
+  <%# The status the caller answered with, which is not always 400:
+      routes/comments.ts renders this page for every refusal of a comment
+      posted without JavaScript — a 404 for a game that has gone, a 409 for a
+      reply to a removed comment, a 429 from the limiter — and all of them
+      used to be headed "400 — Bad request". %>
+  <% const status = [404, 409, 429].includes(locals.status) ? locals.status : 400 %>
+  <% const heading = { 400: 'Bad request', 404: 'Not found', 409: 'Conflict', 429: 'Too many requests' }[status] %>
   <%# Declared above the include, not below it: head.ejs writes the Twitter
      card from these two and a const declared after it is not in scope there.
      See the twitter:title comment in views/head.ejs. %>
-  <% const title = '400 - Bad Request - OldSchoolGames' %>
+  <% const title = `${status} - ${heading.replace(/\b\w/g, (c) => c.toUpperCase())} - OldSchoolGames` %>
   <% const description = 'That request could not be processed. Go back and try again, or explore our collection of classic MS-DOS games.' %>
   <%- include('head', { title, description }) %>
   <title><%= title %></title>
@@ -35,9 +42,14 @@
   <%- include('left-sidebar') %>
   <main id="main" tabindex="-1">
     <div class="container">
-      <h1 class="text-xl" style="margin: 0 0 10px">400 &mdash; Bad request</h1>
+      <h1 class="text-xl" style="margin: 0 0 10px"><%= status %> &mdash; <%= heading %></h1>
       <% if (locals.message) { %>
-      <p style="margin: 0 0 5px"><%= message %>. Go back and try again.</p>
+      <%# The message's own full stop, if it has one, is the one that ends the
+          sentence: "…please try again later." came out with a second one
+          after it. And a message that already says to try again is not told
+          so twice. %>
+      <% const said = String(message).replace(/[.!?]+$/, '') %>
+      <p style="margin: 0 0 5px"><%= said %>.<% if (!/try again/i.test(said)) { %> Go back and try again.<% } %></p>
       <% } else { %>
       <p style="margin: 0 0 5px">
         That request could not be processed &mdash; it may have been malformed,

@@ -11,6 +11,29 @@ const RECENTLY_PLAYED_KEY = "recentlyPlayedGames";
 const RECENTLY_PLAYED_LIMIT = 20;
 const CONTINUE_PLAYING_LIMIT = 4;
 
+/**
+ * The most entries an import reads from either list in the file — well past
+ * the size of the catalogue, so no real export reaches it. An import is
+ * hydrated a hundred ids per request, and a file of a hundred thousand made
+ * a thousand of them, each answered by the server, before the list settled.
+ */
+const IMPORT_LIMIT = 2000;
+
+/**
+ * Whether a stored or imported id is one a game can have: a positive integer,
+ * written plainly — what Game.findByIds accepts.
+ *
+ * Asked of everything that goes into storage, because an id is sent to
+ * /games/collection inside a comma-separated list. An id that was itself a
+ * list — "[1,2]" from a hand-edited export, stored as String(entry.id) — went
+ * out as several, pushed the real ids at the end of its batch past the
+ * server's hundred, and hydrate() then read them as games that no longer
+ * exist and deleted them from storage for good.
+ */
+function isGameId(id) {
+  return /^[1-9][0-9]{0,9}$/.test(String(id));
+}
+
 // ---------------------------------------------------------------------------
 // Storage
 // ---------------------------------------------------------------------------
@@ -29,7 +52,10 @@ function readList(key) {
   // Entries used to carry a full copy of the game (title, image, description).
   // Keep the id and the timestamp, drop the rest.
   return parsed
-    .filter((entry) => entry && entry.id !== undefined && entry.id !== null)
+    .filter(
+      (entry) =>
+        entry && entry.id !== undefined && entry.id !== null && isGameId(entry.id),
+    )
     .map((entry) => ({
       id: String(entry.id),
       addedAt: entry.addedAt || null,
@@ -984,8 +1010,11 @@ function exportCollection() {
 function mergeById(existing, incoming, timestampKey) {
   const merged = new Map(existing.map((entry) => [entry.id, entry]));
 
-  incoming.forEach((entry) => {
+  incoming.slice(0, IMPORT_LIMIT).forEach((entry) => {
     if (!entry || entry.id === undefined || entry.id === null) return;
+    // See isGameId: anything else is not a game, and one that holds a comma
+    // costs the real favourites beside it.
+    if (!isGameId(entry.id)) return;
 
     const id = String(entry.id);
     const current = merged.get(id);

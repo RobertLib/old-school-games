@@ -96,16 +96,18 @@ describe("GameOfTheWeek Model", () => {
      * The pick and its game come back together now — one join rather than a
      * select followed by Game.findById with the id it found. The game's own
      * columns arrive under "gameRow" as JSON, because both tables have an
-     * "id", a "createdAt" and an "updatedAt".
+     * "id", a "createdAt" and an "updatedAt". The rating is read off the
+     * game's own totals (0042), not aggregated from every vote it has had.
      */
     const CURRENT_SQL = `SELECT gw.*, to_jsonb(g.*) AS "gameRow",
-              COALESCE(AVG(r."rating"), 0) AS "averageRating",
-              COUNT(r."rating") AS "ratingCount"
+              CASE
+                WHEN g."ratingCount" = 0 THEN 0
+                ELSE g."ratingSum"::numeric / g."ratingCount"
+              END AS "averageRating",
+              g."ratingCount" AS "ratingCount"
        FROM "game_of_the_week" gw
        JOIN "games" g ON g."id" = gw."gameId"
-       LEFT JOIN "ratings" r ON r."gameId" = g."id"
        WHERE NOW() BETWEEN gw."startDate" AND gw."endDate"
-       GROUP BY gw."id", g."id"
        ORDER BY gw."startDate" DESC
        LIMIT 1`;
 

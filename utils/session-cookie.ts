@@ -13,10 +13,21 @@ import "../types/session.ts";
  * with, so the two sides reading the same constant is the point, not a
  * tidiness matter.
  *
- * The value is express-session's own default: renaming it would sign out
- * everyone holding a cookie issued before the change, for nothing.
+ * The value is express-session's own default, with "__Host-" in front of it
+ * in production — the prefix the CSRF cookie already had. Without it, code on
+ * any subdomain of the site (a PLAYER_ORIGIN such as play.oldschoolgames.eu is
+ * one) could set a "connect.sid" for the whole domain: not read the admin's
+ * session, but replace it, signing them out or into a session of its own
+ * choosing. A browser takes a "__Host-" cookie only from the host itself,
+ * over HTTPS and for Path=/, which SESSION_COOKIE_OPTIONS below already says.
+ *
+ * Renaming it signed out every administrator once, on the deploy that did it —
+ * sessions are only ever admins' (see routes/auth.ts), so that was the whole
+ * cost. The prefix requires Secure, so development over HTTP keeps the bare
+ * name, as the CSRF and voter cookies do.
  */
-export const SESSION_COOKIE = "connect.sid";
+export const SESSION_COOKIE =
+  process.env.NODE_ENV === "production" ? "__Host-connect.sid" : "connect.sid";
 
 /**
  * Everything about the session cookie except how long it lives.

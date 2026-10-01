@@ -15,6 +15,10 @@ import {
 
 const ACCOUNT = "a".repeat(64);
 const OTHER_ACCOUNT = "b".repeat(64);
+/** credentialOf the account's stored hash, as routes/auth.ts passes it. */
+const CREDENTIAL = "c".repeat(64);
+/** The same account after its password was reset: a new hash, a new credential. */
+const RESET_CREDENTIAL = "d".repeat(64);
 const NOW = Date.UTC(2026, 8, 23, 12, 0, 0);
 
 interface Issued {
@@ -30,7 +34,7 @@ function issue(
 ): Issued {
   const cookie = vi.fn();
 
-  issueCookie({ cookie } as unknown as Response, account, now);
+  issueCookie({ cookie } as unknown as Response, account, CREDENTIAL, now);
 
   expect(cookie).toHaveBeenCalledTimes(1);
 
@@ -82,7 +86,7 @@ describe("recognisedDevice", () => {
   it("returns the nonce of a cookie it issued for this account", () => {
     const { value } = issue();
 
-    expect(recognisedDevice(presenting(value), ACCOUNT, NOW)).toBe(
+    expect(recognisedDevice(presenting(value), ACCOUNT, CREDENTIAL, NOW)).toBe(
       value.split(".")[0],
     );
   });
@@ -92,7 +96,21 @@ describe("recognisedDevice", () => {
   it("does not recognise it for a different account", () => {
     const { value } = issue();
 
-    expect(recognisedDevice(presenting(value), OTHER_ACCOUNT, NOW)).toBeNull();
+    expect(recognisedDevice(presenting(value), OTHER_ACCOUNT, CREDENTIAL, NOW)).toBeNull();
+  });
+
+  /**
+   * The credential is inside the MAC, and a password reset always stores a
+   * new hash, so the reset revokes every device cookie issued before it — the
+   * same way it ends every session. Without that, a login made once with a
+   * phished password kept skipping the account-wide backstop for a year.
+   */
+  it("does not recognise it once the account's password has been reset", () => {
+    const { value } = issue();
+
+    expect(
+      recognisedDevice(presenting(value), ACCOUNT, RESET_CREDENTIAL, NOW),
+    ).toBeNull();
   });
 
   it("refuses a value with any part altered", () => {
@@ -106,7 +124,7 @@ describe("recognisedDevice", () => {
       `${nonce}.${Number(issuedAt) - 1}.${mac}`,
       `${nonce}.${issuedAt}.${flip(mac)}`,
     ]) {
-      expect(recognisedDevice(presenting(altered), ACCOUNT, NOW)).toBeNull();
+      expect(recognisedDevice(presenting(altered), ACCOUNT, CREDENTIAL, NOW)).toBeNull();
     }
   });
 
@@ -119,10 +137,10 @@ describe("recognisedDevice", () => {
     const { value } = issue();
 
     expect(
-      recognisedDevice(presenting(value), ACCOUNT, NOW + DEVICE_COOKIE_TERM_MS - 1000),
+      recognisedDevice(presenting(value), ACCOUNT, CREDENTIAL, NOW + DEVICE_COOKIE_TERM_MS - 1000),
     ).not.toBeNull();
     expect(
-      recognisedDevice(presenting(value), ACCOUNT, NOW + DEVICE_COOKIE_TERM_MS),
+      recognisedDevice(presenting(value), ACCOUNT, CREDENTIAL, NOW + DEVICE_COOKIE_TERM_MS),
     ).toBeNull();
   });
 
@@ -132,8 +150,8 @@ describe("recognisedDevice", () => {
     const { value: slightlyAhead } = issue(ACCOUNT, NOW + 4 * 60 * 1000);
     const { value: farAhead } = issue(ACCOUNT, NOW + 10 * 60 * 1000);
 
-    expect(recognisedDevice(presenting(slightlyAhead), ACCOUNT, NOW)).not.toBeNull();
-    expect(recognisedDevice(presenting(farAhead), ACCOUNT, NOW)).toBeNull();
+    expect(recognisedDevice(presenting(slightlyAhead), ACCOUNT, CREDENTIAL, NOW)).not.toBeNull();
+    expect(recognisedDevice(presenting(farAhead), ACCOUNT, CREDENTIAL, NOW)).toBeNull();
   });
 
   // Every one of these is a failed recognition, not a throw: the value comes
@@ -152,8 +170,8 @@ describe("recognisedDevice", () => {
         ? ({ headers: {} } as unknown as Request)
         : presenting(value);
 
-    expect(() => recognisedDevice(req, ACCOUNT, NOW)).not.toThrow();
-    expect(recognisedDevice(req, ACCOUNT, NOW)).toBeNull();
+    expect(() => recognisedDevice(req, ACCOUNT, CREDENTIAL, NOW)).not.toThrow();
+    expect(recognisedDevice(req, ACCOUNT, CREDENTIAL, NOW)).toBeNull();
   });
 
   // Only the exact form it was issued in: the pattern is lower-case hex, and
@@ -161,7 +179,7 @@ describe("recognisedDevice", () => {
   it("refuses its own value in upper case", () => {
     const { value } = issue();
 
-    expect(recognisedDevice(presenting(value.toUpperCase()), ACCOUNT, NOW)).toBeNull();
+    expect(recognisedDevice(presenting(value.toUpperCase()), ACCOUNT, CREDENTIAL, NOW)).toBeNull();
   });
 });
 
@@ -207,13 +225,13 @@ describe("under a different SESSION_SECRET", () => {
     const before = await import("../../utils/device-cookie.ts");
     const { value } = issue(ACCOUNT, NOW, before.issueDeviceCookie);
 
-    expect(before.recognisedDevice(presenting(value), ACCOUNT, NOW)).not.toBeNull();
+    expect(before.recognisedDevice(presenting(value), ACCOUNT, CREDENTIAL, NOW)).not.toBeNull();
 
     vi.stubEnv("SESSION_SECRET", "y".repeat(64));
     vi.resetModules();
 
     const after = await import("../../utils/device-cookie.ts");
 
-    expect(after.recognisedDevice(presenting(value), ACCOUNT, NOW)).toBeNull();
+    expect(after.recognisedDevice(presenting(value), ACCOUNT, CREDENTIAL, NOW)).toBeNull();
   });
 });
