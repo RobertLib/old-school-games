@@ -1,4 +1,4 @@
-import express from "express";
+import express, { type Request } from "express";
 import Game from "../models/game.ts";
 // The cache itself lives in utils, not here, so the models can drop it on a
 // write without importing this router — see utils/page-cache.ts.
@@ -474,14 +474,34 @@ export const ALL_LIST_SLUGS: ReadonlySet<string> = new Set(
   LISTS.map((list) => list.slug),
 );
 
+/**
+ * The listing parameters these fixed pages do not read, and so answer with a
+ * 301 onto their one address rather than a copy of themselves.
+ *
+ * "page" for the reason below each route gives. The other three because a
+ * page that ignores them still got judged by them: utils/indexability.ts
+ * marks anything with a search or a sort noindex, and head.ejs drops the
+ * canonical with it, so "/top-dos-games?orderBy=title" — which the old
+ * game-filters on these pages minted (see views/lists/list.ejs), and which
+ * crawlers therefore know — served the identical list as a noindex page that
+ * named no canonical to consolidate onto. A redirect says where the page is
+ * and leaves nothing to judge.
+ */
+const IGNORED_LISTING_PARAMS = ["page", "orderBy", "orderDir", "search"];
+
+function hasIgnoredListingParam(req: Request): boolean {
+  return IGNORED_LISTING_PARAMS.some((name) => req.query[name] !== undefined);
+}
+
 router.get("/most-played", async (req, res) => {
   // The same 301 the curated lists below answer a "?page=" with, and for the
   // same reason: this page was paginated before LIST_SIZE fixed it at a
   // hundred, so every "/most-played?page=N" is a real address that was linked
   // and crawled — and it went on serving a byte-identical 200 beside the bare
   // one, which is two addresses for one page. "?page=1" redirects with the
-  // rest; see paginationUrls for why page 1 is only ever the bare URL.
-  if (req.query.page !== undefined) {
+  // rest; see paginationUrls for why page 1 is only ever the bare URL. A
+  // sort or a search goes the same way — see IGNORED_LISTING_PARAMS.
+  if (hasIgnoredListingParam(req)) {
     return res.redirect(301, "/most-played");
   }
 
@@ -537,8 +557,9 @@ router.get("/:slug", async (req, res, next) => {
   // Any `page` at all, not only page 2 and up. "?page=1" was never a canonical
   // address here either (see paginationUrls, which addresses page 1 as the
   // bare URL for exactly this reason), so it redirects with the rest rather
-  // than serving a second copy of this page under a query string.
-  if (req.query.page !== undefined) {
+  // than serving a second copy of this page under a query string. A sort or
+  // a search goes the same way — see IGNORED_LISTING_PARAMS.
+  if (hasIgnoredListingParam(req)) {
     return res.redirect(301, `/${list.slug}`);
   }
 

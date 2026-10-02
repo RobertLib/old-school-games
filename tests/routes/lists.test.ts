@@ -125,7 +125,16 @@ describe("Lists Routes", () => {
      * Any page at all, including "?page=1", for the same reason paginationUrls
      * addresses page 1 as the bare URL.
      */
-    it.each(["?page=1", "?page=2", "?page=9999", "?page=nonsense"])(
+    it.each([
+      "?page=1",
+      "?page=2",
+      "?page=9999",
+      "?page=nonsense",
+      // Ignored here too, and noindex wherever they appear — see the
+      // curated lists below.
+      "?orderBy=title",
+      "?search=doom",
+    ])(
       "redirects %s onto the page itself",
       async (query) => {
         const response = await request(server).get(`/most-played${query}`);
@@ -332,6 +341,26 @@ describe("Lists Routes", () => {
     it("redirects without touching the database", async () => {
       await request(server).get("/top-dos-games?page=7");
 
+      expect(vi.mocked(Game.find)).not.toHaveBeenCalled();
+    });
+
+    /**
+     * The old game-filters on these pages minted "?orderBy=…" links, so
+     * crawlers know them, and the list ignores them — but the page was still
+     * judged by them: a sort is noindex, and head.ejs drops the canonical
+     * along with it. The identical list went out as a noindex page naming
+     * nowhere to consolidate onto. A redirect says where it lives instead.
+     */
+    it.each([
+      "?orderBy=title",
+      "?orderDir=asc",
+      "?orderBy=rating&orderDir=desc",
+      "?search=doom",
+    ])("redirects %s onto the list as well", async (query) => {
+      const response = await request(server).get(`/top-dos-games${query}`);
+
+      expect(response.status).toBe(301);
+      expect(response.headers.location).toBe("/top-dos-games");
       expect(vi.mocked(Game.find)).not.toHaveBeenCalled();
     });
 

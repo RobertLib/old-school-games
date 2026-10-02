@@ -51,6 +51,15 @@ updates:
       - dependency-name: "@types/node"
         update-types:
           - version-update:semver-major
+      # Every update. js-dos is the emulator the app serves from node_modules
+      # (see JS_DOS_PATH in app.ts), and its release is written in four more
+      # places than package.json — the address and integrity hashes in
+      # public/js-dos.html and JS_DOS_VERSION in app.ts and the player script —
+      # which Dependabot cannot edit. Its pull request could only ever be red,
+      # and inside the minor-and-patch group it would hold back every other
+      # bump in the week with it. Raised by hand; tests/public-assets.test.ts
+      # says what is left to change.
+      - dependency-name: js-dos
 
   # GitHub Actions. superfly/flyctl-actions/setup-flyctl is pinned to a commit
   # SHA on purpose (the reasoning is in fly-deploy.yml, next to the pin);

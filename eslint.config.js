@@ -88,10 +88,10 @@ export default tseslint.config(
   },
 
   // The framed DOS player. `Dos` is a global from the js-dos script
-  // public/js-dos.html loads off the pinned jsDelivr release, so nothing in
-  // this tree declares it. (It used to name v8.js-dos.com, the vendor's
+  // public/js-dos.html loads from /vendor/js-dos/ (the pinned npm release,
+  // served by app.ts), so nothing in this tree declares it. (It used to name v8.js-dos.com, the vendor's
   // moving "/latest/" — that host is gone from the source and from the
-  // Content-Security-Policy; see the comment at JS_DOS_ORIGIN in app.ts.)
+  // Content-Security-Policy; see the comment at JS_DOS_PATH in app.ts.)
   // This code used to be inline in public/js-dos.html — which is ignored
   // above, so it was never linted either — until the script-src nonce
   // refused it.

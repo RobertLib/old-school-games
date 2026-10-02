@@ -37,11 +37,11 @@ import type { AddressInfo } from "net";
 const server = app.listen(0);
 
 /**
- * The one js-dos release the policy allows — the path, not the CDN. jsDelivr
- * serves every npm package there is, so the bare origin in script-src would
- * have let any injected markup load a script of the attacker's choosing.
+ * Where app.ts serves js-dos from: the installed npm package, on this origin.
+ * It used to be one release on jsDelivr, which is why several tests below
+ * make sure no third-party host for it comes back.
  */
-const JS_DOS_SOURCE = "https://cdn.jsdelivr.net/npm/js-dos@8.4.1/dist/";
+const JS_DOS_PATH = "/vendor/js-dos/8.4.1/";
 
 afterAll(() => {
   server.close();
@@ -474,6 +474,51 @@ describe("the assembled app", () => {
   });
 
   /**
+   * Routes match case-insensitively, so "/About" and "/Developers" answered
+   * 200 with a copy of the page while "/Doom" was a 404 and "/Action" a 301.
+   * Every first segment the site writes is lower case, so that is the one
+   * address and the rest are 301'd to it.
+   */
+  describe("a first segment with capitals in it", () => {
+    it.each([
+      ["/About", "/about"],
+      ["/DEVELOPERS", "/developers"],
+      ["/Doom", "/doom"],
+      ["/Most-Played", "/most-played"],
+      ["/News/some-story", "/news/some-story"],
+      ["/Year/1990?page=2", "/year/1990?page=2"],
+      // Only the first segment: a studio is matched as the catalogue
+      // spells it, and its name is the second.
+      ["/Developer/id%20Software", "/developer/id%20Software"],
+    ])("sends %s to %s", async (from, to) => {
+      const response = await request(server).get(from).redirects(0);
+
+      expect(response.status).toBe(301);
+      expect(response.headers.location).toBe(to);
+    });
+
+    it.each([
+      // Already lower case.
+      "/about",
+      "/developer/ID%20Software",
+      // Not a plain segment: a percent-escape would only flip its hex
+      // digits, and a dot is a file name.
+      "/%C3%A9t%C3%A9",
+      "/Robots.txt",
+    ])("leaves %s alone", async (path) => {
+      const response = await request(server).get(path).redirects(0);
+
+      expect(response.status).not.toBe(301);
+    });
+
+    it("does not redirect a form post", async () => {
+      const response = await request(server).post("/Login").redirects(0);
+
+      expect(response.status).not.toBe(301);
+    });
+  });
+
+  /**
    * The canonical-host and HTTPS redirects, which only run in production.
    *
    * NODE_ENV is flipped per request rather than at import: the middleware
@@ -808,15 +853,14 @@ describe("the assembled app", () => {
      * to it, which is easy to forget and silent when you do. Listing three
      * image hosts withdrew the "data:" the default had carried, and the
      * emulator's own stylesheet draws the whole player chrome — play button,
-     * spinner, the rest — as url("data:image/svg+xml,…") backgrounds, plus a
-     * loader PNG from its own host. Every one of them was refused inside the
-     * player frame, reported nowhere but the browser console.
+     * spinner, the rest — as url("data:image/svg+xml,…") backgrounds. Every
+     * one of them was refused inside the player frame, reported nowhere but
+     * the browser console.
      */
     describe("img-src covers what the player actually loads", () => {
       it.each([
         ["data: URIs, for the js-dos chrome", "data:"],
-        ["the js-dos host, for its loader PNG", JS_DOS_SOURCE],
-        ["this origin", "'self'"],
+        ["this origin, which serves js-dos itself", "'self'"],
         [
           "the bucket the artwork is served from",
           "https://trwglibsccninuamefls.supabase.co",
@@ -848,9 +892,9 @@ describe("the assembled app", () => {
       expect(styleSrc.split(" ")).not.toContain("https:");
       expect(fontSrc.split(" ")).not.toContain("https:");
 
-      // Still allowed: this origin, and the emulator's own stylesheet.
-      expect(styleSrc.split(" ")).toContain("'self'");
-      expect(styleSrc).toContain(JS_DOS_SOURCE);
+      // Still allowed: this origin, which serves the emulator's stylesheet
+      // as well as the site's, and nothing else.
+      expect(styleSrc.split(" ")).toEqual(["'self'"]);
       expect(fontSrc).toContain("'self'");
     });
 
@@ -902,50 +946,83 @@ describe("the assembled app", () => {
     });
 
     /**
-     * js-dos is pinned to one immutable release rather than loaded from the
-     * vendor's "/latest/", which was a moving target with full script
-     * privileges in this origin — see the comment in public/js-dos.html.
+     * js-dos is a dependency now, served from this origin out of
+     * node_modules, rather than loaded from jsDelivr — where only the loader
+     * and its stylesheet could carry an integrity hash, and the emulator
+     * runtime js-dos fetches for itself ran as this site on the CDN's word.
+     * See the comment in public/js-dos.html.
      *
-     * The policy has to allow the host it is pinned on, in every directive
-     * the player reaches through. A blocked subresource inside the player
-     * frame is reported nowhere but the browser console, so nothing else
-     * would say the emulator had stopped loading.
+     * Asserted across both policies and every directive, because the CDN
+     * path used to be listed in five of them: a host left behind in any one
+     * is a host that may still run as this site.
      */
-    it("allows the pinned js-dos CDN everywhere the player needs it", async () => {
-      const response = await request(server).get("/js-dos.html");
-      const csp = response.headers["content-security-policy"];
+    it.each(["/", "/js-dos.html"])(
+      "names no third-party host for the emulator in the policy for %s",
+      async (path) => {
+        const response = await request(server).get(path);
+        const csp = response.headers["content-security-policy"];
 
-      for (const directive of [
-        "script-src",
-        "style-src",
-        "img-src",
-        "connect-src",
-        "worker-src",
-      ]) {
-        const value =
-          new RegExp(`(?:^|;)\\s*${directive} ([^;]*)`).exec(csp)?.[1] ?? "";
+        expect(csp).not.toContain("jsdelivr");
+        expect(csp).not.toContain("js-dos");
+      },
+    );
 
-        expect(value.split(" "), `${directive} is missing the pinned CDN`).toContain(
-          JS_DOS_SOURCE,
+    /**
+     * What the player needs from JS_DOS_PATH, served the way it needs it.
+     *
+     * The types matter more than they look: helmet sends "nosniff", so a
+     * script under any other type is refused outright, and
+     * WebAssembly.instantiateStreaming refuses a module that is not
+     * application/wasm. Either way the game does not start, with nothing but
+     * a console message to say why.
+     */
+    describe("serves js-dos from this origin", () => {
+      it.each([
+        ["js-dos.js", /javascript/],
+        ["js-dos.css", /^text\/css/],
+        ["emulators/emulators.js", /javascript/],
+        ["emulators/wdosbox.js", /javascript/],
+        ["emulators/wdosbox.wasm", /^application\/wasm/],
+        ["emulators/wlibzip.wasm", /^application\/wasm/],
+        // The DOSBox-X builds, which js-dos picks at runtime when a game or
+        // a visitor's settings ask for them.
+        ["emulators/wdosbox-x.wasm", /^application\/wasm/],
+        ["emulators/wdosbox-x-jspi.wasm", /^application\/wasm/],
+      ])("%s", async (file, type) => {
+        const response = await request(server)
+          .get(`${JS_DOS_PATH}${file}`)
+          .buffer(true)
+          .parse((res, done) => {
+            res.on("data", () => {});
+            res.on("end", () => done(null, null));
+          });
+
+        expect(response.status).toBe(200);
+        expect(response.headers["content-type"]).toMatch(type);
+        // The release is in the address, so a copy can never go stale.
+        expect(response.headers["cache-control"]).toBe(
+          "public, max-age=31536000, immutable",
         );
-      }
-    });
+      });
 
-    it("allows nothing from the CDN outside that one release", async () => {
-      const response = await request(server).get("/");
-      const csp = response.headers["content-security-policy"];
+      it("answers a file the release does not have with the site's 404", async () => {
+        const response = await request(server).get(
+          `${JS_DOS_PATH}emulators/nope.js`,
+        );
 
-      for (const directive of csp.split(";")) {
-        const sources = directive.trim().split(" ").slice(1);
+        expect(response.status).toBe(404);
+      });
 
-        for (const source of sources) {
-          if (!source.includes("cdn.jsdelivr.net")) continue;
+      it.each([
+        JS_DOS_PATH.slice(0, -1),
+        `${JS_DOS_PATH}emulators`,
+        `${JS_DOS_PATH}../package.json`,
+        `${JS_DOS_PATH}%2e%2e/package.json`,
+      ])("serves no directory and nothing outside dist/: %s", async (path) => {
+        const response = await request(server).get(path).redirects(3);
 
-          expect(source, `${directive.trim()} names the bare CDN`).toBe(
-            JS_DOS_SOURCE,
-          );
-        }
-      }
+        expect(response.status).toBe(404);
+      });
     });
 
     /**
@@ -1017,9 +1094,9 @@ describe("the assembled app", () => {
 
         expect(scriptSrc).not.toContain("'unsafe-eval'");
         expect(scriptSrc).not.toContain("blob:");
-        // Nothing outside the frame loads a script from the CDN either: the
-        // loader tag is in public/js-dos.html and nowhere else.
-        expect(scriptSrc).not.toContain(JS_DOS_SOURCE);
+        // Nothing outside the frame names js-dos either: the loader tag is
+        // in public/js-dos.html and nowhere else.
+        expect(scriptSrc.join(" ")).not.toContain("js-dos");
       });
 
       it("declares no worker source on an ordinary page", async () => {
@@ -1119,7 +1196,6 @@ describe("the assembled app", () => {
         it("fetches games from the bucket and this origin only", async () => {
           expect(await directive("/js-dos.html", "connect-src")).toEqual([
             "'self'",
-            JS_DOS_SOURCE,
             "https://trwglibsccninuamefls.supabase.co",
           ]);
         });

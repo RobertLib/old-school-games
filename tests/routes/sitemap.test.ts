@@ -897,7 +897,7 @@ describe("Sitemap Routes", () => {
    * comes off the same GROUP BY the counts do; see Game.getSitemapCounts.
    */
   describe("lastmod on the listing pages", () => {
-    it("dates a genre, letter, developer, publisher and year page", async () => {
+    it("dates a letter, developer, publisher and year page", async () => {
       seedMocks();
       vi.mocked(Game.getSitemapCounts).mockResolvedValue({
         counts: new Map([
@@ -929,7 +929,6 @@ describe("Sitemap Routes", () => {
       };
 
       expect(entry("/letter/d")).toContain("<lastmod>2024-03-04</lastmod>");
-      expect(entry("/shooter")).toContain("<lastmod>2024-03-05</lastmod>");
       expect(entry("/developer/id%20Software")).toContain(
         "<lastmod>2024-03-06</lastmod>",
       );
@@ -1073,14 +1072,41 @@ describe("Sitemap Routes", () => {
         "/top-dos-games",
         "/best-shooter-games",
         "/dos-games-1990s",
+        // A genre listing too: unsorted, it is ranked by the same weighted
+        // rating as /best-shooter-games, and it used to carry the group's
+        // newest edit as its date while votes reordered it.
+        "/shooter",
       ]) {
         expect(entry(ranking), ranking).not.toContain("<lastmod>");
       }
 
-      // The listings whose content is the games themselves keep theirs.
-      expect(entry("/shooter")).toContain("<lastmod>2024-03-05</lastmod>");
+      // The listings whose content is the games in title order keep theirs.
       expect(entry("/year/1993")).toContain("<lastmod>2024-03-06</lastmod>");
-      expect(entry("/developers")).toContain("<lastmod>2025-06-01</lastmod>");
+    });
+
+    /**
+     * The indexes show names, years, counts and the lists — none of which a
+     * fixed description changes — and they used to be dated by the newest
+     * save of any game in the catalogue, so one typo fix dated all four
+     * today. Nothing here can tell a re-filing save from any other, so they
+     * say nothing rather than claim a change that did not happen.
+     */
+    it("leaves the indexes undated", async () => {
+      seedMocks();
+      vi.mocked(Game.findForSitemap).mockResolvedValue([
+        { slug: "test-game", updatedAt: new Date("2025-06-01T10:00:00Z") },
+      ] as any);
+
+      const { text } = await request(server).get("/sitemap-1.xml");
+
+      for (const index of ["/developers", "/publishers", "/years", "/game-lists"]) {
+        const at = text.indexOf(`<loc>https://oldschoolgames.eu${index}</loc>`);
+
+        expect(at, `${index} is missing`).toBeGreaterThan(-1);
+        expect(text.slice(at, text.indexOf("</url>", at)), index).not.toContain(
+          "<lastmod>",
+        );
+      }
     });
   });
 });

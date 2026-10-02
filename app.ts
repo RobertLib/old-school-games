@@ -151,33 +151,32 @@ function isPlayerHost(req: { headers: { host?: string } }): boolean {
  * public/js-dos.html.
  *
  * js-dos used to be loaded from "https://v8.js-dos.com/latest/", a moving
- * target running with full privileges in this origin. It is pinned to one
- * immutable release on jsDelivr now, which is also what makes the integrity
- * hashes in that file possible.
+ * target running with full privileges in this origin, and then from one
+ * pinned release on jsDelivr. The pin fixed the moving target but not the
+ * third party: only js-dos.js and js-dos.css could carry an integrity hash,
+ * because js-dos loads emulators.js, wdosbox.js and the wasm itself, from
+ * pathPrefix, with no way to hand it one. Those ran as this site — the
+ * player frame is same-origin, so its sandbox is no boundary (see
+ * PLAYER_ORIGIN in utils/site.ts) — on nothing but the CDN's word.
  *
- * That old host was left on the allowlist below for a while after the pin, as
- * a safety net in case something still reached for it — a refused subresource
- * inside the player frame is reported nowhere but the browser console. It is
- * gone now, and nothing names it: the loader and the stylesheet in
- * public/js-dos.html and the emulator runtime (pathPrefix in
- * public/js/js-dos-player.js) all point at the pinned release, and
- * tests/app.test.ts asserts the policy no longer carries the host.
+ * So the release is a dependency now, `"js-dos": "8.4.1"` in package.json,
+ * and this app serves its dist/ directory itself. The lockfile pins the
+ * tarball's sha512 and `npm ci` refuses anything else, which covers every
+ * file js-dos fetches and not only the two a tag can name. They are the
+ * same bytes jsDelivr served — jsDelivr serves the npm tarball — and the
+ * whole directory is mounted rather than the handful of files a default
+ * game asks for, because js-dos picks between wdosbox, wdosbox-x and the
+ * JSPI build of the latter at runtime, and a file left out is a game that
+ * does not start for whoever's browser or settings choose it.
  *
- * Leaving it would have kept the pin half-applied. An origin in "script-src"
- * may run as this site, so a "/latest/" that changes under us — or a vendor
- * CDN that is compromised — is exactly the exposure pinning to an immutable,
- * hash-checked copy exists to close.
+ * The version is in the address so that a release can be cached for a year
+ * (see serveJsDos below), and it has to agree with package.json,
+ * public/js-dos.html and public/js/js-dos-player.js; the suite checks that it
+ * does, against the copy actually installed.
  */
-//
-// The whole path, not the bare origin. jsDelivr serves every npm package and
-// every GitHub file there is, so "https://cdn.jsdelivr.net" in script-src
-// would let anyone who ever found a way to inject markup load a script of
-// their own choosing and the nonce would count for nothing. Pinned to the one
-// release the player loads — the version has to agree with public/js-dos.html
-// and public/js/js-dos-player.js, and the suite checks that it does. jsDelivr
-// does not redirect an exact-version path, so the path survives CSP matching.
 const JS_DOS_VERSION = "8.4.1";
-const JS_DOS_SOURCE = `https://cdn.jsdelivr.net/npm/js-dos@${JS_DOS_VERSION}/dist/`;
+const JS_DOS_PATH = `/vendor/js-dos/${JS_DOS_VERSION}/`;
+const JS_DOS_DIR = path.join(__dirname, "node_modules", "js-dos", "dist");
 
 // Before helmet, so the directive below can read the nonce off res.locals.
 app.use(cspNonce);
@@ -269,8 +268,6 @@ app.use(
         "default-src": ["'self'"],
         "connect-src": [
           "'self'",
-          // The emulator fetches wdosbox.wasm and the game bundle from here.
-          JS_DOS_SOURCE,
           MEDIA_ORIGIN,
           "https://www.google-analytics.com",
           "https://analytics.google.com",
@@ -350,10 +347,6 @@ app.use(
           // background images, and every one of them was refused inside the
           // player frame. Nothing reports that but the browser console.
           "data:",
-          // Same stylesheet, same omission: it also pulls
-          // "emulators-ui-loader.png" relative to itself, which resolves to
-          // wherever the stylesheet came from rather than to this origin.
-          JS_DOS_SOURCE,
           MEDIA_ORIGIN,
           "https://www.google-analytics.com",
           "https://www.googletagmanager.com",
@@ -363,7 +356,7 @@ app.use(
         // was the loosest thing left in this policy: CSS is an exfiltration
         // channel — attribute selectors that fire a background request per
         // character read a token out of the page without running a line of
-        // script. Everything here is self-hosted apart from the emulator's.
+        // script. Everything here is self-hosted, the emulator's included.
         //
         // 'unsafe-inline' is gone. It used to be here because four <style>
         // blocks needed it and only one of them could ever have carried a
@@ -376,7 +369,7 @@ app.use(
         // rating-stars}.css), which closes the directive and is the better
         // arrangement regardless: the rules are fetched once under a
         // content-hashed address instead of being re-sent inside every page.
-        "style-src": ["'self'", JS_DOS_SOURCE],
+        "style-src": ["'self'"],
         /**
          * The style="" attributes, which are a different thing from the
          * directive above and are deliberately still allowed.
@@ -432,8 +425,8 @@ app.use(
          * Undeclared it falls back to "child-src" and then to "default-src",
          * which is "'self'" alone — and no page on this site starts a worker
          * at all. The one thing that does is the emulator, and it does not
-         * load its worker from an address on this origin: emulators.js
-         * fetches wdosbox.js from the pinned release, turns the response
+         * load its worker from an address it can name directly: emulators.js
+         * fetches wdosbox.js from JS_DOS_PATH, turns the response
          * into a blob, and constructs the worker from the resulting "blob:"
          * address:
          *
@@ -875,7 +868,7 @@ app.locals.organizationRef = ORGANIZATION_REF;
  * has a version in it — see the setHeaders branch below.
  *
  * A day of it is a day of the previous player, which is not a cosmetic
- * difference: pinning the emulator to jsDelivr (see JS_DOS_SOURCE) moved
+ * difference: pinning the emulator to one release (see JS_DOS_PATH) moved
  * pathPrefix into js-dos-player.js at the same time as it dropped
  * v8.js-dos.com from "script-src". A browser holding yesterday's script ran
  * the old default — "https://v8.js-dos.com/latest/emulators/" — against
@@ -927,7 +920,7 @@ const REVALIDATED_FILES = new Set([
 const PLAYER_FRAME_ANCESTORS = PLAYER_ORIGIN === null ? "'self'" : SITE_URL;
 
 /**
- * Where the emulator may fetch a game from, besides the pinned release.
+ * Where the emulator may fetch a game from, besides its own files.
  *
  * MEDIA_ORIGIN either way. A bundle stored as a path on this site is covered
  * by 'self' only while the player is on this site; on a player origin 'self'
@@ -943,9 +936,9 @@ const PLAYER_BUNDLE_SOURCES =
  * The emulator's own Content-Security-Policy, which is not the site's.
  *
  * js-dos compiles DOSBox at runtime and cannot start without 'unsafe-eval';
- * it builds its worker out of a blob: URL; and it loads a script, a
- * stylesheet, a wasm module and a loader image from the pinned jsDelivr
- * release. All four of those used to be granted to every page on the site,
+ * it builds its worker out of a blob: URL; and it loads its scripts, its
+ * stylesheet and its wasm from JS_DOS_PATH, which is this origin and so
+ * needs nothing beyond 'self'. Those used to be granted to every page on the site,
  * because helmet writes one policy for the whole app — so the home page, the
  * listings and the admin forms carried a script-src an injected payload
  * could eval its way through, to support one document.
@@ -961,9 +954,9 @@ const PLAYER_BUNDLE_SOURCES =
  *     on a same-origin document are no boundary: the frame can lift its own
  *     sandbox, or simply reach into parent.document — the page's forms, its
  *     CSRF token, its nonce. Code that gets a foothold in the emulator (a
- *     js-dos bug, a tampered emulators.js or wdosbox.js, which carry no
- *     integrity check) runs as this site under this policy, so for that
- *     purpose this is the policy of the whole origin.
+ *     js-dos bug, or a game bundle that finds one) runs as this site under
+ *     this policy, so for that purpose this is the policy of the whole
+ *     origin.
  *   - From an origin of its own — PLAYER_ORIGIN — it does. The document
  *     under this policy is on the player's origin, the sandbox tokens keep
  *     *that* origin, the page is cross-origin and out of reach, and the
@@ -993,18 +986,18 @@ const PLAYER_BUNDLE_SOURCES =
  */
 const PLAYER_CSP = [
   "default-src 'self'",
-  // 'unsafe-eval' is the emulator, blob: is its worker script, and the CDN
-  // path is js-dos.js itself — pinned to one release and hash-checked, see
-  // JS_DOS_SOURCE and public/js-dos.html.
-  `script-src 'self' 'unsafe-eval' blob: ${JS_DOS_SOURCE}`,
+  // 'unsafe-eval' is the emulator and blob: is its worker script. js-dos
+  // itself is 'self' now — served from JS_DOS_PATH — and no third-party
+  // host is named anywhere in this policy.
+  "script-src 'self' 'unsafe-eval' blob:",
   // No inline handlers in the frame either.
   "script-src-attr 'none'",
-  `worker-src 'self' blob: ${JS_DOS_SOURCE}`,
-  `connect-src 'self' ${JS_DOS_SOURCE} ${PLAYER_BUNDLE_SOURCES.join(" ")}`,
-  // data: for the chrome js-dos.css draws as inline SVG backgrounds, the CDN
-  // for its loader PNG, MEDIA_ORIGIN because a bundle may carry artwork.
-  `img-src 'self' data: ${JS_DOS_SOURCE} ${MEDIA_ORIGIN}`,
-  `style-src 'self' ${JS_DOS_SOURCE}`,
+  "worker-src 'self' blob:",
+  `connect-src 'self' ${PLAYER_BUNDLE_SOURCES.join(" ")}`,
+  // data: for the chrome js-dos.css draws as inline SVG backgrounds,
+  // MEDIA_ORIGIN because a bundle may carry artwork.
+  `img-src 'self' data: ${MEDIA_ORIGIN}`,
+  "style-src 'self'",
   "style-src-attr 'unsafe-inline'",
   "font-src 'self' data:",
   "base-uri 'self'",
@@ -1165,9 +1158,9 @@ app.use(cspReportRoutes);
  * the whole site — every page, the admin login, the sitemap — under a host
  * linked from every game page, on the one origin whose whole purpose is to
  * hold the document this site does not trust. So a request addressed to it
- * is given one of PLAYER_PATHS, served exactly as this origin serves them, or
- * a bare 404: not the site's 404 page, which is the site's layout and would
- * be a mirror of its chrome.
+ * is given one of PLAYER_PATHS or one of js-dos's files under JS_DOS_PATH,
+ * served exactly as this origin serves them, or a bare 404: not the site's
+ * 404 page, which is the site's layout and would be a mirror of its chrome.
  *
  * Matched on req.path as it arrived, before express.static decodes anything,
  * so "/%6As-dos.html", "/js/../css/style.css" and every other way of
@@ -1185,6 +1178,31 @@ app.use(cspReportRoutes);
  */
 const PLAYER_HOST_PATHS = new Set(PLAYER_PATHS);
 
+/**
+ * js-dos's own files, out of node_modules — see JS_DOS_PATH at the top of
+ * this file.
+ *
+ * A year and "immutable", because the address names the release: a new
+ * js-dos is a new directory, so a copy of this one cannot go stale, and the
+ * 1.4 MB wasm is fetched once per browser rather than revalidated on every
+ * game. Its own instance rather than a second root on serveStatic, whose
+ * setHeaders is written for public/ and would have nothing to say here.
+ *
+ * index and redirect are off for the reason serveStatic turns redirect off:
+ * nothing here is a directory listing, and "/vendor/js-dos/8.4.1" answered
+ * with a redirect to the same path plus "/" would loop against the
+ * trailing-slash middleware.
+ */
+const serveJsDos = express.Router().use(
+  JS_DOS_PATH,
+  express.static(JS_DOS_DIR, {
+    maxAge: "1y",
+    immutable: true,
+    index: false,
+    redirect: false,
+  }),
+);
+
 function notOnPlayerHost(res: Response): void {
   res.status(404).type("text/plain").send("Not found");
 }
@@ -1195,20 +1213,69 @@ app.use((req, res, next) => {
     return;
   }
 
-  if (
-    (req.method === "GET" || req.method === "HEAD") &&
-    PLAYER_HOST_PATHS.has(req.path)
-  ) {
-    // express.static calls this for a file it cannot find, so a player file
-    // missing from a build is a 404 here too, and never the site's routes.
-    serveStatic(req, res, () => notOnPlayerHost(res));
-    return;
+  if (req.method === "GET" || req.method === "HEAD") {
+    // express.static calls the last argument for a file it cannot find, so
+    // a player file missing from a build is a 404 here too, and never the
+    // site's routes.
+    if (PLAYER_HOST_PATHS.has(req.path)) {
+      serveStatic(req, res, () => notOnPlayerHost(res));
+      return;
+    }
+
+    // The emulator the player loads, which has to come from the player's
+    // own origin: that is what 'self' means in PLAYER_CSP there. A prefix
+    // rather than a list, because js-dos chooses among its files at
+    // runtime; express.static resolves what follows it inside JS_DOS_DIR
+    // and nowhere else, so no spelling of the rest reaches the site.
+    if (req.path.startsWith(JS_DOS_PATH)) {
+      serveJsDos(req, res, () => notOnPlayerHost(res));
+      return;
+    }
   }
 
   notOnPlayerHost(res);
 });
 
 app.use(serveStatic);
+app.use(serveJsDos);
+
+/**
+ * One spelling per address: the first segment of a path is lower case on
+ * this site, so "/About", "/NEWS/some-story" and "/Doom" are 301'd to it.
+ *
+ * Express matches routes case-insensitively, so "/About", "/Developers",
+ * "/Year/1990" and "/Most-Played" each answered 200 with a copy of the page,
+ * and pagination.ejs carried the mixed case into every page link. The
+ * canonical named the right address, which is a hint costing a crawl to
+ * read; routes/home.ts already 301s "/Action" for that reason, and game
+ * pages went a third way — "/Doom" was a 404. One rule here covers all
+ * three.
+ *
+ * Only a segment of plain letters, digits and hyphens, which is every route
+ * literal and every slug the site writes. That leaves alone what is not one
+ * of those: a percent-escape ("%C3%A9" would only flip its hex digits), a
+ * file name with a dot, and the developer and publisher names after the
+ * first segment, which are matched as the catalogue spells them.
+ *
+ * Below the static files and the player origin's gate, which answer for
+ * their own spellings, and above everything that costs anything. Relative,
+ * like the trailing-slash redirect and for its reason; the lower-cased
+ * segment cannot start a second "/", so it cannot name another host.
+ */
+const MIXED_CASE_FIRST_SEGMENT = /^\/([A-Za-z0-9-]*[A-Z][A-Za-z0-9-]*)(?=\/|$)/;
+
+app.use((req, res, next) => {
+  if (req.method !== "GET" && req.method !== "HEAD") return next();
+
+  const match = MIXED_CASE_FIRST_SEGMENT.exec(req.path);
+
+  if (!match) return next();
+
+  res.redirect(
+    301,
+    `/${match[1]!.toLowerCase()}${req.path.slice(match[0].length)}${rawQuery(req)}`,
+  );
+});
 
 // Alongside the static files, and for the same reason: it used to be one.
 // It moved into a route so the Sitemap line could name the host the site is

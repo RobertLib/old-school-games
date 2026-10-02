@@ -84,7 +84,15 @@ const FALLBACK_TITLE_MAX = 80;
 
 /**
  * The query string a "?genre=" redirect carries over: everything except the
- * genre itself.
+ * genre itself, and the search.
+ *
+ * The search goes because the page being redirected to does not read it. A
+ * genre listing has no search of its own, so "/?genre=action&search=doom"
+ * landed on "/action?search=doom": the whole unfiltered action listing, with
+ * "doom" in the navbar's search box (head.ejs echoes the parameter), marked
+ * noindex because a search is, and every pagination and sort link carrying
+ * search=doom along — a page claiming a filter it never applied. The genre is
+ * the part of that address the site has a page for, so that is where it goes.
  *
  * rawQuery for the same reason every other redirect in this file uses it —
  * re-serialising req.query does not give back what was sent — but the genre
@@ -113,7 +121,9 @@ function queryWithoutGenre(req: express.Request): string {
     const rawKey = pair.split("=")[0] ?? "";
 
     try {
-      return decodeURIComponent(rawKey) !== "genre";
+      const key = decodeURIComponent(rawKey);
+
+      return key !== "genre" && key !== "search";
     } catch {
       return true;
     }
@@ -146,7 +156,7 @@ router.get("/", async (req, res, next) => {
     // "/?genre=action&page=3&orderBy=rating" to "/action" — page one, default
     // sort — so a link somebody wrote by hand, or an old bookmark, silently
     // landed somewhere else. See queryWithoutGenre above for why the genre
-    // itself is the one parameter that does not travel.
+    // and the search are the two parameters that do not travel.
     //
     // Encoded, because this lands in the Location header. A genre of
     // "/evil.example.com" produced "//evil.example.com", which a browser reads
@@ -567,9 +577,11 @@ router.get("/:genre", async (req, res, next) => {
   // there. A value that has just matched the enum is a plain word, so this
   // changes nothing for a real genre.
   //
-  // Game slugs need no rule of their own: Game.findBySlug matches exactly, so
-  // "/DOOM" names no game and 404s already rather than serving a second copy
-  // of "/doom". Developer and publisher filter on "=" for the same effect.
+  // An ASCII "/ACTION" never gets this far any more: app.ts 301s every first
+  // segment with a capital in it to its lower case before any route runs,
+  // game slugs included. This stays for the case that rule leaves alone, a
+  // first segment that is not plain ASCII — see the Unicode note below.
+  // Developer and publisher filter on "=", so their names need neither.
   //
   // The address is the *enum's* lower case, not the request's. The two used
   // to be assumed equal, and Unicode case mapping is not a round trip: the
@@ -787,18 +799,24 @@ router.get("/developer/:developer", async (req, res, next) => {
   const orderBy = firstQueryValue(req.query.orderBy);
   const orderDir = firstQueryValue(req.query.orderDir);
 
-  if (refusedOrdering(res, orderBy, orderDir)) return;
-
   const page = parsePageParam(req.query.page);
   const limit = 25;
 
   const total = await Game.count({ developer });
 
-  // No games under that name — or a page past the end of the list — means the
-  // page does not exist. It used to render a complete 200 with its own
-  // <title>, canonical and blurb around an empty list, so every misspelling,
-  // stale link and out-of-range ?page= was an indexable page of nothing.
-  if (total === 0 || isPageBeyondTotal({ page, limit, total })) {
+  // No games under that name means the page does not exist — and that comes
+  // before the sort is judged, as it does for a genre and a letter. The sort
+  // check used to run first, so "/developer/Nobody?orderBy=x" was a 400
+  // about the sort order of a page that is not there.
+  if (total === 0) return next();
+
+  if (refusedOrdering(res, orderBy, orderDir)) return;
+
+  // A page past the end of the list does not exist either. Both used to
+  // render a complete 200 with its own <title>, canonical and blurb around an
+  // empty list, so every misspelling, stale link and out-of-range ?page= was
+  // an indexable page of nothing.
+  if (isPageBeyondTotal({ page, limit, total })) {
     return next();
   }
 
@@ -852,15 +870,18 @@ router.get("/publisher/:publisher", async (req, res, next) => {
   const orderBy = firstQueryValue(req.query.orderBy);
   const orderDir = firstQueryValue(req.query.orderDir);
 
-  if (refusedOrdering(res, orderBy, orderDir)) return;
-
   const page = parsePageParam(req.query.page);
   const limit = 25;
 
   const total = await Game.count({ publisher });
 
-  // As with developers above: an unknown name is a 404, not an empty page.
-  if (total === 0 || isPageBeyondTotal({ page, limit, total })) {
+  // As with developers above: an unknown name is a 404 — ahead of the sort
+  // check — and not an empty page.
+  if (total === 0) return next();
+
+  if (refusedOrdering(res, orderBy, orderDir)) return;
+
+  if (isPageBeyondTotal({ page, limit, total })) {
     return next();
   }
 
@@ -947,8 +968,6 @@ router.get("/year/:year", async (req, res, next) => {
   const orderBy = firstQueryValue(req.query.orderBy);
   const orderDir = firstQueryValue(req.query.orderDir);
 
-  if (refusedOrdering(res, orderBy, orderDir)) return;
-
   const page = parsePageParam(req.query.page);
   const limit = 25;
 
@@ -957,9 +976,14 @@ router.get("/year/:year", async (req, res, next) => {
     Game.getYears(),
   ]);
 
-  // A year nothing was released in — or a page past the end of one that has
-  // games — is a 404 rather than an empty page.
-  if (total === 0 || isPageBeyondTotal({ page, limit, total })) {
+  // A year nothing was released in is a 404 rather than an empty page, and
+  // that is decided before the sort is judged — see the developer route.
+  if (total === 0) return next();
+
+  if (refusedOrdering(res, orderBy, orderDir)) return;
+
+  // So is a page past the end of one that has games.
+  if (isPageBeyondTotal({ page, limit, total })) {
     return next();
   }
 
@@ -1267,7 +1291,11 @@ router.get("/:id", async (req, res, next) => {
     // Absolute, because a relative cover is valid on the page and useless
     // here: nothing that reads JSON-LD resolves it. See absoluteUrl.
     image: game.images.filter(Boolean).map(absoluteUrl),
-    screenshot: game.images.filter(Boolean).map((url) => ({
+    // Slot 0 is the box art — the gallery calls it "cover art" and the
+    // detail page renders it as the hero — so it is not a screenshot, and
+    // listing it as one described the cover as gameplay. The rest are, in
+    // the same numbering /<slug>/gallery/<index> uses.
+    screenshot: game.images.slice(1).filter(Boolean).map((url) => ({
       "@type": "ImageObject",
       url: absoluteUrl(url),
     })),

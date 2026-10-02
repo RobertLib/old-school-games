@@ -553,9 +553,27 @@ describe("js-dos-player.js — how the emulator is started", () => {
 
     // A loader and an emulator runtime from different builds is not a
     // combination anyone tests; tests/public-assets.test.ts is what keeps
-    // this version in step with public/js-dos.html and app.ts.
+    // this version in step with public/js-dos.html, app.ts and the copy
+    // package.json installs.
     expect(options.pathPrefix).toMatch(
-      /^https:\/\/cdn\.jsdelivr\.net\/npm\/js-dos@\d+\.\d+\.\d+\/dist\/emulators\/$/,
+      new RegExp(
+        `^${SITE.replace(/[.]/g, "\\.")}/vendor/js-dos/\\d+\\.\\d+\\.\\d+/emulators/$`,
+      ),
+    );
+  });
+
+  it("loads the emulator runtime from the origin that served the frame", () => {
+    // Absolute, because emulators.js starts DOSBox in a worker built from a
+    // blob: URL, where a bare "/vendor/…" path has no host to resolve
+    // against. And the frame's own origin rather than the site's: on a
+    // player origin, 'self' in the player's policy is the player origin,
+    // which is what serves these files there.
+    const onPlayerOrigin = dosOptions(
+      load({ origin: "https://play.example.com" }),
+    );
+
+    expect(onPlayerOrigin.pathPrefix).toMatch(
+      /^https:\/\/play\.example\.com\/vendor\/js-dos\/[^/]+\/emulators\/$/,
     );
   });
 

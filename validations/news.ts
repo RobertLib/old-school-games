@@ -1,5 +1,7 @@
 import { sanitizeHtml } from "../utils/sanitize-html.ts";
 import { htmlToPlainText } from "../utils/html-text.ts";
+// "Draws something", as the comment form decides it — see there.
+import { VISIBLE } from "./comments.ts";
 
 /**
  * Whether an article would be published blank: nothing left after the
@@ -9,7 +11,11 @@ import { htmlToPlainText } from "../utils/html-text.ts";
 function isEmptyOnceSanitized(content: string): boolean {
   const sanitized = sanitizeHtml(content);
 
-  return htmlToPlainText(sanitized).length === 0 && !/<img\b/i.test(sanitized);
+  // VISIBLE rather than a length: a body of nothing but zero-width spaces
+  // has a length and draws nothing.
+  return (
+    !VISIBLE.test(htmlToPlainText(sanitized)) && !/<img\b/i.test(sanitized)
+  );
 }
 
 interface NewsValidationData {
@@ -33,7 +39,9 @@ export function validateNews(data: NewsValidationData): ValidationError[] {
 
   if (!data.title || typeof data.title !== "string") {
     errors.push({ field: "title", message: "Title is required" });
-  } else if (data.title.trim().length === 0) {
+  } else if (!VISIBLE.test(data.title)) {
+    // Not only trim(): it leaves a zero-width space or a blank Braille cell
+    // where it found them, and either one made an article with no headline.
     errors.push({ field: "title", message: "Title cannot be empty" });
   } else if (data.title.trim().length > TITLE_MAX_LENGTH) {
     errors.push({

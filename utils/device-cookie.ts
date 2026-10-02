@@ -1,6 +1,6 @@
 import crypto from "crypto";
 import { type Request, type Response } from "express";
-import { readCookie } from "./cookies.ts";
+import { readCookie, readCookies } from "./cookies.ts";
 import { deriveKey } from "./session-secret.ts";
 
 /**
@@ -165,6 +165,15 @@ export function issueDeviceCookie(
  * SESSION_SECRET.
  *
  * The nonce is what the device's own failure budget is keyed by.
+ *
+ * Every cookie of the name is tried, not only the first. The "__Secure-"
+ * prefix does not stop a sibling subdomain from setting one for the whole
+ * domain, and a planted "__Secure-osg_device" with Path=/login that is older
+ * than the real one is sent ahead of it. Reading only the first, a value that
+ * did not verify was not ignored, as the rest of this file assumes: it hid
+ * the one that did, and the owner lost the device's exemption from the
+ * per-account lockout and its place ahead of the password-hashing queue —
+ * which is what an attacker locking the account out would want.
  */
 export function recognisedDevice(
   req: Request,
@@ -172,10 +181,22 @@ export function recognisedDevice(
   credential: string,
   now: number = Date.now(),
 ): string | null {
-  const value = readCookie(req.headers.cookie, DEVICE_COOKIE);
+  for (const value of readCookies(req.headers.cookie, DEVICE_COOKIE)) {
+    const nonce = verifiedNonce(value, account, credential, now);
 
-  if (!value) return null;
+    if (nonce !== null) return nonce;
+  }
 
+  return null;
+}
+
+/** The nonce in one device cookie value, if it verifies; see above. */
+function verifiedNonce(
+  value: string,
+  account: string,
+  credential: string,
+  now: number,
+): string | null {
   const match = VALUE_PATTERN.exec(value);
 
   if (!match) return null;

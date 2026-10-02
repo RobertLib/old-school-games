@@ -17,31 +17,33 @@
       publishes no versioned path — only /latest/ — so there was nothing to
       pin to and no fixed bytes to write an integrity hash against.
 
-      The same release is on npm, and jsDelivr serves that immutably. It is
-      the identical build, not merely a compatible one: js-dos.js,
-      js-dos.css, emulators.js, wdosbox.js and wdosbox.wasm are all
-      byte-for-byte what /latest/ was serving when this was pinned, so the
-      switch changed no behaviour on the day it was made.
+      The same release is on npm, and it was served from jsDelivr next. That
+      pinned these two files, which can carry a hash, but not the ones js-dos
+      fetches for itself — emulators.js, wdosbox.js and the wasm — which can
+      not, and which ran as this site on nothing but the CDN's word.
 
-      Because the address is now immutable, the integrity attributes below
-      mean something: a browser refuses either file if its bytes change.
-      crossorigin is required for that on a cross-origin load, and jsDelivr
-      answers with "Access-Control-Allow-Origin: *".
+      So the release is a dependency of this app now ("js-dos" in
+      package.json), and app.ts serves its dist/ directory at /vendor/js-dos/
+      <version>/: the bytes are the ones the lockfile's sha512 names, every
+      one of them, and no third party is in the path. They are the same bytes
+      jsDelivr served, because jsDelivr serves the npm tarball, so the switch
+      changed no behaviour on the day it was made. The hashes below are kept:
+      they now hold this file and the installed package to the same release,
+      and tests/public-assets.test.ts checks them against node_modules.
 
-      Raising the version is deliberate work — a new hash, and the pathPrefix
-      in public/js/js-dos-player.js, which pins the emulator runtime the same
-      way and must name the same release.
+      Raising the version is deliberate work — package.json, a new hash here,
+      both addresses below, JS_DOS_VERSION in app.ts and in
+      public/js/js-dos-player.js, which names the emulator runtime and must
+      name the same release. The suite fails until they agree.
     -->
     <link
       rel="stylesheet"
-      href="https://cdn.jsdelivr.net/npm/js-dos@8.4.1/dist/js-dos.css"
+      href="/vendor/js-dos/8.4.1/js-dos.css"
       integrity="sha384-tYrgAxbRPufJUrIUwrHMumsQ0yWXdNaYMGKazEkzSgtkpSAps5dIS71lqDFtoVNF"
-      crossorigin="anonymous"
     />
     <script
-      src="https://cdn.jsdelivr.net/npm/js-dos@8.4.1/dist/js-dos.js"
+      src="/vendor/js-dos/8.4.1/js-dos.js"
       integrity="sha384-uYvVxxF95v52Wy2Cep+7dZZn2dzU6IAdVyDhfMGEsS8Mi3LfnZYPXSHa2QBB4d5+"
-      crossorigin="anonymous"
     ></script>
     <link rel="stylesheet" href="/css/js-dos-player.css" />
   </head>

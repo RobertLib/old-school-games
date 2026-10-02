@@ -57,7 +57,8 @@ function game(description: string) {
 function renderCard(description: string) {
   return ejs.renderFile(
     path.join(VIEWS, "games/game-item.ejs"),
-    { game: game(description), csrfToken: "t", req: {} },
+    // genreLabel is an app.locals helper, which a bare renderFile does not get.
+    { game: game(description), csrfToken: "t", req: {}, genreLabel },
     { root: VIEWS, views: [VIEWS] },
   );
 }
@@ -261,5 +262,32 @@ describe("Game#summary", () => {
 
   it("survives a description the column allows to be null", () => {
     expect(game(null as any).summary).toBe("");
+  });
+});
+
+/**
+ * The genre link on a card printed the enum as it is stored — "ACTION",
+ * "RPG" — where every other mention on the site goes through genreLabel.
+ */
+describe("game-item.ejs genre", () => {
+  it.each([
+    ["ACTION", "Action"],
+    ["RPG", "RPG"],
+  ])("writes %s as %s", async (genre, label) => {
+    const html = await ejs.renderFile(
+      path.join(VIEWS, "games/game-item.ejs"),
+      {
+        game: Object.assign(game("x"), { genre }),
+        csrfToken: "t",
+        req: {},
+        genreLabel,
+      },
+      { root: VIEWS, views: [VIEWS] },
+    );
+    const link = new JSDOM(html).window.document.querySelector(
+      `a[href="/${genre.toLowerCase()}"]`,
+    );
+
+    expect(link?.textContent).toBe(label);
   });
 });

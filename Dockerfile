@@ -94,6 +94,16 @@ FROM base
 # write nothing under /app.
 COPY --from=build /app /app
 
+# npm, npx and corepack come with the base image, and nothing in this one
+# runs them: CMD is node itself (see below), the release command in fly.toml
+# is `node migrate.ts`, and the admin script is `node /app/create-admin.ts`.
+# The install happened in the build stage, which keeps its npm. Left here
+# they were only something for a container scanner to report — npm vendors a
+# few hundred packages of its own — and a package manager on the path of
+# anything that gets a shell in a production machine.
+RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack \
+  /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack
+
 USER node
 
 # Fly runs its own HTTP check against /healthz (see fly.toml) and ignores

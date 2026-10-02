@@ -91,6 +91,26 @@ describe("recognisedDevice", () => {
     );
   });
 
+  /**
+   * A "__Secure-" cookie can still be set for the whole domain from a sibling
+   * subdomain, and an older one with Path=/login is sent ahead of the real
+   * one. Reading only the first, the planted value hid the cookie that would
+   * have verified, and the owner lost the device's exemption from the
+   * account lockout — exactly what someone locking the account out wants.
+   */
+  it("recognises its own cookie behind one it did not issue", () => {
+    const { value } = issue();
+    const req = {
+      headers: {
+        cookie: `${DEVICE_COOKIE}=planted; ${DEVICE_COOKIE}=${value}`,
+      },
+    } as unknown as Request;
+
+    expect(recognisedDevice(req, ACCOUNT, CREDENTIAL, NOW)).toBe(
+      value.split(".")[0],
+    );
+  });
+
   // Bound through the MAC: a cookie for one account says nothing about
   // another, which is what stops one login lifting every account's backstop.
   it("does not recognise it for a different account", () => {

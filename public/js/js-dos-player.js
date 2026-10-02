@@ -216,11 +216,30 @@ const stream = (function () {
  * the wasm is the part that runs the game, it was still coming from a moving
  * /latest/, and a wasm module is no less privileged than a script.
  *
+ * Served by this app now (JS_DOS_PATH in app.ts) rather than by jsDelivr.
+ * js-dos fetches these files itself, so nothing here can hand it an
+ * integrity hash for them; the lockfile's hash of the npm tarball is what
+ * pins them instead.
+ *
  * Must name the same release as the two files in js-dos.html — a loader and
  * an emulator runtime from different builds is not a combination anyone
  * tests.
  */
 const JS_DOS_VERSION = "8.4.1";
+
+/**
+ * Absolute, on whatever origin served this frame — the site, or the player
+ * origin, which answers for these files too.
+ *
+ * Not the bare "/vendor/…" path. emulators.js builds the DOSBox worker out
+ * of a blob: URL, and a path is resolved against the document that uses it;
+ * inside a worker started from blob:, that base has no host to resolve
+ * "/vendor/…" against.
+ */
+const JS_DOS_EMULATORS = new URL(
+  `/vendor/js-dos/${JS_DOS_VERSION}/emulators/`,
+  location.href,
+).href;
 
 /**
  * Puts a sentence where the emulator would have been, for the two cases in
@@ -261,10 +280,10 @@ function showMessage(className, text) {
  * No game to start comes first: without an address there is nothing a
  * working loader could do either, so that is the more useful thing to say.
  *
- * Then the loader, which may not have arrived: the CDN can be down, an
- * extension can block it, and a hash mismatch — jsDelivr re-publishing the
- * file — makes the browser refuse it outright, which is what the integrity
- * attribute is for. `Dos` is then undefined, and calling it threw a
+ * Then the loader, which may not have arrived: the connection can drop, an
+ * extension can block it, and a hash mismatch — a js-dos.js that is not the
+ * release js-dos.html names — makes the browser refuse it outright, which is
+ * what the integrity attribute is for. `Dos` is then undefined, and calling it threw a
  * ReferenceError that took everything below down with it.
  */
 if (stream.url === null) {
@@ -285,7 +304,7 @@ if (stream.url === null) {
     mouseCapture: true,
     mouseSensitivity: 0.4,
     theme: "dark",
-    pathPrefix: `https://cdn.jsdelivr.net/npm/js-dos@${JS_DOS_VERSION}/dist/emulators/`,
+    pathPrefix: JS_DOS_EMULATORS,
     url: stream.url,
   });
 }

@@ -469,7 +469,7 @@ they are secrets in the process environment and there is no file.
 - `PORT` - Port the server listens on (default: `3000`)
 - `LOG_LEVEL` - The quietest level still written: `error`, `warn` or `info` (default: `info`, i.e. everything). It decides *what* is written, not where — that is `NODE_ENV`'s job. Worth setting to `warn` on a busy deployment, because the access log writes an `info` line per request and an incident's error lines are otherwise buried in them. An unrecognised value warns once and falls back to `info` rather than being read as "off": a typo would otherwise silence the log, and missing lines are the last thing anybody connects to a misspelled variable
 - `CANONICAL_HOST` - The site's own host: what production requests are redirected to, and what every canonical tag, feed link and sitemap entry is built from (default: `oldschoolgames.eu`). The player carries it too, as `SITE_ORIGIN` in `public/js/js-dos-player.js` — the page it trusts and the site whose games it will load once it has an origin of its own — so change the two together; `tests/public-assets.test.ts` checks they agree
-- `MEDIA_ORIGIN` - Origin serving game artwork and the js-dos bundles (default: the current storage bucket). It is named in the `Content-Security-Policy`, so a deployment pointing at its own bucket must set this — get it wrong and the browser refuses every image and bundle, which is reported nowhere but its console. **Set it in two places:** the player also refuses a game bundle from anywhere but this origin, and `public/js/js-dos-player.js` is a static file that cannot read an environment variable, so it carries its own `MEDIA_ORIGIN` constant. `tests/public-assets.test.ts` asserts that constant matches the default here, the same way it keeps the js-dos release in step across two files
+- `MEDIA_ORIGIN` - Origin serving game artwork and the js-dos bundles (default: the current storage bucket). It is named in the `Content-Security-Policy`, so a deployment pointing at its own bucket must set this — get it wrong and the browser refuses every image and bundle, which is reported nowhere but its console. **Set it in two places:** the player also refuses a game bundle from anywhere but this origin, and `public/js/js-dos-player.js` is a static file that cannot read an environment variable, so it carries its own `MEDIA_ORIGIN` constant. `tests/public-assets.test.ts` asserts that constant matches the default here, the same way it keeps the js-dos release in step across every file that names it
 - `PLAYER_ORIGIN` - Origin the DOS player is served from, when it is not this site (default: unset, which keeps the player at `/js-dos.html` on this origin exactly as it has always been). Setting it is what makes the player's sandbox a real boundary; see *The player origin* below for why, how to roll it out, and what it costs — saved games move with it. A bare `https://` origin in production, and never `CANONICAL_HOST` itself: the app refuses to boot on either mistake rather than guess
 - `TEST_DATABASE_URL` - Database the test suite runs against (default: `postgresql:///old_school_games_test`, which leaves host, user and password to libpq's defaults and the standard `PG*` variables)
 - `ADMIN_EMAIL`, `ADMIN_PASSWORD` - Read by `npm run create-admin` only, never by the app itself. Not something to leave in `.env` on a server: the account exists in the database once the script has run
@@ -483,9 +483,17 @@ boundary**. The frame needs both `allow-scripts` and `allow-same-origin`, and
 on a same-origin frame the HTML standard warns that the pair lets it remove
 its own sandbox and reload itself; it need not bother, because it can reach
 `parent.document` directly — the page's forms, its CSRF token, its nonce. A
-foothold in the emulator (a js-dos bug, or a tampered `emulators.js` or
-`wdosbox.js`, which js-dos loads from jsDelivr with no integrity check) runs as
-this site, an admin's session included.
+foothold in the emulator (a js-dos bug, or a game bundle that finds one) runs
+as this site, an admin's session included.
+
+js-dos itself is not fetched from a CDN. It is a dependency (`"js-dos"` in
+`package.json`, pinned exactly), and the app serves its `dist/` directory at
+`/vendor/js-dos/<version>/`, so every file the emulator runs — `emulators.js`,
+`wdosbox.js`, the wasm — is the one the lockfile's hash names, and no third
+party is in the path. Raising the version means `package.json`, the two
+integrity hashes and addresses in `public/js-dos.html`, and `JS_DOS_VERSION` in
+`app.ts` and `public/js/js-dos-player.js`; `tests/public-assets.test.ts` fails
+until they agree with what is installed.
 
 `PLAYER_ORIGIN` serves the player from an origin of its own, where the same
 frame cannot reach the site at all. With it set:
@@ -493,7 +501,7 @@ frame cannot reach the site at all. With it set:
 - game pages frame `<PLAYER_ORIGIN>/js-dos.html`, and their `frame-src` names
   that origin and nothing else;
 - that host answers for the player's own files (`PLAYER_PATHS` in
-  `utils/site.ts`) and its CSP reports, and with a bare 404 for everything
+  `utils/site.ts`, plus js-dos under `/vendor/js-dos/`) and its CSP reports, and with a bare 404 for everything
   else, so it never becomes a mirror of the site; the canonical-host redirect
   leaves it alone;
 - the player's policy lets only `https://<CANONICAL_HOST>` frame it, so a
@@ -529,7 +537,11 @@ frame cannot reach the site at all. With it set:
      accepts only from the host itself, so none of them can be planted that
      way. The voter id is still read under its old unprefixed name `osg_vid`
      from a browser that has nothing newer, so ratings cast before the prefix
-     are not lost; that fallback can go a year after it shipped.
+     are not lost — but only when the browser holds exactly one, since two
+     mean one was planted; that fallback can go a year after it shipped. The
+     login device cookie is `__Secure-`, which a subdomain *can* set for the
+     whole domain, so every copy is checked and a planted one cannot hide the
+     real one.
 2. Set it beside `CANONICAL_HOST` and `MEDIA_ORIGIN` in the `[env]` block of
    `fly.toml` — for example `PLAYER_ORIGIN = "https://old-school-games.fly.dev"`
    — and deploy. No static file needs editing: the player takes the site's

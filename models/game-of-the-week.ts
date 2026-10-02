@@ -111,6 +111,13 @@ export default class GameOfTheWeek extends Model {
     // no player on it for a week. The catalogue holds such rows on purpose —
     // a game catalogued before its bundle exists — so this is reachable rather
     // than theoretical.
+    //
+    // The rating rule — unrated, or a plain average of four or more — reads
+    // the game's own "ratingSum" and "ratingCount", as getCurrent above does
+    // and for its reason. It used to join an aggregate of the whole "ratings"
+    // table, grouped by game, to answer a question each row already answers.
+    // The same rule as before, written as a product so that no division is
+    // needed: sum >= 4 * count is average >= 4 for any count above zero.
     const { rows: games } = await executor.query(
       `SELECT g.id
        FROM "games" g
@@ -119,14 +126,9 @@ export default class GameOfTheWeek extends Model {
          FROM "game_of_the_week"
          WHERE "startDate" > NOW() - INTERVAL '60 days'
        ) recent ON g.id = recent."gameId"
-       LEFT JOIN (
-         SELECT "gameId", AVG(rating) as avg_rating
-         FROM "ratings"
-         GROUP BY "gameId"
-       ) r ON g.id = r."gameId"
        WHERE recent."gameId" IS NULL
        AND g."stream" IS NOT NULL AND g."stream" <> ''
-       AND (r.avg_rating IS NULL OR r.avg_rating >= 4)
+       AND (g."ratingCount" = 0 OR g."ratingSum" >= 4 * g."ratingCount")
        ORDER BY RANDOM()
        LIMIT 1`,
     );

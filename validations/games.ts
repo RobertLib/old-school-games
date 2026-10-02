@@ -7,6 +7,8 @@ import { sanitizeHtml } from "../utils/sanitize-html.ts";
 // constants the Content-Security-Policy in app.ts is built out of. See
 // LOADABLE_ORIGINS.
 import { MEDIA_ORIGIN, SITE_URL } from "../utils/site.ts";
+// "Draws something", as the comment form decides it — see there.
+import { VISIBLE } from "./comments.ts";
 
 export const validateGameRating = (
   req: Request,
@@ -268,7 +270,10 @@ export function validateGame(
   // findAdjacentGames, which orders on LOWER("title").
   normalized.title = title;
 
-  if (!title) {
+  // VISIBLE as well as non-empty: trim() leaves a zero-width space, a Hangul
+  // filler or a blank Braille cell where it found them, so "\u200b" was
+  // stored as a title — a card with no name on it, a slug made of nothing.
+  if (!title || !VISIBLE.test(title)) {
     errors.push({ field: "title", message: "Title is required" });
   } else if (title.length > TEXT_MAX_LENGTH) {
     errors.push({

@@ -443,3 +443,108 @@ describe("0058 — 0054's backfill once more", () => {
     expect(after.rows).toEqual(before.rows);
   });
 });
+
+describe("0059 — the entities 0023 left behind", () => {
+  /** A comment as it was stored, dated relative to when 0023 was applied. */
+  async function insertComment(
+    gameId: number,
+    content: string,
+    when: "before 0023" | "after 0023",
+    nick = "anonymous",
+  ): Promise<number> {
+    const { rows } = await pool.query(
+      `INSERT INTO "comments" ("gameId", "content", "nick", "createdAt")
+       SELECT $1, $2, $3, "appliedAt" + $4::interval
+       FROM "migrations"
+       WHERE "name" = '0023_unescape_comment_entities.sql'
+       RETURNING "id"`,
+      [gameId, content, nick, when === "before 0023" ? "-1 day" : "1 second"],
+    );
+
+    return rows[0].id as number;
+  }
+
+  async function stored(id: number): Promise<{ content: string; nick: string }> {
+    const { rows } = await pool.query(
+      'SELECT "content", "nick" FROM "comments" WHERE "id" = $1',
+      [id],
+    );
+
+    return rows[0];
+  }
+
+  /**
+   * DOMPurify re-serialised anything with a "<" in it, which escapes "&" and
+   * U+00A0 as well as the angle brackets. 0023 reversed only the brackets, so
+   * "<3 Tom & Jerry" — stored as "&lt;3 Tom &amp; Jerry" — has rendered as
+   * "<3 Tom &amp; Jerry" ever since.
+   */
+  it("decodes what re-serialising escaped, on the comments that went through it", async () => {
+    const game = await insertGame("doom");
+    const id = await insertComment(
+      game,
+      "<3 Tom &amp; Jerry&nbsp;forever",
+      "before 0023",
+      "<b>&amp;co",
+    );
+
+    await run("0059_comments_reserialized_entities.sql");
+
+    expect(await stored(id)).toEqual({
+      content: "<3 Tom & Jerry forever",
+      nick: "<b>&co",
+    });
+  });
+
+  // DOMPurify's fast path: no "<", so the comment was stored exactly as it
+  // was typed, and its "&amp;" is the writer's own.
+  it("leaves a comment with no '<' alone", async () => {
+    const game = await insertGame("doom");
+    const id = await insertComment(game, "a &amp; b > c", "before 0023");
+
+    await run("0059_comments_reserialized_entities.sql");
+
+    expect((await stored(id)).content).toBe("a &amp; b > c");
+  });
+
+  // Sanitizing had stopped by then, so this is what somebody wrote.
+  it("leaves a comment written after 0023 alone", async () => {
+    const game = await insertGame("doom");
+    const id = await insertComment(game, "<3 &amp;", "after 0023");
+
+    await run("0059_comments_reserialized_entities.sql");
+
+    expect((await stored(id)).content).toBe("<3 &amp;");
+  });
+
+  /**
+   * "&nbsp;" before "&amp;": a writer who typed "&nbsp;" in a re-serialised
+   * comment was stored as "&amp;nbsp;", and the other order would make that
+   * a no-break space instead of the text they typed. Same for a typed
+   * "&amp;", stored as "&amp;amp;".
+   */
+  it("gives back entities the writer typed as text, not as characters", async () => {
+    const game = await insertGame("doom");
+    const id = await insertComment(
+      game,
+      "<p> &amp;nbsp; &amp;amp; &amp;lt;",
+      "before 0023",
+    );
+
+    await run("0059_comments_reserialized_entities.sql");
+
+    expect((await stored(id)).content).toBe("<p> &nbsp; &amp; &lt;");
+  });
+
+  // One level and no more. Unlike 0052 and 0053 this is not safe to run
+  // twice — a second pass would decode the "&amp;" the first one gave back —
+  // which is fine for a migration, since the runner applies it once.
+  it("decodes exactly one level of escaping", async () => {
+    const game = await insertGame("doom");
+    const id = await insertComment(game, "<3 &amp;amp;", "before 0023");
+
+    await run("0059_comments_reserialized_entities.sql");
+
+    expect((await stored(id)).content).toBe("<3 &amp;");
+  });
+});

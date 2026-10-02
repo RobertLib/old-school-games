@@ -103,6 +103,15 @@ jobs:
   # that, and drops a whole second build off the deploy's clock.
   docker:
     name: Build Docker image
+    # After the tests, not beside them. This job pushes the image to the Fly
+    # registry under the commit's tag, and the two used to run in parallel:
+    # on a main push whose tests failed, the deploy job was skipped but the
+    # push had already happened, so a red commit sat in the registry under a
+    # tag that looks exactly like a released one — one `flyctl deploy
+    # --image` away from production, and the first thing a rollback by tag
+    # would find. Serialising costs the build's few minutes on every run;
+    # it buys a registry that holds only images whose commit passed.
+    needs: test
     runs-on: ubuntu-latest
     # Writes to the Fly registry on main, so the token is needed here now.
     # Still no repository write: `permissions` at the top of this file governs
@@ -213,6 +222,39 @@ jobs:
           done
           echo "/healthz did not answer within 30s."
           exit 1
+      # The player, from the image: the frame, its script and the emulator
+      # js-dos fetches for itself. js-dos is served out of node_modules (see
+      # JS_DOS_PATH in app.ts), so an image whose `npm ci` left it out — or a
+      # release in public/js-dos.html that the lockfile does not install —
+      # boots, answers /healthz, and starts no game at all. Nothing else in
+      # this job would notice.
+      #
+      # Host and X-Forwarded-Proto are what Fly's proxy sends, and the reason
+      # the request is not simply redirected: under NODE_ENV=production
+      # anything that is not https on the canonical host gets a 301, which
+      # `curl -f` would count as success. So the status is compared, not
+      # merely checked for an error.
+      #
+      # The release is read from public/js-dos.html rather than written here,
+      # so this is one place fewer to move when js-dos is raised.
+      - name: Check the image serves the player and its emulator
+        run: |
+          loader=$(grep -o '/vendor/js-dos/[0-9.]*/js-dos\.js' public/js-dos.html)
+          release=${loader%js-dos.js}
+          test -n "$release" || { echo "No js-dos release in public/js-dos.html."; exit 1; }
+          for path in /js-dos.html /js/js-dos-player.js "$loader" \
+            "${release}js-dos.css" \
+            "${release}emulators/emulators.js" \
+            "${release}emulators/wdosbox.js" \
+            "${release}emulators/wdosbox.wasm" \
+            "${release}emulators/wlibzip.js" \
+            "${release}emulators/wlibzip.wasm"; do
+            status=$(curl -sS -o /dev/null -w '%{http_code}' \
+              -H 'Host: oldschoolgames.eu' -H 'X-Forwarded-Proto: https' \
+              "localhost:3000$path")
+            echo "$status $path"
+            test "$status" = 200 || exit 1
+          done
       # Runs even when the step above failed, which is when the logs are worth
       # having — a container that exited on boot says why there and nowhere
       # else. Also keeps a self-hosted runner from being left holding port
@@ -238,9 +280,22 @@ jobs:
         # `flyctl auth docker` writes a credential helper for registry.fly.io
         # into the runner's docker config, so the push below authenticates
         # with the same token the deploy uses and no second secret is needed.
+        #
+        # Never over a tag that already exists. "Re-run all jobs" on a main
+        # push rebuilds from whatever node:24-slim is that day and used to
+        # push the result over the same :<sha>, so the image a rollback names
+        # was no longer the image that was released under it — the
+        # "never overwritten" above was a hope rather than a property. An
+        # existing tag is left alone and the deploy job releases it as it is.
+        # A failed lookup is not proof of absence, so it pushes: the worst
+        # case is the old behaviour, never a deploy of a tag that is missing.
         run: |
           flyctl auth docker
-          docker push "$IMAGE"
+          if docker manifest inspect "$IMAGE" > /dev/null 2>&1; then
+            echo "$IMAGE is already in the registry; leaving it as released."
+          else
+            docker push "$IMAGE"
+          fi
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
 

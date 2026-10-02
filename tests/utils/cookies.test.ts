@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { readCookie } from "../../utils/cookies.ts";
+import { readCookie, readCookies } from "../../utils/cookies.ts";
 
 describe("readCookie", () => {
   it("reads a named cookie out of the header", () => {
@@ -29,5 +29,34 @@ describe("readCookie", () => {
     expect(readCookie("other=1", "osg_vid")).toBeNull();
     expect(readCookie("", "osg_vid")).toBeNull();
     expect(readCookie("novalue", "novalue")).toBeNull();
+  });
+});
+
+/**
+ * Two cookies of one name arrive when they were set with different Domain or
+ * Path attributes — which code on a sibling subdomain can do for any name
+ * that is not "__Host-" prefixed. The callers that care need every value,
+ * not whichever one the browser happened to put first.
+ */
+describe("readCookies", () => {
+  it("returns every value under the name, in the order sent", () => {
+    expect(readCookies("a=1; osg_vid=x; b=2; osg_vid=y", "osg_vid")).toEqual([
+      "x",
+      "y",
+    ]);
+  });
+
+  it("skips a value it cannot decode and keeps the rest", () => {
+    expect(readCookies("name=%ZZ; name=a%20b", "name")).toEqual(["a b"]);
+  });
+
+  it("returns nothing when the header or the cookie is absent", () => {
+    expect(readCookies(undefined, "osg_vid")).toEqual([]);
+    expect(readCookies("", "osg_vid")).toEqual([]);
+    expect(readCookies("other=1", "osg_vid")).toEqual([]);
+  });
+
+  it("does not match a name that only starts the same", () => {
+    expect(readCookies("osg_vid2=x; xosg_vid=y", "osg_vid")).toEqual([]);
   });
 });

@@ -96,6 +96,41 @@ describe("Game of the week rollover", () => {
     expect(current?.game?.ratingCount).toBe(0);
   });
 
+  /**
+   * Unrated, or an average of four or more: the rule the pick has always had,
+   * read off the game's totals now rather than off an aggregate of the whole
+   * "ratings" table. The boundary is inclusive — 4.0 is in, 3.99 is out —
+   * which is where an integer comparison and a division could disagree.
+   */
+  it("picks only unrated games and games averaging four or more", async () => {
+    const low = await createGame("Low");
+    const edge = await createGame("Edge");
+    const unrated = await createGame("Unrated");
+
+    await pool.query(
+      `INSERT INTO "ratings" ("gameId", "rating", "voterId")
+       VALUES ($1, 4, 'a'), ($1, 4, 'b'), ($1, 3, 'c'),
+              ($2, 5, 'a'), ($2, 3, 'b')`,
+      [low, edge],
+    );
+
+    const picked = new Set<number>();
+
+    // Each pick shuts the game out for sixty days, so asking twice walks
+    // both eligible games without reaching the fallback. Ending the current
+    // pick between asks is what makes the next ask select again.
+    for (let i = 0; i < 2; i++) {
+      const pick = await GameOfTheWeek.getOrSelectCurrent();
+
+      picked.add(pick!.gameId);
+      await pool.query(
+        `UPDATE "game_of_the_week" SET "endDate" = NOW() - INTERVAL '1 second'`,
+      );
+    }
+
+    expect(picked).toEqual(new Set([edge, unrated]));
+  });
+
   it("selects a game when no pick is current", async () => {
     const id = await createGame("Alpha");
 

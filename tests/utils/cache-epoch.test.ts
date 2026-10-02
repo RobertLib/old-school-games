@@ -116,19 +116,54 @@ describe("cache epoch", () => {
     expect(sidebarCache.has(LATEST_COMMENTS_KEY)).toBe(true);
   }
 
-  it("leaves the caches alone the first time it reads the counter", async () => {
+  /**
+   * The first read is a baseline, and anything cached before it was built
+   * under an epoch this process never learned. It used to be kept on the
+   * assumption that the boot-time read always comes first — but that read is
+   * not awaited, so a request can fill the sitemap or a sidebar ahead of it,
+   * and a bump elsewhere in between (a game deleted on another machine) then
+   * became this machine's starting number and was never applied.
+   */
+  it("drops what it already held the first time it reads the counter", async () => {
     await warm();
-    mockDb.query.mockResolvedValueOnce(epochs({ all: 5 }));
+    await warmCommentsWidget();
+    mockDb.query.mockResolvedValueOnce(epochs({ all: 5, comments: 5 }));
 
     await syncAt(1_000);
+
+    expect(cache.has("k")).toBe(false);
+    expect(sidebarCache.has(LATEST_COMMENTS_KEY)).toBe(false);
+    // Quietly: on every machine this is the read right after boot, when
+    // there is nothing to drop and nothing worth a log line.
+    expect(logger.info).not.toHaveBeenCalled();
+  });
+
+  it("keeps what it caches after that first read", async () => {
+    mockDb.query.mockResolvedValueOnce(epochs({ all: 5 }));
+    await syncAt(1_000);
+    await warm();
+
+    mockDb.query.mockResolvedValueOnce(epochs({ all: 5 }));
+    await syncAt(1_000 + EPOCH_CHECK_INTERVAL_MS);
 
     expect(cache.has("k")).toBe(true);
   });
 
-  it("drops every cache when the counter has moved", async () => {
+  // The bump-side half of the same rule: a process whose first look at the
+  // counter is its own bump cannot see what moved before it either.
+  it("drops what it held when its first look at the counter is its own bump", async () => {
     await warm();
+    mockDb.query.mockResolvedValueOnce(epochs({ all: 7 }));
+
+    await bumpCacheEpoch();
+
+    expect(cache.has("k")).toBe(false);
+  });
+
+  it("drops every cache when the counter has moved", async () => {
     mockDb.query.mockResolvedValueOnce(epochs({ all: 5 }));
     await syncAt(1_000);
+    await warm();
 
     mockDb.query.mockResolvedValueOnce(epochs({ all: 6 }));
     await syncAt(1_000 + EPOCH_CHECK_INTERVAL_MS);
@@ -140,9 +175,9 @@ describe("cache epoch", () => {
   });
 
   it("keeps the caches when the counter has not moved", async () => {
-    await warm();
     mockDb.query.mockResolvedValue(epochs({ all: 5 }));
     await syncAt(1_000);
+    await warm();
     await syncAt(1_000 + EPOCH_CHECK_INTERVAL_MS);
 
     expect(cache.has("k")).toBe(true);
@@ -191,9 +226,9 @@ describe("cache epoch", () => {
   // The process that made the write has just rebuilt its own caches; it must
   // not throw them away again when it next sees the number it moved.
   it("adopts the value it bumped to, so it does not clear itself", async () => {
-    await warm();
     mockDb.query.mockResolvedValueOnce(epochs({ all: 5 }));
     await syncAt(1_000);
+    await warm();
 
     mockDb.query.mockResolvedValueOnce(epochs({ all: 6 }));
     await bumpCacheEpoch();
@@ -217,9 +252,9 @@ describe("cache epoch", () => {
    * the deleted game stayed in A's sidebars for the rest of their TTL.
    */
   it("applies a move elsewhere that its own bump skipped over", async () => {
-    await warm();
     mockDb.query.mockResolvedValueOnce(epochs({ all: 5 }));
     await syncAt(1_000);
+    await warm();
 
     mockDb.query.mockResolvedValueOnce(epochs({ all: 7 }));
     await bumpCacheEpoch();
@@ -228,10 +263,10 @@ describe("cache epoch", () => {
   });
 
   it("applies only the skipped scope's effect", async () => {
-    await warm();
-    await warmCommentsWidget();
     mockDb.query.mockResolvedValueOnce(epochs({ all: 5, comments: 5 }));
     await syncAt(1_000);
+    await warm();
+    await warmCommentsWidget();
 
     mockDb.query.mockResolvedValueOnce(epochs({ comments: 7 }));
     await bumpCacheEpoch("comments");
@@ -420,10 +455,9 @@ describe("cache epoch", () => {
    * rebuilt.
    */
   it("never adopts a number below the one it has already seen", async () => {
-    await warm();
-
     mockDb.query.mockResolvedValueOnce(epochs({ all: 6 }));
     await bumpCacheEpoch();
+    await warm();
 
     // The stale read landing after the bump.
     mockDb.query.mockResolvedValueOnce(epochs({ all: 5 }));
@@ -444,11 +478,10 @@ describe("cache epoch", () => {
    * and it is cached for a day.
    */
   it("drops only the comments widget when the comments scope moves", async () => {
-    await warm();
-    await warmCommentsWidget();
-
     mockDb.query.mockResolvedValueOnce(epochs({ all: 5, comments: 5 }));
     await syncAt(1_000);
+    await warm();
+    await warmCommentsWidget();
 
     mockDb.query.mockResolvedValueOnce(epochs({ all: 5, comments: 6 }));
     await syncAt(1_000 + EPOCH_CHECK_INTERVAL_MS);
@@ -460,11 +493,10 @@ describe("cache epoch", () => {
   // ...and the broad scope still means everything, which is what a game or
   // news write legitimately invalidates.
   it("drops every cache when the broad scope moves", async () => {
-    await warm();
-    await warmCommentsWidget();
-
     mockDb.query.mockResolvedValueOnce(epochs({ all: 5, comments: 5 }));
     await syncAt(1_000);
+    await warm();
+    await warmCommentsWidget();
 
     mockDb.query.mockResolvedValueOnce(epochs({ all: 6, comments: 5 }));
     await syncAt(1_000 + EPOCH_CHECK_INTERVAL_MS);
@@ -523,10 +555,9 @@ describe("cache epoch", () => {
   // independent, and a comment posted here says nothing about a game written
   // elsewhere.
   it("still applies a broad move after a local comment bump", async () => {
-    await warm();
-
     mockDb.query.mockResolvedValueOnce(epochs({ all: 5, comments: 5 }));
     await syncAt(1_000);
+    await warm();
 
     mockDb.query.mockResolvedValueOnce(epochs({ comments: 6 }));
     await bumpCacheEpoch("comments");
@@ -544,10 +575,9 @@ describe("cache epoch", () => {
    * build does know the scope.
    */
   it("ignores a scope it does not recognise", async () => {
-    await warm();
-
     mockDb.query.mockResolvedValueOnce(epochs({ all: 5, futurething: 5 }));
     await syncAt(1_000);
+    await warm();
 
     mockDb.query.mockResolvedValueOnce(epochs({ all: 5, futurething: 9 }));
     await syncAt(1_000 + EPOCH_CHECK_INTERVAL_MS);
@@ -569,9 +599,9 @@ describe("cache epoch", () => {
       );
 
     it("is tried again a second later, and the number it lands on adopted", async () => {
-      await warm();
       mockDb.query.mockResolvedValueOnce(epochs({ all: 5 }));
       await syncAt(1_000);
+      await warm();
 
       mockDb.query
         .mockRejectedValueOnce(new Error("down"))

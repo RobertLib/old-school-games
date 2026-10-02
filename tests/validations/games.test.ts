@@ -242,6 +242,18 @@ describe("Game Validations", () => {
       expect(validateGame(valid(), GENRES)).toEqual([]);
     });
 
+    // trim() leaves these where it finds them, and each one drew a card with
+    // no name on it — the comment form has refused them for a while.
+    it.each(["\u200b", "\u3164", "\u2800", " \u200b\u00ad "])(
+      "refuses a title that draws nothing (%j)",
+      (title) => {
+        expect(validateGame(valid({ title }), GENRES)).toContainEqual({
+          field: "title",
+          message: "Title is required",
+        });
+      },
+    );
+
     it("rejects an unknown genre", () => {
       const errors = validateGame(valid({ genre: "SHMUP" }), GENRES);
 

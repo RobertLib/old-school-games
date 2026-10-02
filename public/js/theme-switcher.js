@@ -36,11 +36,19 @@
     // gave all three tabindex="-1" and aria-checked="false". A radio group
     // with nothing checked, a menu with no tab stop at all, and a page drawn
     // in the classic palette anyway, because setThemeClass had no class for
-    // the name either. Object.hasOwn rather than `in` or a bare lookup, or
-    // "toString" off the prototype would count as a theme — and hand
-    // classList.add a function, whose source has spaces in it, so it throws
-    // and takes the whole switcher down on load.
-    return Object.hasOwn(THEMES, stored) ? stored : "classic";
+    // the name either. An own-property check rather than `in` or a bare
+    // lookup, or "toString" off the prototype would count as a theme — and
+    // hand classList.add a function, whose source has spaces in it, so it
+    // throws and takes the whole switcher down on load.
+    //
+    // hasOwnProperty.call and not Object.hasOwn, which is ES2022 and the one
+    // built-in in these scripts that Safari before 15.4 lacks. This runs in
+    // <head> outside any try, so there it threw a TypeError that took the
+    // whole switcher down — no theme applied, no handler on any button —
+    // which is the failure the check exists to prevent.
+    return Object.prototype.hasOwnProperty.call(THEMES, stored)
+      ? stored
+      : "classic";
   }
 
   function rememberTheme(themeName) {

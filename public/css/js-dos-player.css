@@ -116,8 +116,8 @@
 /* ─────────────────────────────────────────────────────────── */
 
 /* Shown by js/js-dos-player.js in place of the emulator when there is nothing
-   it can start: the loader did not arrive (dos-load-failed — the CDN
-   unreachable, a content blocker, or the integrity check refusing a changed
+   it can start: the loader did not arrive (dos-load-failed — the connection
+   dropped, a content blocker, or the integrity check refusing a changed
    file), or the game's address was missing or refused (dos-no-game — see the
    stream check there). Without it the frame was black, or an empty emulator,
    and said nothing.

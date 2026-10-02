@@ -66,10 +66,11 @@ export const MEDIA_ORIGIN =
  * and reload itself unsandboxed. It does not even have to: it can reach
  * parent.document directly, and with it the page's links and forms, the CSRF
  * token in the <meta> tag, and the page's nonce off any of its <script>
- * elements. So a foothold inside the frame — a js-dos bug, or a tampered
- * emulators.js or wdosbox.js, which js-dos loads from jsDelivr with no
- * integrity check — runs as this site, an admin's session included, and the
+ * elements. So a foothold inside the frame — a js-dos bug, or a game bundle
+ * that finds one — runs as this site, an admin's session included, and the
  * player's relaxed policy is in practice the policy of the whole origin.
+ * (js-dos itself is no longer fetched from a CDN: app.ts serves the npm
+ * release the lockfile pins, so a tampered copy is no longer the way in.)
  *
  * Serving the player from another origin is what turns the frame into a
  * boundary: the same sandbox tokens then keep the *player's* origin, which
@@ -168,8 +169,8 @@ export const PLAYER_HOST =
 
 /**
  * Everything the player origin answers for — the frame, the script it loads
- * and its stylesheet, which is all public/js-dos.html asks its own origin for.
- * Everything else about the player comes from jsDelivr and the media bucket.
+ * and its stylesheet — besides js-dos's own files, which app.ts serves there
+ * under JS_DOS_PATH. The game itself comes from the media bucket.
  *
  * A list rather than a directory, because the point is that the player origin
  * is not a second copy of this site: public/ is the site's scripts, styles,

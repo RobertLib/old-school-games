@@ -41,10 +41,11 @@ export const HOW_TO_PLAY_FAQ: readonly FaqEntry[] = [
   {
     question: "How do I start playing an MS-DOS game in my browser?",
     answer:
-      "Open any game page and wait a few seconds for the emulator to load, " +
-      "then click inside the game window to give it keyboard and mouse " +
-      "focus. Nothing has to be downloaded or installed. If the game waits " +
-      "on a title screen, press any key to continue.",
+      "Open any game page and click the game's picture, marked \"Click to " +
+      "play\" — the emulator starts then, not before, and takes a few " +
+      "seconds to load. Then click inside the game window to give it " +
+      "keyboard and mouse focus. Nothing has to be downloaded or installed. " +
+      "If the game waits on a title screen, press any key to continue.",
   },
   {
     question: "How do I play a DOS game in fullscreen?",

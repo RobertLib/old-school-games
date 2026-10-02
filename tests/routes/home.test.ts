@@ -254,6 +254,21 @@ describe("Home Routes", () => {
       expect(response.headers.location).toBe("/action?page=2");
     });
 
+    /**
+     * A genre listing has no search, so carrying "search" over landed on the
+     * whole unfiltered listing with "doom" in the search box, noindex as a
+     * search is, and every pagination link repeating a filter the page never
+     * applied. The genre is the part the site has a page for.
+     */
+    it("leaves a search behind as well, since the genre page has none", async () => {
+      const response = await request(server).get(
+        "/?genre=ACTION&search=doom&page=2",
+      );
+
+      expect(response.status).toBe(301);
+      expect(response.headers.location).toBe("/action?page=2");
+    });
+
     // The encoded spelling of the key. "%67enre=action" is what Express hands
     // back as req.query.genre, so it is what triggers the redirect — and
     // matching the raw key alone would carry it over as well, putting the
@@ -974,6 +989,8 @@ describe("Home Routes", () => {
     });
 
     it("should handle invalid orderBy for developer", async () => {
+      vi.mocked(Game.count).mockResolvedValue(1);
+
       const response = await request(server).get(
         "/developer/Sierra?orderBy=invalid",
       );
@@ -982,11 +999,25 @@ describe("Home Routes", () => {
     });
 
     it("should reject invalid orderDir for developer", async () => {
+      vi.mocked(Game.count).mockResolvedValue(1);
+
       const response = await request(server).get(
         "/developer/Sierra?orderDir=INVALID",
       );
 
       expect(response.status).toBe(400);
+    });
+
+    // Existence before the sort, as for a genre and a letter: this used to
+    // be a 400 about the sort order of a page that is not there.
+    it("answers 404 for an unknown developer whatever the sort says", async () => {
+      vi.mocked(Game.count).mockResolvedValue(0);
+
+      const response = await request(server).get(
+        "/developer/Nobody?orderBy=invalid",
+      );
+
+      expect(response.status).toBe(404);
     });
   });
 
@@ -1016,6 +1047,8 @@ describe("Home Routes", () => {
     });
 
     it("should reject invalid orderBy for publisher", async () => {
+      vi.mocked(Game.count).mockResolvedValue(1);
+
       const response = await request(server).get(
         "/publisher/Electronic%20Arts?orderBy=invalid",
       );
@@ -1024,11 +1057,23 @@ describe("Home Routes", () => {
     });
 
     it("should reject invalid orderDir for publisher", async () => {
+      vi.mocked(Game.count).mockResolvedValue(1);
+
       const response = await request(server).get(
         "/publisher/Electronic%20Arts?orderDir=INVALID",
       );
 
       expect(response.status).toBe(400);
+    });
+
+    it("answers 404 for an unknown publisher whatever the sort says", async () => {
+      vi.mocked(Game.count).mockResolvedValue(0);
+
+      const response = await request(server).get(
+        "/publisher/Nobody?orderDir=INVALID",
+      );
+
+      expect(response.status).toBe(404);
     });
   });
 
@@ -1077,15 +1122,27 @@ describe("Home Routes", () => {
     });
 
     it("should reject invalid orderBy for year", async () => {
+      vi.mocked(Game.count).mockResolvedValue(1);
+
       const response = await request(server).get("/year/1990?orderBy=invalid");
 
       expect(response.status).toBe(400);
     });
 
     it("should reject invalid orderDir for year", async () => {
+      vi.mocked(Game.count).mockResolvedValue(1);
+
       const response = await request(server).get("/year/1990?orderDir=INVALID");
 
       expect(response.status).toBe(400);
+    });
+
+    it("answers 404 for a year with no games whatever the sort says", async () => {
+      vi.mocked(Game.count).mockResolvedValue(0);
+
+      const response = await request(server).get("/year/1975?orderBy=invalid");
+
+      expect(response.status).toBe(404);
     });
   });
 
@@ -1276,6 +1333,39 @@ describe("Home Routes", () => {
       expect(ldJson.interactionStatistic).toBeUndefined();
       expect(ldJson.discussionUrl).toBeUndefined();
       expect(ldJson.comment).toBeUndefined();
+    });
+
+    /**
+     * Slot 0 is the box art: the gallery calls it "cover art" and the page
+     * shows it as the hero. Listing it under "screenshot" described the cover
+     * as gameplay. It stays in "image", which is what a cover is.
+     */
+    it("lists the cover as an image but not as a screenshot", async () => {
+      const media = "https://trwglibsccninuamefls.supabase.co/storage/v1/object/public/assets/doom";
+      const mockGame = {
+        id: 123,
+        title: "Test Game",
+        genre: "Adventure",
+        images: [`${media}/cover.png`, "", `${media}/1.png`, `${media}/2.png`],
+        slug: "test-game",
+      };
+
+      vi.mocked(Game.findBySlug).mockResolvedValue(mockGame as any);
+      vi.mocked(Comment.findByGameId).mockResolvedValue([] as any);
+      vi.mocked(Comment.countAll).mockResolvedValue(0);
+      vi.mocked(Game.findSimilar).mockResolvedValue([] as any);
+      vi.mocked(Game.findAdjacentGames).mockResolvedValue({
+        prevGame: null,
+        nextGame: null,
+      });
+
+      const { ldJson } = (await request(server).get("/test-game")).body.data;
+
+      expect(ldJson.image).toContain(`${media}/cover.png`);
+      expect(ldJson.screenshot).toEqual([
+        { "@type": "ImageObject", url: `${media}/1.png` },
+        { "@type": "ImageObject", url: `${media}/2.png` },
+      ]);
     });
 
     it("decodes the entities a stored description holds", async () => {

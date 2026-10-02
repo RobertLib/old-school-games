@@ -251,17 +251,17 @@ async function buildEntries(): Promise<SitemapEntry[]> {
     : undefined;
 
   /**
-   * When the catalogue as a whole last changed — what a page that stands over
-   * all of it was last modified: the developer, publisher and year indexes and
-   * the index of the lists. Full ISO, trimmed by asDate where it is stamped,
-   * like the per-group values from Game.getSitemapCounts.
+   * Why the indexes — /developers, /publishers, /years and /game-lists —
+   * carry no lastmod either.
    *
-   * Not what a *ranking* was last modified, which is why the curated lists
-   * and /most-played no longer take it — see the note on rankings below.
+   * They used to be stamped with the newest "updatedAt" in the catalogue,
+   * which moves on every save of any game: a typo fixed in one description
+   * dated all four of them today, although none shows a description. What
+   * they do show (names, years, counts, the lists) changes when a game is
+   * added, removed or re-filed, and nothing fetched here can tell those saves
+   * from the rest. A date that is later than the change it claims is the
+   * kind Google stops trusting the element over, so they say nothing.
    */
-  const catalogueLastmod = latestGameDate
-    ? new Date(latestGameDate).toISOString()
-    : undefined;
 
   /**
    * Why the pages that rank games carry no lastmod at all.
@@ -281,8 +281,13 @@ async function buildEntries(): Promise<SitemapEntry[]> {
    * where it is right. Nothing fetched here knows when the last play or vote
    * was, so they say nothing, as /comments already did for the newest comment.
    *
-   * The listings whose content really is the games — a genre, a letter, a
-   * studio, a year, and the indexes of those — keep theirs.
+   * A genre's own listing is one of these too, which is easy to miss: with
+   * no ?orderBy= it is ranked by the same weighted rating (see Game.find),
+   * and lists.ts says outright that /best-rpg-games and /rpg were once the
+   * same games in the same order. So its page 1 carries no lastmod either.
+   *
+   * The listings whose content really is the games in a fixed order — a
+   * letter, a studio, a year, all sorted by title — keep theirs.
    */
 
   /**
@@ -321,18 +326,9 @@ async function buildEntries(): Promise<SitemapEntry[]> {
   // query for one URL's sake.
   add({ url: `/comments` });
 
-  add({
-    url: `/developers`,
-    lastmod: asDate(catalogueLastmod),
-  });
-  add({
-    url: `/publishers`,
-    lastmod: asDate(catalogueLastmod),
-  });
-  add({
-    url: `/years`,
-    lastmod: asDate(catalogueLastmod),
-  });
+  add({ url: `/developers` });
+  add({ url: `/publishers` });
+  add({ url: `/years` });
   add({ url: `/how-to-play` });
 
   // /about earns its place: it is a standing page with content worth
@@ -351,11 +347,8 @@ async function buildEntries(): Promise<SitemapEntry[]> {
 
   // The index of the curated lists, which stands whatever they hold. The
   // lists themselves are added further down, once the counts are in — see
-  // there for why.
-  add({
-    url: `/game-lists`,
-    lastmod: asDate(catalogueLastmod),
-  });
+  // there for why. No lastmod, like the other indexes above.
+  add({ url: `/game-lists` });
 
   // Add paginated pages for news
   const newsPages = Math.ceil(newsCount / 10); // News uses limit of 10
@@ -419,10 +412,9 @@ async function buildEntries(): Promise<SitemapEntry[]> {
     // games for; an empty one answers 404 like the letters above.
     if (genreCount === 0) continue;
 
-    add({
-      url: `/${genre.toLowerCase()}`,
-      lastmod: asDate(lastmods.get(`genre:${genre}`)),
-    });
+    // No lastmod: ranked by rating, which no "updatedAt" records — see the
+    // note on rankings above.
+    add({ url: `/${genre.toLowerCase()}` });
 
     const genrePages = Math.ceil(genreCount / LIMIT);
 

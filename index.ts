@@ -135,11 +135,14 @@ async function warnOnPendingMigrations(): Promise<void> {
 
 void warnOnPendingMigrations();
 
-// Reads the shared cache epoch before the first request can, so the process
-// knows the value its caches were built under. The first sync only adopts
-// the number it finds; a request that filled a cache ahead of it would have
-// left this machine unable to tell a later bump from the value it started
-// with. The middleware in app.ts does the same on every interval after this.
+// Reads the shared cache epoch as early as the process can, so it knows the
+// value its caches are built under. Not awaited, and so not guaranteed to come
+// before the first request: the server above is already listening, and with
+// the database slow or down at boot this read fails and a later one is the
+// first. That is why the first read of a scope drops whatever this process
+// already holds for it (see syncCacheEpoch) rather than adopting the number
+// on the assumption that nothing was cached yet. The middleware in app.ts
+// does the same on every interval after this.
 void syncCacheEpoch();
 
 void pruneExpiredData();

@@ -1,6 +1,6 @@
 import crypto from "crypto";
 import { type Request, type Response, type NextFunction } from "express";
-import { readCookie } from "../utils/cookies.ts";
+import { readCookie, readCookies } from "../utils/cookies.ts";
 
 /**
  * The name the cookie had before it carried a prefix, and still has outside
@@ -68,9 +68,17 @@ export function voterId(req: Request, res: Response, next: NextFunction): void {
    * can go then.
    */
   if ((!id || !UUID_PATTERN.test(id)) && name !== LEGACY_VOTER_COOKIE) {
-    const legacy = readCookie(req.headers.cookie, LEGACY_VOTER_COOKIE);
+    const legacy = readCookies(req.headers.cookie, LEGACY_VOTER_COOKIE);
 
-    if (legacy && UUID_PATTERN.test(legacy)) id = legacy;
+    // Exactly one. This site only ever set "osg_vid" host-only and for
+    // Path=/, so a browser holds at most one of its own; two mean somebody
+    // else set the other, for the whole domain or for a narrower path, and
+    // the header cannot say which is ours. Reading the first, as this used
+    // to, adopted whichever the browser happened to send first — the
+    // planted one, whenever it had the longer path. A visitor holding both
+    // is given a fresh id instead: losing the old ratings is the lesser
+    // harm next to an id whose owner can read and rewrite them.
+    if (legacy.length === 1 && UUID_PATTERN.test(legacy[0]!)) id = legacy[0]!;
   }
 
   if (!id || !UUID_PATTERN.test(id)) {

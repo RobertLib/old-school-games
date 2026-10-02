@@ -87,7 +87,7 @@
     <div class="text-sm">
       <strong>Genre</strong>:
       <% if (game.genre) { %>
-      <a class="underline color-primary" href="/<%= game.genre.toLowerCase() %>"><%= game.genre %></a>
+      <a class="underline color-primary" href="/<%= game.genre.toLowerCase() %>"><%= genreLabel(game.genre) %></a>
       <% } else { %>
       -
       <% } %><br />

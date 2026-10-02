@@ -285,6 +285,8 @@ describe("heading levels, rendered", () => {
           },
           csrfToken: "t",
           req: {},
+          // An app.locals helper, which a bare renderFile does not get.
+          genreLabel,
           ...locals,
         },
         { root: VIEWS, views: [VIEWS] },

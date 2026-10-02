@@ -204,8 +204,10 @@ describe("GameOfTheWeek Model", () => {
         `g."stream" IS NOT NULL AND g."stream" <> ''`,
       );
       expect(eligibilitySql).toContain(
-        "(r.avg_rating IS NULL OR r.avg_rating >= 4)",
+        `(g."ratingCount" = 0 OR g."ratingSum" >= 4 * g."ratingCount")`,
       );
+      // Off the game's own totals, not an aggregate of every vote there is.
+      expect(eligibilitySql).not.toContain('FROM "ratings"');
       expect(client.query).toHaveBeenCalledWith(
         `INSERT INTO "game_of_the_week" ("gameId")
        VALUES ($1)

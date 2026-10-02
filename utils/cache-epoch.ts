@@ -251,16 +251,17 @@ async function tryBump(scope: CacheScope): Promise<BumpAttempt> {
     // and lastSeen exist to make impossible.
     //
     // A fresh row starts at the column default (1) rather than at 2, and the
-    // bump that created it therefore invalidates nothing on any other machine.
-    // syncCacheEpoch only counts a scope as moved when it already has a value
-    // for it and the new one is greater ("seen !== undefined && epoch > seen")
-    // — a scope read for the first time must be adopted, not treated as an
-    // invalidation, or every machine would clear its caches on boot. So the
-    // other machines meet this row at 1, adopt it, and apply no effect: the
-    // write that created it is lost everywhere but here. The upsert is a
-    // repair for the writes after it, not for the write making it, which is
-    // why every scope in SCOPE_EFFECTS still needs a seed row from a
-    // migration — 0044 is that seed restated.
+    // bump that created it is not an increment anywhere. syncCacheEpoch
+    // counts a scope as moved when it already has a value for it and the new
+    // one is greater ("seen !== undefined && epoch > seen"); a machine that
+    // had read the scope before — as 1, from a seed, or not at all because
+    // the row was missing — sees no movement from a row that is still 1, and
+    // the write that created it is lost everywhere but here. (A machine
+    // meeting the scope for the first time drops it regardless; see the
+    // first-read rule there.) The upsert is a repair for the writes after
+    // it, not for the write making it, which is why every scope in
+    // SCOPE_EFFECTS still needs a seed row from a migration — 0044 is that
+    // seed restated.
     const { rows } = await db.query(
       `INSERT INTO "cache_epochs" ("scope")
        VALUES ($1)
@@ -294,6 +295,11 @@ async function tryBump(scope: CacheScope): Promise<BumpAttempt> {
         logger.info(
           `Cache epoch for ${scope} had moved elsewhere as well; dropping what those writes dropped.`,
         );
+        SCOPE_EFFECTS[scope]();
+      } else if (seen === undefined) {
+        // The first number this process has for the scope, so any gap
+        // before it is invisible — see the first-read rule in
+        // syncCacheEpoch, which this is the bump-side half of.
         SCOPE_EFFECTS[scope]();
       }
 
@@ -451,6 +457,7 @@ export function syncCacheEpoch(): Promise<void> {
       checksAnswering = true;
 
       const moved: CacheScope[] = [];
+      const firstSeen: CacheScope[] = [];
 
       for (const row of rows) {
         const scope = String(row.scope) as CacheScope;
@@ -470,6 +477,18 @@ export function syncCacheEpoch(): Promise<void> {
         // clearing on it would drop caches nothing has invalidated.
         if (seen !== undefined && epoch > seen) moved.push(scope);
 
+        // A scope read for the first time is dropped as well, because there
+        // is no telling which epoch anything already held was built under.
+        // It used to be adopted and nothing more, on the assumption that the
+        // boot-time read in index.ts comes first — but that read is not
+        // awaited, the server is listening before it lands, and with the
+        // database slow at boot it fails and leaves requests to fill the
+        // sitemap, the sidebars and the rest. A bump elsewhere in that window
+        // (a game deleted on another machine) was then this read's starting
+        // number, and the deleted game stayed in this machine's sitemap for
+        // its whole TTL. At boot the caches are empty and this costs nothing.
+        if (seen === undefined) firstSeen.push(scope);
+
         adopt(scope, epoch);
       }
 
@@ -483,6 +502,12 @@ export function syncCacheEpoch(): Promise<void> {
         if (moved.includes("all")) SCOPE_EFFECTS.all();
         else for (const scope of moved) SCOPE_EFFECTS[scope]();
       }
+
+      // Not logged: on every machine this is the first read after boot, and
+      // a line saying caches were dropped would be about caches that were
+      // almost always empty.
+      if (firstSeen.includes("all")) SCOPE_EFFECTS.all();
+      else for (const scope of firstSeen) SCOPE_EFFECTS[scope]();
     } catch (error) {
       // A short backoff instead of a whole interval — enough to keep a busy
       // moment from firing one doomed query per request, not enough to keep

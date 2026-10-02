@@ -22,7 +22,8 @@ import type { AddressInfo } from "net";
 const PLAYER = "https://play.example.test";
 const PLAYER_HOST = "play.example.test";
 const SITE = "https://oldschoolgames.eu";
-const JS_DOS_SOURCE = "https://cdn.jsdelivr.net/npm/js-dos@8.4.1/dist/";
+// js-dos, which app.ts serves out of node_modules on whichever origin asks.
+const JS_DOS_PATH = "/vendor/js-dos/8.4.1/";
 
 // Set before app.ts is imported, and put back once it has been: nothing else
 // reads it after import, and the next file in this worker must not see it.
@@ -168,6 +169,30 @@ describe("the player origin", () => {
     expect((await get(path)).status).toBe(200);
   });
 
+  /**
+   * The emulator, which the frame loads from its own origin: 'self' in the
+   * player's policy is the player origin, so a js-dos this host did not
+   * answer for would be refused there, and no game would start.
+   */
+  it.each([
+    "js-dos.js",
+    "js-dos.css",
+    "emulators/emulators.js",
+    "emulators/wdosbox.wasm",
+  ])("serves js-dos's %s", async (file) => {
+    const response = await get(`${JS_DOS_PATH}${file}`)
+      .buffer(true)
+      .parse((res, done) => {
+        res.on("data", () => {});
+        res.on("end", () => done(null, null));
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.headers["cache-control"]).toBe(
+      "public, max-age=31536000, immutable",
+    );
+  });
+
   describe("the player's policy there", () => {
     async function playerCsp(): Promise<string> {
       const response = await get("/js-dos.html");
@@ -180,7 +205,8 @@ describe("the player origin", () => {
 
       expect(scriptSrc).toContain("'unsafe-eval'");
       expect(scriptSrc).toContain("blob:");
-      expect(scriptSrc).toContain(JS_DOS_SOURCE);
+      // js-dos itself, which the player origin serves under JS_DOS_PATH.
+      expect(scriptSrc).toContain("'self'");
     });
 
     /**
@@ -196,7 +222,6 @@ describe("the player origin", () => {
     it("may fetch a game from this site as well as from the bucket", async () => {
       expect(directive(await playerCsp(), "connect-src")).toEqual([
         "'self'",
-        JS_DOS_SOURCE,
         "https://trwglibsccninuamefls.supabase.co",
         SITE,
       ]);
@@ -246,6 +271,9 @@ describe("the player origin", () => {
       // or fold to the same file: matched on the address as it arrived.
       "/%6As-dos.html",
       "/JS-DOS.HTML",
+      // Under the js-dos prefix, but not a file of the release.
+      `${JS_DOS_PATH}nope.js`,
+      `${JS_DOS_PATH}%2E%2E/package.json`,
     ])("GET %s", async (path) => {
       const response = await get(path);
 
@@ -262,7 +290,15 @@ describe("the player origin", () => {
      * leave, so they only ever arrive from something writing raw requests;
      * that is who this is for.
      */
-    it.each(["/js/../css/style.css", "/css/%2E%2E/js/ui.js", "/js/../js-dos.html"])(
+    it.each([
+      "/js/../css/style.css",
+      "/css/%2E%2E/js/ui.js",
+      "/js/../js-dos.html",
+      // Out of js-dos's directory and into the site's: the prefix check
+      // lets these through to express.static, which must refuse them.
+      `${JS_DOS_PATH}../../../css/style.css`,
+      `${JS_DOS_PATH}%2E%2E/%2E%2E/%2E%2E/css/style.css`,
+    ])(
       "a raw GET %s",
       async (path) => {
         const address = server.address() as AddressInfo;
@@ -379,7 +415,6 @@ describe("this origin, with a player origin", () => {
 
       expect(response.status).toBe(200);
       expect(directive(csp, "script-src")).not.toContain("'unsafe-eval'");
-      expect(directive(csp, "script-src")).not.toContain(JS_DOS_SOURCE);
       expect(directive(csp, "frame-ancestors")).toEqual(["'self'"]);
     },
   );

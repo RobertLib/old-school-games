@@ -41,6 +41,23 @@ describe("News Validations", () => {
       });
     });
 
+    // trim() leaves a zero-width space or a blank Braille cell in place, and
+    // either one published an article with no headline.
+    it.each(["\u200b", "\u2800\u2800"])(
+      "refuses a title that draws nothing (%j)",
+      (title) => {
+        expect(validateNews({ title, content: "Valid content" })).toContainEqual(
+          { field: "title", message: "Title cannot be empty" },
+        );
+      },
+    );
+
+    it("refuses a body that draws nothing", () => {
+      const errors = validateNews({ title: "News", content: "<p>\u200b</p>" });
+
+      expect(errors.map((error) => error.field)).toContain("content");
+    });
+
     it("should return error for title that is too long", () => {
       const invalidData = {
         title: "a".repeat(256),

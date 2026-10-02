@@ -14,7 +14,9 @@
         characters rather than the titles it stands for. %>
     Games starting with <%= locals.letterInSentence || `'${letter.toUpperCase()}'` %>
     <% } else if (locals.genre) { %>
-    Games in the "<%= genre %>" genre
+    <%# genreInSentence, not the route parameter: that printed the address's
+        spelling, so the RPG page read 'Games in the "rpg" genre'. %>
+    Games in the <%= genreInSentence(genre) %> genre
     <% } else if (locals.developer) { %>
     Games by developer "<%= developer %>"
     <% } else if (locals.publisher) { %>

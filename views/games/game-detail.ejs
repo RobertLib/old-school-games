@@ -248,7 +248,7 @@
             <hr />
             <strong>Genre</strong>:
             <% if (game.genre) { %>
-            <a class="underline color-primary" href="/<%= game.genre.toLowerCase() %>"><%= game.genre %></a>
+            <a class="underline color-primary" href="/<%= game.genre.toLowerCase() %>"><%= genreLabel(game.genre) %></a>
             <% } else { %>
             -
             <% } %><br />
@@ -400,9 +400,8 @@
                  not bother: it can reach parent.document as it is — this
                  page's forms, the CSRF token in its <meta>, the nonce on
                  its scripts. A foothold in the emulator (a js-dos bug, or a
-                 tampered emulators.js or wdosbox.js, which js-dos loads from
-                 jsDelivr with no integrity check) is a foothold in this
-                 site, an admin's session included.
+                 game bundle that finds one) is a foothold in this site, an
+                 admin's session included.
                 - Served from an origin of its own (PLAYER_ORIGIN), it does.
                  allow-same-origin then keeps the player's origin, not this
                  one: the frame cannot reach this page, cannot touch its own

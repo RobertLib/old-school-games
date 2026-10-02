@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { createHash } from "crypto";
 import { existsSync, readFileSync, globSync } from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -16,6 +17,20 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.resolve(__dirname, "../public");
 
 const htmlFiles = globSync("public/**/*.html");
+
+/**
+ * js-dos's own files, which app.ts serves out of node_modules at
+ * /vendor/js-dos/<version>/ rather than out of public/.
+ */
+const JS_DOS_DIST = path.resolve(__dirname, "../node_modules/js-dos/dist");
+const JS_DOS_PREFIX = /^\/vendor\/js-dos\/\d+\.\d+\.\d+\//;
+
+/** The file on disk an address on this site is answered with. */
+function servedFrom(address: string): string {
+  return JS_DOS_PREFIX.test(address)
+    ? path.join(JS_DOS_DIST, address.replace(JS_DOS_PREFIX, ""))
+    : path.join(PUBLIC_DIR, address);
+}
 
 /**
  * The Content-Security-Policy in app.ts allows inline script only by nonce,
@@ -57,7 +72,7 @@ describe("static HTML in public/ under the script-src nonce", () => {
       // is served — "/js/js-dos-player.js?retired-v8" included, which exists
       // only to walk away from copies stored under the bare name.
       .map((src) => src.split(/[?#]/)[0]!)
-      .filter((src) => !existsSync(path.join(PUBLIC_DIR, src)));
+      .filter((src) => !existsSync(servedFrom(src)));
 
     expect(missing).toEqual([]);
   });
@@ -66,74 +81,116 @@ describe("static HTML in public/ under the script-src nonce", () => {
 /**
  * js-dos runs with full privileges in this origin — it is the emulator, so it
  * has to — and it used to be loaded from the vendor's "/latest/", a URL whose
- * contents can change under the site at any time. It is pinned to one
- * immutable release now, hash-checked, and the emulator runtime is pinned
- * alongside it (see public/js-dos.html and public/js/js-dos-player.js).
+ * contents can change under the site at any time, and then from one release
+ * on jsDelivr, which could hash-check the loader but not the emulator runtime
+ * js-dos fetches for itself. It is a dependency now, served by app.ts from
+ * node_modules, so every file of it is the one the lockfile's sha512 names
+ * (see public/js-dos.html and public/js/js-dos-player.js).
  *
- * These keep the pin honest. Every one of them is something that would
- * silently give back the exposure: an unpinned URL creeping in, a hash left
- * off, or the loader and the emulator runtime drifting onto different
- * releases — a combination nobody upstream tests.
+ * These keep that honest. Every one of them is something that would silently
+ * give back the exposure: a third-party address creeping back in, a hash
+ * that no longer matches what is installed, or the loader, the emulator
+ * runtime and the installed package drifting onto different releases — a
+ * combination nobody upstream tests.
  */
-describe("the DOS emulator is pinned rather than tracking /latest/", () => {
+describe("the DOS emulator is served from this site, pinned to one release", () => {
   const PLAYER_HTML = path.join(PUBLIC_DIR, "js-dos.html");
   const PLAYER_JS = path.join(PUBLIC_DIR, "js/js-dos-player.js");
 
   const html = readFileSync(PLAYER_HTML, "utf-8");
   const playerJs = readFileSync(PLAYER_JS, "utf-8");
 
-  /** Every off-site script and stylesheet the player page pulls in. */
-  const offSiteTags = [...html.matchAll(/<(script|link)\b([^>]*)>/gi)]
-    .map((match) => ({ tag: match[1]!, attrs: match[2]! }))
-    .filter(({ attrs }) => /\b(?:src|href)\s*=\s*"https?:/i.test(attrs));
+  /** Every js-dos script and stylesheet the player page pulls in. */
+  const jsDosTags = [...html.matchAll(/<(script|link)\b([^>]*)>/gi)]
+    .map((match) => ({
+      tag: match[1]!,
+      attrs: match[2]!,
+      target: /\b(?:src|href)\s*=\s*"([^"]+)"/i.exec(match[2]!)?.[1] ?? "",
+    }))
+    .filter(({ target }) => JS_DOS_PREFIX.test(target));
 
-  it("pulls something off-site, so the checks below are not vacuous", () => {
-    expect(offSiteTags.length).toBeGreaterThan(0);
+  it("pulls js-dos in, so the checks below are not vacuous", () => {
+    expect(jsDosTags.map(({ tag }) => tag).sort()).toEqual(["link", "script"]);
   });
 
   // The attribute values, not the file text: both files carry comments that
-  // quote the old "/latest/" URLs to explain what they were pinned away from,
-  // and prose about a URL is not a request for one.
-  it.each(htmlFiles)("%s loads nothing from an unpinned /latest/", (file) => {
+  // quote the old URLs to explain what they were moved away from, and prose
+  // about a URL is not a request for one.
+  it.each(htmlFiles)("%s loads nothing from another origin", (file) => {
     const targets = [
       ...readFileSync(file, "utf-8").matchAll(
         /\b(?:src|href)\s*=\s*"([^"]+)"/gi,
       ),
     ].map((match) => match[1]!);
 
-    expect(targets.filter((url) => url.includes("/latest/"))).toEqual([]);
+    expect(targets.filter((url) => /^(?:https?:)?\/\//i.test(url))).toEqual(
+      [],
+    );
   });
 
-  it("pins the emulator runtime too, not only the loader", () => {
+  it("serves the emulator runtime from this site too, not only the loader", () => {
     // Without this js-dos defaults pathPrefix to the vendor's
     // "/latest/emulators/", which is where wdosbox.wasm — the part that
-    // actually runs the game — would still have come from.
-    const pathPrefix = /pathPrefix:\s*`([^`]+)`/.exec(playerJs)?.[1];
+    // actually runs the game — would still come from.
+    expect(playerJs).toMatch(/pathPrefix:\s*JS_DOS_EMULATORS\b/);
 
-    expect(pathPrefix).toBeDefined();
-    expect(pathPrefix).not.toContain("/latest/");
-    expect(pathPrefix).toContain("js-dos@");
-  });
+    const emulators = /const JS_DOS_EMULATORS = new URL\(\s*`([^`]+)`/.exec(
+      playerJs,
+    )?.[1];
 
-  it("hash-checks every off-site script and stylesheet", () => {
-    for (const { tag, attrs } of offSiteTags) {
-      expect(attrs, `<${tag}> is missing integrity`).toMatch(
-        /\bintegrity\s*=\s*"sha(?:256|384|512)-/,
-      );
-      // Required for integrity to be enforced on a cross-origin load.
-      expect(attrs, `<${tag}> is missing crossorigin`).toMatch(
-        /\bcrossorigin\s*=/,
+    expect(emulators).toBe("/vendor/js-dos/${JS_DOS_VERSION}/emulators/");
+    // The files js-dos asks for by default, which is the smallest set that
+    // has to be there for any game at all to start.
+    for (const file of [
+      "emulators.js",
+      "wdosbox.js",
+      "wdosbox.wasm",
+      "wlibzip.js",
+      "wlibzip.wasm",
+    ]) {
+      expect(existsSync(path.join(JS_DOS_DIST, "emulators", file)), file).toBe(
+        true,
       );
     }
   });
 
-  it("names one js-dos release across the page and the player", () => {
+  it("hash-checks the loader and its stylesheet against the installed copy", () => {
+    for (const { tag, attrs, target } of jsDosTags) {
+      const integrity = /\bintegrity\s*=\s*"sha384-([^"]+)"/.exec(attrs)?.[1];
+
+      expect(integrity, `<${tag}> is missing a sha384 integrity`).toBeDefined();
+      expect(
+        integrity,
+        `<${tag} ${target}> no longer matches node_modules — a new release needs a new hash`,
+      ).toBe(
+        createHash("sha384").update(readFileSync(servedFrom(target))).digest(
+          "base64",
+        ),
+      );
+    }
+  });
+
+  it("names one js-dos release across the page, the player and package.json", () => {
+    const packageJson = JSON.parse(
+      readFileSync(path.join(PUBLIC_DIR, "../package.json"), "utf-8"),
+    ) as { dependencies: Record<string, string> };
+    const installed = JSON.parse(
+      readFileSync(path.join(JS_DOS_DIST, "../package.json"), "utf-8"),
+    ) as { version: string };
+    const appTs = readFileSync(path.join(PUBLIC_DIR, "../app.ts"), "utf-8");
+
     const versions = new Set(
       [
-        ...html.matchAll(/js-dos@(\d+\.\d+\.\d+)/g),
+        ...html.matchAll(/\/vendor\/js-dos\/(\d+\.\d+\.\d+)\//g),
         ...playerJs.matchAll(/JS_DOS_VERSION\s*=\s*"(\d+\.\d+\.\d+)"/g),
+        ...appTs.matchAll(/JS_DOS_VERSION\s*=\s*"(\d+\.\d+\.\d+)"/g),
       ].map((match) => match[1]!),
     );
+
+    versions.add(installed.version);
+    // Exact, not a range: a caret would let `npm install` move the emulator
+    // to a release the hashes and the constants above do not name.
+    versions.add(packageJson.dependencies["js-dos"]!);
 
     expect(versions.size, `found ${[...versions].join(", ")}`).toBe(1);
   });
@@ -228,20 +285,25 @@ describe("the player on an origin of its own", () => {
 
   /**
    * Everything js-dos.html asks its own origin for has to be something the
-   * player origin answers — PLAYER_PATHS, the whole of what app.ts serves
-   * there. A file added to the page and not to the list works on this
-   * origin, where everything in public/ is served, and 404s on the one the
-   * player is meant to run on.
+   * player origin answers — PLAYER_PATHS and js-dos's own directory, the
+   * whole of what app.ts serves there. A file added to the page and not to
+   * the list works on this origin, where everything in public/ is served,
+   * and 404s on the one the player is meant to run on.
    */
   it("asks its own origin only for what the player origin serves", () => {
     const own = [...html.matchAll(/\b(?:src|href)\s*=\s*"([^"]+)"/gi)]
       .map((match) => match[1]!)
-      // Off-site addresses are the CDN's; a fragment is the page's own SVG.
+      // A fragment is the page's own SVG.
       .filter((target) => target.startsWith("/") && !target.startsWith("//"))
       .map((target) => target.split(/[?#]/)[0]!);
 
     expect(own.length).toBeGreaterThan(0);
-    expect(own.filter((target) => !PLAYER_PATHS.includes(target))).toEqual([]);
+    expect(
+      own.filter(
+        (target) =>
+          !PLAYER_PATHS.includes(target) && !JS_DOS_PREFIX.test(target),
+      ),
+    ).toEqual([]);
   });
 
   it("lists only files that exist", () => {
@@ -452,36 +514,3 @@ describe("the web manifest", () => {
   });
 });
 
-/**
- * app.ts scopes the Content-Security-Policy to one js-dos release on
- * jsDelivr rather than to the whole CDN, which serves every npm package there
- * is. That only holds if the release in the policy is the release the player
- * loads — a version bumped in one place and not the other blocks the emulator
- * with nothing but a console message to show for it.
- */
-describe("the CSP names the js-dos release the player loads", () => {
-  it("pins the same version in app.ts, the player page and the player script", () => {
-    const appTs = readFileSync(path.join(PUBLIC_DIR, "../app.ts"), "utf-8");
-    const html = readFileSync(path.join(PUBLIC_DIR, "js-dos.html"), "utf-8");
-    const playerJs = readFileSync(
-      path.join(PUBLIC_DIR, "js/js-dos-player.js"),
-      "utf-8",
-    );
-
-    const inApp = /JS_DOS_VERSION\s*=\s*"(\d+\.\d+\.\d+)"/.exec(appTs)?.[1];
-    const inHtml = /js-dos@(\d+\.\d+\.\d+)/.exec(html)?.[1];
-    const inPlayer = /JS_DOS_VERSION\s*=\s*"(\d+\.\d+\.\d+)"/.exec(playerJs)?.[1];
-
-    expect(inApp).toBeDefined();
-    expect(inHtml).toBe(inApp);
-    expect(inPlayer).toBe(inApp);
-  });
-
-  it("scopes the source to a path, not the bare CDN origin", () => {
-    const appTs = readFileSync(path.join(PUBLIC_DIR, "../app.ts"), "utf-8");
-    const source = /const JS_DOS_SOURCE = `([^`]+)`/.exec(appTs)?.[1];
-
-    expect(source).toBeDefined();
-    expect(source).toMatch(/^https:\/\/cdn\.jsdelivr\.net\/npm\/js-dos@\$\{JS_DOS_VERSION\}\/dist\/$/);
-  });
-});

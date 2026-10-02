@@ -208,6 +208,29 @@ describe("voterId", () => {
       expect(req.voterId).toBe(id);
     });
 
+    /**
+     * This site only ever set "osg_vid" host-only and for Path=/, so a
+     * browser holds at most one of its own. Two mean somebody else set the
+     * other — from a subdomain, for the whole domain — and the header cannot
+     * say which is which; adopting the first handed the visitor whichever
+     * the browser sorted ahead, the planted one included, and whoever planted
+     * it could then read and rewrite their ratings.
+     */
+    it("carries nothing over when two ids are held under the old name", () => {
+      const { req, res } = run(
+        `${LEGACY_VOTER_COOKIE}=${other}; ${LEGACY_VOTER_COOKIE}=${id}`,
+      );
+
+      expect(req.voterId).toMatch(UUID);
+      expect(req.voterId).not.toBe(id);
+      expect(req.voterId).not.toBe(other);
+      expect(res.cookie).toHaveBeenCalledWith(
+        "__Host-osg_vid",
+        req.voterId,
+        expect.anything(),
+      );
+    });
+
     it("mints a fresh id when the old one is malformed", () => {
       const { req } = run(`${LEGACY_VOTER_COOKIE}=' OR 1=1 --`);
 

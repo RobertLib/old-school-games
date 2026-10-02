@@ -177,8 +177,12 @@ const BIDI_CONTROL = /\p{Bidi_Control}/u;
  * character a "blank" name is usually made of. \p{White_Space} rather than
  * \s, which leaves out U+0085; so does trim(), which is why the check cannot
  * lean on it.
+ *
+ * Exported for the admin forms, whose titles had only trim() between them and
+ * a game or an article listed under a name that draws nothing.
  */
-const VISIBLE = /[^\p{Default_Ignorable_Code_Point}\p{White_Space}\p{Cc}\u2800]/u;
+export const VISIBLE =
+  /[^\p{Default_Ignorable_Code_Point}\p{White_Space}\p{Cc}\u2800]/u;
 
 export const validateComment = (
   req: Request,
